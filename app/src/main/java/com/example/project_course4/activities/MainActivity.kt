@@ -64,13 +64,13 @@ fun MainView() {
                     .padding(start = 10.dp, end = 5.dp, top = 15.dp, bottom = 25.dp)
             ) {
                 item{
-                    DishItem("Рис", 10f, 2f, 100f, 458f)
+                    DishItem("Рис", 10f, 2f, 100f, 458f, 110)
                 }
                 item{
-                    DishItem("Кура", 40f, 8f, 5f, 252f)
+                    DishItem("Кура", 40f, 8f, 5f, 252f, 140)
                 }
                 item{
-                    DishItem("Кола \"Черноголовка\" без сахара", 0f, 0f, 0f, 0f)
+                    DishItem("Кола \"Черноголовка\" без сахара", 0f, 0f, 0f, 0f, 350)
                 }
             }
             HorizontalDivider(
@@ -115,8 +115,8 @@ fun MainView() {
 }
 
 @Composable
-fun DishItem(dishName: String, proteins: Float, fats: Float, carbs: Float, calories: Float){
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 3.dp)){
+fun DishItem(dishName: String, proteins: Float, fats: Float, carbs: Float, calories: Float, weight: Int){
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 10.dp)){
         Column(){
             Text(text = dishName, fontSize = 15.sp)
             Row(){
@@ -145,7 +145,10 @@ fun DishItem(dishName: String, proteins: Float, fats: Float, carbs: Float, calor
             }
         }
         Spacer(Modifier.weight(1f))
-        Text(text = calories.toString(), fontSize = 15.sp)
+        Column(horizontalAlignment = Alignment.End){
+            Text(text = "$weight г.", fontSize = 15.sp)
+            Text(text = "$calories ккал.", fontSize = 12.sp)
+        }
     }
 }
 
