@@ -39,17 +39,24 @@ android {
     buildFeatures {
         compose = true
     }
+    configurations.all {
+        exclude (group = "xpp3")
+    }
 }
 
 dependencies {
-
+    implementation(libs.ktor.client.cio){
+        exclude(group = "xpp3", module = "xpp3")
+        exclude(group = "xmlpull", module = "xmlpull")
+    }
     implementation(libs.ktor.client.core)
-    implementation(libs.ktor.client.cio)
     implementation(libs.ktor.client.content.negotiation)
     implementation (libs.ktor.serialization.kotlinx.json.v237)
 
     implementation (libs.kotlinx.serialization.json)
 
+    implementation (libs.androidx.navigation.navigation.safe.args.generator)
+    implementation (libs.androidx.navigation.compose)
     implementation (libs.androidx.appcompat)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
