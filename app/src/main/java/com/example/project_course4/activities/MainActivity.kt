@@ -1,9 +1,11 @@
 package com.example.project_course4.activities
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
@@ -43,24 +46,19 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-//        enableEdgeToEdge()
+        enableEdgeToEdge()
         setContent {
             Project_course4Theme {
                 MainView(){
                     lifecycleScope.launch {
-                        Log.d("api_test", "Корутина запущена")
                         val products = getProducts()
-                        val product1 = products[0].toString()
-                        val product2 = products[1].toString()
-                        println(product1)
-                        Log.d("api_test", "$product1; $product2")
-                        // Обработка списка products, например, передача в Composable
+                        val intent = Intent(this@MainActivity, SelectProductActivity::class.java)
+                        intent.putParcelableArrayListExtra("key", ArrayList(products))
+                        startActivity(intent)
                     }
-                    Log.d("api_test", "После запуска корутины")
                 }
             }
         }
-
     }
 }
 
@@ -73,19 +71,14 @@ suspend fun getProducts(): List<Product> {
     Log.d("api_test", "функция getProducts() запущена")
     try {
         val response = client.get("http://10.0.2.2:5000/products")
-        Log.d("api_test", "Запрос отправлен")
         val products = response.body<List<Product>>()
-        Log.d("api_test", "Получено продуктов: ${products.size}")
         return products
     } catch (e: Exception) {
         Log.e("api_test", "Ошибка в getProducts: ${e.message}", e)
         return emptyList()
     }
 }
-//suspend fun getProducts(): List<Product> {
-//    Log.d("api_test", "функция getProducts()")
-//    return client.get("http://localhost:5000/products").body()
-//}
+
 
 @Composable
 fun MainView(onClick: () -> Unit) {
@@ -195,8 +188,10 @@ fun DishItem(dishName: String, proteins: Float, fats: Float, carbs: Float, calor
     }
 }
 
-//@Composable
-//@Preview
-//fun MainViewPreview() {
-//    MainView()
-//}
+@Composable
+@Preview
+fun MainViewPreview() {
+    MainView(){
+
+    }
+}

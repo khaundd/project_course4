@@ -3,15 +3,16 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.kotlin.parcelize)
 }
 
 android {
     namespace = "com.example.project_course4"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.project_course4"
-        minSdk = 24
+        minSdk = 33 //24
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -49,6 +50,7 @@ dependencies {
 
     implementation (libs.kotlinx.serialization.json)
 
+    implementation (libs.androidx.appcompat)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
