@@ -14,9 +14,9 @@ class ProductViewModel : ViewModel() {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
-    // Временный выбор на экране выбора
-    private val _tempSelection = MutableStateFlow<Set<Product>>(emptySet())
-    val tempSelection: StateFlow<Set<Product>> = _tempSelection.asStateFlow()
+    // Текущий временный выбор (сбрасывается при каждом открытии SelectProductScreen)
+    private val _currentSelection = MutableStateFlow<Set<Product>>(emptySet())
+    val currentSelection: StateFlow<Set<Product>> = _currentSelection.asStateFlow()
 
     // Финальный выбор на главном экране
     private val _finalSelection = MutableStateFlow<Set<Product>>(emptySet())
@@ -41,26 +41,27 @@ class ProductViewModel : ViewModel() {
         }
     }
 
-    fun toggleTempSelection(product: Product) {
-        val current = _tempSelection.value.toMutableSet()
+    fun toggleCurrentSelection(product: Product) {
+        val current = _currentSelection.value.toMutableSet()
         if (current.contains(product)) {
             current.remove(product)
         } else {
             current.add(product)
         }
-        _tempSelection.value = current
+        _currentSelection.value = current
     }
 
-    fun saveSelection() {
-        _finalSelection.value = _tempSelection.value
-        clearTempSelection()
+    fun saveCurrentSelection() {
+        // Добавляем текущий выбор к финальному
+        val updatedSelection = _finalSelection.value.toMutableSet()
+        updatedSelection.addAll(_currentSelection.value)
+        _finalSelection.value = updatedSelection
+
+        // Очищаем текущий выбор
+        _currentSelection.value = emptySet()
     }
 
-    fun clearTempSelection() {
-        _tempSelection.value = emptySet()
-    }
-
-    fun getFinalSelectionList(): List<Product> {
-        return _finalSelection.value.toList()
+    fun clearCurrentSelection() {
+        _currentSelection.value = emptySet()
     }
 }

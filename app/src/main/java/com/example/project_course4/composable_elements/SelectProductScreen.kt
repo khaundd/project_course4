@@ -17,6 +17,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -32,8 +33,14 @@ fun SelectProductScreen(
 ){
     val products by viewModel.products.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
-    val tempSelection by viewModel.tempSelection.collectAsState()
+    val currentSelection by viewModel.currentSelection.collectAsState()
+//    val selectedProducts by viewModel.finalSelection.collectAsState()
+//    val tempSelection by viewModel.tempSelection.collectAsState()
 
+//    // Инициализируем временный выбор при открытии экрана
+//    LaunchedEffect(Unit) {
+//        viewModel.initializeTempSelection()
+//    }
 
     Scaffold(
         topBar = {
@@ -44,7 +51,9 @@ fun SelectProductScreen(
                 navigationIcon = {
                     Button(
                         onClick = {
-                            viewModel.clearTempSelection()
+                            // При отмене очищаем текущий выбор и возвращаемся
+                            viewModel.clearCurrentSelection()
+//                            viewModel.clearTempSelection()
                             navController.popBackStack()
                         },
                         modifier = Modifier.padding(start = 8.dp)
@@ -55,12 +64,14 @@ fun SelectProductScreen(
                 actions = {
                     Button(
                         onClick = {
-                            viewModel.saveSelection() // Сохраняем в финальный выбор
+                            // Сохраняем текущий выбор в финальный и возвращаемся
+                            viewModel.saveCurrentSelection()
+//                            viewModel.saveSelection()
                             navController.popBackStack()
                         },
                         modifier = Modifier.padding(end = 8.dp)
                     ) {
-                        Text("✓")
+                        Text("+")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -87,9 +98,9 @@ fun SelectProductScreen(
                 items(products) { product ->
                     ProductElement(
                         product = product,
-                        isSelected = tempSelection.contains(product) // Используем временный выбор
+                        isSelected = currentSelection.contains(product) // Используем временный выбор
                     ) {
-                        viewModel.toggleTempSelection(product) // Используем новую функцию
+                        viewModel.toggleCurrentSelection(product)
                     }
                 }
             }
