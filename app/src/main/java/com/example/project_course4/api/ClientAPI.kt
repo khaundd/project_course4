@@ -1,6 +1,7 @@
-package com.example.project_course4
+package com.example.project_course4.api
 
 import android.util.Log
+import com.example.project_course4.Product
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
@@ -14,7 +15,7 @@ class ClientAPI {
 
     private val URL: String = "https://loftily-adequate-urchin.cloudpub.ru/products"
     private val client = HttpClient(CIO) {
-        install(ContentNegotiation) {
+        install(ContentNegotiation.Plugin) {
             json()
         }
     }
