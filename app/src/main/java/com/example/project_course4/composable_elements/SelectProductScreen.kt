@@ -42,7 +42,6 @@ fun SelectProductScreen(
                 navigationIcon = {
                     Button(
                         onClick = {
-                            // При отмене очищаем текущий выбор и возвращаемся
                             viewModel.clearCurrentSelection()
                             navController.popBackStack()
                         },
@@ -54,7 +53,6 @@ fun SelectProductScreen(
                 actions = {
                     Button(
                         onClick = {
-                            // Сохраняем текущий выбор в финальный и начинаем ввод веса
                             viewModel.saveCurrentSelection()
                             navController.popBackStack()
                         },
@@ -88,7 +86,7 @@ fun SelectProductScreen(
                 items(products) { product ->
                     ProductElement(
                         product = product,
-                        isSelected = currentSelection.contains(product) // Используем временный выбор
+                        isSelected = currentSelection.contains(product)
                     ) {
                         viewModel.toggleCurrentSelection(product)
                     }

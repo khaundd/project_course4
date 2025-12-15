@@ -18,11 +18,11 @@ class ProductViewModel : ViewModel() {
     private val _currentSelection = MutableStateFlow<Set<Product>>(emptySet())
     val currentSelection: StateFlow<Set<Product>> = _currentSelection.asStateFlow()
 
-    // Продукты, ожидающие ввода веса (очередь)
+    // Продукты, ожидающие ввода веса
     private val _pendingProducts = MutableStateFlow<List<Product>>(emptyList())
     val pendingProducts: StateFlow<List<Product>> = _pendingProducts.asStateFlow()
 
-    // Финальный выбор на главном экране
+    // Окончательный выбор на главном экране
     private val _finalSelection = MutableStateFlow<List<SelectedProduct>>(emptyList())
     val finalSelection: StateFlow<List<SelectedProduct>> = _finalSelection.asStateFlow()
 
@@ -64,7 +64,6 @@ class ProductViewModel : ViewModel() {
     }
 
     fun saveCurrentSelection() {
-        // Переносим выбранные продукты в очередь для ввода веса
         val selected = _currentSelection.value.toList()
         if (selected.isNotEmpty()) {
             _pendingProducts.value = selected
@@ -81,18 +80,15 @@ class ProductViewModel : ViewModel() {
     fun addProductWithWeight(weight: Int) {
         val currentProduct = _currentProductForWeight.value
         if (currentProduct != null) {
-            // Добавляем продукт с весом в финальный список
             val selectedProduct = SelectedProduct(currentProduct, weight)
             val updatedSelection = _finalSelection.value.toMutableList()
             updatedSelection.add(selectedProduct)
             _finalSelection.value = updatedSelection
 
-            // Удаляем продукт из очереди
             val pending = _pendingProducts.value.toMutableList()
             pending.remove(currentProduct)
             _pendingProducts.value = pending
 
-            // Переходим к следующему продукту, если есть
             if (pending.isNotEmpty()) {
                 _currentProductForWeight.value = pending.first()
             } else {
@@ -105,12 +101,10 @@ class ProductViewModel : ViewModel() {
     fun skipCurrentProduct() {
         val currentProduct = _currentProductForWeight.value
         if (currentProduct != null) {
-            // Просто удаляем продукт из очереди без добавления
             val pending = _pendingProducts.value.toMutableList()
             pending.remove(currentProduct)
             _pendingProducts.value = pending
 
-            // Переходим к следующему продукту, если есть
             if (pending.isNotEmpty()) {
                 _currentProductForWeight.value = pending.first()
             } else {

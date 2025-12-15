@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">project_course4</string>
+    <string name="RegularApp">project_course4</string>
     <string name="title_activity_main">MainActivity</string>
     <string name="title_activity_select_product">SelectProductActivity</string>
 </resources>
