@@ -14,13 +14,25 @@ class ProductViewModel : ViewModel() {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
-    // Текущий временный выбор (сбрасывается при каждом открытии SelectProductScreen)
+    // Текущий временный выбор на экране выбора продуктов
     private val _currentSelection = MutableStateFlow<Set<Product>>(emptySet())
     val currentSelection: StateFlow<Set<Product>> = _currentSelection.asStateFlow()
 
+    // Продукты, ожидающие ввода веса (очередь)
+    private val _pendingProducts = MutableStateFlow<List<Product>>(emptyList())
+    val pendingProducts: StateFlow<List<Product>> = _pendingProducts.asStateFlow()
+
     // Финальный выбор на главном экране
-    private val _finalSelection = MutableStateFlow<Set<Product>>(emptySet())
-    val finalSelection: StateFlow<Set<Product>> = _finalSelection.asStateFlow()
+    private val _finalSelection = MutableStateFlow<List<SelectedProduct>>(emptyList())
+    val finalSelection: StateFlow<List<SelectedProduct>> = _finalSelection.asStateFlow()
+
+    // Текущий продукт для ввода веса
+    private val _currentProductForWeight = MutableStateFlow<Product?>(null)
+    val currentProductForWeight: StateFlow<Product?> = _currentProductForWeight.asStateFlow()
+
+    // Флаг, показывающий нужно ли начинать ввод веса
+    private val _shouldShowWeightInput = MutableStateFlow(false)
+    val shouldShowWeightInput: StateFlow<Boolean> = _shouldShowWeightInput.asStateFlow()
 
     init {
         loadProducts()
@@ -52,16 +64,72 @@ class ProductViewModel : ViewModel() {
     }
 
     fun saveCurrentSelection() {
-        // Добавляем текущий выбор к финальному
-        val updatedSelection = _finalSelection.value.toMutableSet()
-        updatedSelection.addAll(_currentSelection.value)
-        _finalSelection.value = updatedSelection
-
-        // Очищаем текущий выбор
+        // Переносим выбранные продукты в очередь для ввода веса
+        val selected = _currentSelection.value.toList()
+        if (selected.isNotEmpty()) {
+            _pendingProducts.value = selected
+            _shouldShowWeightInput.value = true
+        }
         _currentSelection.value = emptySet()
     }
 
     fun clearCurrentSelection() {
         _currentSelection.value = emptySet()
+    }
+
+
+    fun addProductWithWeight(weight: Int) {
+        val currentProduct = _currentProductForWeight.value
+        if (currentProduct != null) {
+            // Добавляем продукт с весом в финальный список
+            val selectedProduct = SelectedProduct(currentProduct, weight)
+            val updatedSelection = _finalSelection.value.toMutableList()
+            updatedSelection.add(selectedProduct)
+            _finalSelection.value = updatedSelection
+
+            // Удаляем продукт из очереди
+            val pending = _pendingProducts.value.toMutableList()
+            pending.remove(currentProduct)
+            _pendingProducts.value = pending
+
+            // Переходим к следующему продукту, если есть
+            if (pending.isNotEmpty()) {
+                _currentProductForWeight.value = pending.first()
+            } else {
+                _currentProductForWeight.value = null
+                _shouldShowWeightInput.value = false
+            }
+        }
+    }
+
+    fun skipCurrentProduct() {
+        val currentProduct = _currentProductForWeight.value
+        if (currentProduct != null) {
+            // Просто удаляем продукт из очереди без добавления
+            val pending = _pendingProducts.value.toMutableList()
+            pending.remove(currentProduct)
+            _pendingProducts.value = pending
+
+            // Переходим к следующему продукту, если есть
+            if (pending.isNotEmpty()) {
+                _currentProductForWeight.value = pending.first()
+            } else {
+                _currentProductForWeight.value = null
+                _shouldShowWeightInput.value = false
+            }
+        }
+    }
+
+    fun checkAndStartWeightInput() {
+        val pending = _pendingProducts.value
+        if (pending.isNotEmpty() && _currentProductForWeight.value == null) {
+            _currentProductForWeight.value = pending.first()
+        }
+    }
+
+    fun clearWeightInput() {
+        _currentProductForWeight.value = null
+        _pendingProducts.value = emptyList()
+        _shouldShowWeightInput.value = false
     }
 }

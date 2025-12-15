@@ -22,7 +22,7 @@ fun DishItem(dishName: String, proteins: Float, fats: Float, carbs: Float, calor
             Text(text = dishName, fontSize = 15.sp)
             Row(){
                 Text(
-                    text = proteins.toString(),
+                    text = String.format("%.2f", proteins),
                     fontSize = 12.sp
                 )
                 VerticalDivider(
@@ -31,7 +31,7 @@ fun DishItem(dishName: String, proteins: Float, fats: Float, carbs: Float, calor
                     modifier = Modifier.padding(start = 2.dp)
                 )
                 Text(
-                    text = fats.toString(),
+                    text = String.format("%.2f", fats),
                     fontSize = 12.sp
                 )
                 VerticalDivider(
@@ -40,7 +40,7 @@ fun DishItem(dishName: String, proteins: Float, fats: Float, carbs: Float, calor
                     modifier = Modifier.padding(start = 2.dp)
                 )
                 Text(
-                    text = carbs.toString(),
+                    text = String.format("%.2f", carbs),
                     fontSize = 12.sp
                 )
             }
@@ -48,7 +48,7 @@ fun DishItem(dishName: String, proteins: Float, fats: Float, carbs: Float, calor
         Spacer(Modifier.padding(horizontal = 8.dp))
         Column(horizontalAlignment = Alignment.End){
             Text(text = "$weight г.", fontSize = 15.sp)
-            Text(text = "$calories ккал.", fontSize = 12.sp)
+            Text(text = "${String.format("%.2f", calories)} ккал.", fontSize = 12.sp)
         }
     }
 }

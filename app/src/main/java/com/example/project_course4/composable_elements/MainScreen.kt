@@ -26,6 +26,7 @@ import androidx.navigation.NavController
 import com.example.project_course4.Screen
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.sp
@@ -38,13 +39,42 @@ fun MainScreen(
 ) {
     // Получаем финальный выбор продуктов из ViewModel
     val selectedProducts by viewModel.finalSelection.collectAsState()
-    val selectedProductsList = selectedProducts.toList()
-    Log.d("api_test", "$selectedProducts")
+    val currentProductForWeight by viewModel.currentProductForWeight.collectAsState()
+    val shouldShowWeightInput by viewModel.shouldShowWeightInput.collectAsState()
 
-    val totalCalories = selectedProducts.sumOf { it.calories.toDouble() }.toFloat()
-    val totalProtein = selectedProducts.sumOf { it.protein.toDouble() }.toFloat()
-    val totalFats = selectedProducts.sumOf { it.fats.toDouble() }.toFloat()
-    val totalCarbs = selectedProducts.sumOf { it.carbs.toDouble() }.toFloat()
+    // LaunchedEffect для автоматического запуска ввода веса
+    LaunchedEffect(shouldShowWeightInput) {
+        if (shouldShowWeightInput) {
+            viewModel.checkAndStartWeightInput()
+        }
+    }
+
+    // Проверяем, есть ли продукты для ввода веса
+    if (currentProductForWeight != null) {
+        WeightInputDialog(
+            product = currentProductForWeight!!,
+            viewModel = viewModel,
+            onDismiss = { viewModel.clearWeightInput() }
+        )
+    }
+
+    // Рассчитываем общие значения с учетом веса
+    val totalCalories = selectedProducts.sumOf {
+        (it.product.calories.toDouble() * it.weight / 100)
+    }.toFloat()
+
+    val totalProtein = selectedProducts.sumOf {
+        (it.product.protein.toDouble() * it.weight / 100)
+    }.toFloat()
+
+    val totalFats = selectedProducts.sumOf {
+        (it.product.fats.toDouble() * it.weight / 100)
+    }.toFloat()
+
+    val totalCarbs = selectedProducts.sumOf {
+        (it.product.carbs.toDouble() * it.weight / 100)
+    }.toFloat()
+
     Column(
         Modifier
             .fillMaxSize()
@@ -62,14 +92,15 @@ fun MainScreen(
                 Modifier
                     .weight(1f)
                     .padding(horizontal = 10.dp, vertical = 15.dp)
-            ) { items(selectedProductsList){ product ->
+            ) { items(selectedProducts){ selectedProduct ->
+                val product = selectedProduct.product
                 DishItem(
                     dishName = product.name,
-                    proteins = product.protein,
-                    fats = product.fats,
-                    carbs = product.carbs,
-                    calories = product.calories,
-                    weight = 100
+                    proteins = product.protein*selectedProduct.weight/100,
+                    fats = product.fats*selectedProduct.weight/100,
+                    carbs = product.carbs*selectedProduct.weight/100,
+                    calories = product.calories*selectedProduct.weight/100,
+                    weight = selectedProduct.weight
                 )
             }
             }
