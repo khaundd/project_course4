@@ -10,9 +10,6 @@ kotlinxSerializationJson = "1.6.2"
 ktorClientCio = "2.3.12"
 ktorClientContentNegotiation = "2.3.12"
 ktorClientCore = "2.3.12"
-ktorClientCoreVersion = "2.3.7"
-ktorClientSerialization = "2.3.12"
-ktorSerializationKotlinxJson = "2.3.12"
 ktorSerializationKotlinxJsonVersion = "2.3.7"
 lifecycleRuntimeKtx = "2.9.2"
 activityCompose = "1.10.1"
@@ -42,9 +39,6 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktorClientCio" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktorClientContentNegotiation" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktorClientCore" }
-ktor-client-core-v237 = { module = "io.ktor:ktor-client-core", version.ref = "ktorClientCoreVersion" }
-ktor-client-serialization = { module = "io.ktor:ktor-client-serialization", version.ref = "ktorClientSerialization" }
-ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktorSerializationKotlinxJson" }
 ktor-serialization-kotlinx-json-v237 = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktorSerializationKotlinxJsonVersion" }
 xmlpull = { module = "xmlpull:xmlpull", version.ref = "xmlpull" }
 

@@ -11,6 +11,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class ClientAPI {
+
+    private val URL: String = "https://loftily-adequate-urchin.cloudpub.ru/products"
     private val client = HttpClient(CIO) {
         install(ContentNegotiation) {
             json()
@@ -19,7 +21,7 @@ class ClientAPI {
     suspend fun getProducts(): List<Product> {
         return withContext(Dispatchers.IO) {
             try {
-                val response = client.get("http://10.0.2.2:5000/products")
+                val response = client.get(URL)
                 val products = response.body<List<Product>>()
                 products
             } catch (e: Exception) {

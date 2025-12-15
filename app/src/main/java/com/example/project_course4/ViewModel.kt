@@ -38,7 +38,7 @@ class ProductViewModel : ViewModel() {
         loadProducts()
     }
 
-    private fun loadProducts() {
+    fun loadProducts() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
