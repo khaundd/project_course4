@@ -48,14 +48,16 @@ fun WeightInputDialog(
 
     AlertDialog(
         onDismissRequest = {
-            viewModel.skipCurrentProduct()
+            if (viewModel.currentProductForWeight.value != null) {
+                viewModel.skipCurrentProduct()
+            }
         },
         title = {
             Text("Введите вес продукта")
         },
         text = {
             Column {
-                Text("${product.name}")
+                Text(product.name)
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = weightInput,
@@ -96,6 +98,7 @@ fun WeightInputDialog(
                 Button(
                     onClick = {
                         val weight = weightInput.toIntOrNull() ?: 0
+                        // При редактировании мы уже удалили старую запись, поэтому просто добавляем с новым весом
                         viewModel.addProductWithWeight(weight)
                         weightInput = "0"
                     }

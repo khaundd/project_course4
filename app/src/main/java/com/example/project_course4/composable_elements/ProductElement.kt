@@ -22,6 +22,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.project_course4.Product
+import com.example.project_course4.ui.theme.CarbColor
+import com.example.project_course4.ui.theme.FatColor
+import com.example.project_course4.ui.theme.ProteinColor
 
 @Composable
 fun ProductElement(
@@ -60,27 +63,27 @@ fun ProductElement(
                 Text(
                     text = product.protein.toString(),
                     fontSize = 12.sp,
-                    color = textColor,
+                    color = ProteinColor,
                 )
                 VerticalDivider(
                     color = Color.Black,
                     thickness = 1.dp,
-                    modifier = Modifier.padding(start = 2.dp, end = 2.dp)
+                    modifier = Modifier.padding(start = 12.dp, end = 12.dp)
                 )
                 Text(
                     text = product.fats.toString(),
                     fontSize = 12.sp,
-                    color = textColor,
+                    color = FatColor,
                 )
                 VerticalDivider(
                     color = Color.Black,
                     thickness = 1.dp,
-                    modifier = Modifier.padding(start = 2.dp, end = 2.dp)
+                    modifier = Modifier.padding(start = 12.dp, end = 12.dp)
                 )
                 Text(
                     text = product.carbs.toString(),
                     fontSize = 12.sp,
-                    color = textColor,
+                    color = CarbColor,
                 )
             }
         }

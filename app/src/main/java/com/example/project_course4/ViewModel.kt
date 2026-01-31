@@ -16,24 +16,24 @@ class ProductViewModel : ViewModel() {
     val isLoading: StateFlow<Boolean> = _isLoading
 
     // Текущий временный выбор на экране выбора продуктов
-    private val _currentSelection = MutableStateFlow<Set<Product>>(emptySet())
-    val currentSelection: StateFlow<Set<Product>> = _currentSelection.asStateFlow()
+    private var _currentSelection = MutableStateFlow<Set<Product>>(emptySet())
+    var currentSelection: StateFlow<Set<Product>> = _currentSelection.asStateFlow()
 
     // Продукты, ожидающие ввода веса
-    private val _pendingProducts = MutableStateFlow<List<Product>>(emptyList())
-    val pendingProducts: StateFlow<List<Product>> = _pendingProducts.asStateFlow()
+    private var _pendingProducts = MutableStateFlow<List<Product>>(emptyList())
+    var pendingProducts: StateFlow<List<Product>> = _pendingProducts.asStateFlow()
 
     // Окончательный выбор на главном экране
-    private val _finalSelection = MutableStateFlow<List<SelectedProduct>>(emptyList())
-    val finalSelection: StateFlow<List<SelectedProduct>> = _finalSelection.asStateFlow()
+    private var _finalSelection = MutableStateFlow<List<SelectedProduct>>(emptyList())
+    var finalSelection: StateFlow<List<SelectedProduct>> = _finalSelection.asStateFlow()
 
     // Текущий продукт для ввода веса
-    private val _currentProductForWeight = MutableStateFlow<Product?>(null)
-    val currentProductForWeight: StateFlow<Product?> = _currentProductForWeight.asStateFlow()
+    private var _currentProductForWeight = MutableStateFlow<Product?>(null)
+    var currentProductForWeight: StateFlow<Product?> = _currentProductForWeight.asStateFlow()
 
     // Флаг, показывающий нужно ли начинать ввод веса
-    private val _shouldShowWeightInput = MutableStateFlow(false)
-    val shouldShowWeightInput: StateFlow<Boolean> = _shouldShowWeightInput.asStateFlow()
+    private var _shouldShowWeightInput = MutableStateFlow(false)
+    var shouldShowWeightInput: StateFlow<Boolean> = _shouldShowWeightInput.asStateFlow()
 
     init {
         loadProducts()
@@ -81,9 +81,18 @@ class ProductViewModel : ViewModel() {
     fun addProductWithWeight(weight: Int) {
         val currentProduct = _currentProductForWeight.value
         if (currentProduct != null) {
-            val selectedProduct = SelectedProduct(currentProduct, weight)
             val updatedSelection = _finalSelection.value.toMutableList()
-            updatedSelection.add(selectedProduct)
+            val existingProductIndex = updatedSelection.indexOfFirst { it.product == currentProduct }
+            if (existingProductIndex != -1) {
+                // Если продукт уже существует, заменяем его вес
+                updatedSelection[existingProductIndex] = SelectedProduct(
+                    currentProduct,
+                    weight
+                )
+            } else {
+                // Если продукт новый, добавляем его
+                updatedSelection.add(SelectedProduct(currentProduct, weight))
+            }
             _finalSelection.value = updatedSelection
 
             val pending = _pendingProducts.value.toMutableList()
@@ -120,6 +129,22 @@ class ProductViewModel : ViewModel() {
         if (pending.isNotEmpty() && _currentProductForWeight.value == null) {
             _currentProductForWeight.value = pending.first()
         }
+    }
+
+    // Функция для редактирования веса продукта
+    fun editProductWeight(product: Product, currentWeight: Int) {
+        // Сохраняем продукт в списке, но помечаем его для редактирования
+        _currentProductForWeight.value = product
+        _pendingProducts.value = listOf(product)
+        _shouldShowWeightInput.value = true
+        checkAndStartWeightInput()
+    }
+
+    // Функция для удаления продукта из списка
+    fun removeProduct(product: Product) {
+        val updatedSelection = _finalSelection.value.toMutableList()
+        updatedSelection.removeAll { it.product == product }
+        _finalSelection.value = updatedSelection
     }
 
     fun clearWeightInput() {
