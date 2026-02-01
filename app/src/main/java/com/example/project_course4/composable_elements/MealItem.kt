@@ -32,6 +32,8 @@ import com.example.project_course4.Product
 import com.example.project_course4.SelectedProduct
 import com.example.project_course4.MealNutrition
 import java.time.format.DateTimeFormatter
+import com.example.project_course4.composable_elements.dialogs.TimePickerDialog
+import java.time.LocalTime
 
 @Composable
 fun MealItem(
@@ -48,6 +50,7 @@ fun MealItem(
     var showOptions by remember { mutableStateOf(false) }
     
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+    var showTimePicker by remember { mutableStateOf(false) }
     
     Column(
         modifier = Modifier
@@ -58,6 +61,18 @@ fun MealItem(
             )
             .padding(12.dp)
     ) {
+        
+        if (showTimePicker) {
+            TimePickerDialog(
+                initialTime = meal.time,
+                onTimeSelected = { newTime ->
+                    // Вызываем onTimeClick с обновлённым временем
+                    onTimeClick(meal.copy(time = newTime))
+                    showTimePicker = false
+                },
+                onDismiss = { showTimePicker = false }
+            )
+        }
         // Заголовок приёма пищи с временем и кнопкой с тремя точками
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -68,7 +83,7 @@ fun MealItem(
                 text = meal.time.format(timeFormatter),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.clickable { onTimeClick(meal) }
+                modifier = Modifier.clickable { showTimePicker = true }
             )
             
             Box(

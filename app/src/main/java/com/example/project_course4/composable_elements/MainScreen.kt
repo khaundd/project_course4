@@ -115,8 +115,8 @@ fun MainScreen(
                         products = products,
                         nutrition = nutrition,
                         onTimeClick = { selectedMeal ->
-                            // Обработка нажатия на время (редактирование времени)
-                            // Пока оставим пустым, можно будет реализовать позже
+                            // Передаём новый объект Meal с обновлённым временем
+                            viewModel.updateMealTime(selectedMeal.id, selectedMeal.time)
                         },
                         onAddProductClick = { selectedMeal ->
                             // Загружаем продукты и переходим к экрану выбора продукта

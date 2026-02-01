@@ -197,7 +197,7 @@ class ProductViewModel : ViewModel() {
                 Meal(id = UUID.randomUUID().toString(), time = LocalTime.of(6, 0), name = "Завтрак"),
                 Meal(id = UUID.randomUUID().toString(), time = LocalTime.of(12, 0), name = "Обед"),
                 Meal(id = UUID.randomUUID().toString(), time = LocalTime.of(18, 0), name = "Ужин")
-            )
+            ).sortedBy { it.time }
             _meals.value = defaultMeals
         }
     }
@@ -209,8 +209,7 @@ class ProductViewModel : ViewModel() {
             time = LocalTime.now(),
             name = "Новый приём пищи"
         )
-        val updatedMeals = _meals.value.toMutableList()
-        updatedMeals.add(newMeal)
+        val updatedMeals = (_meals.value + newMeal).sortedBy { it.time }
         _meals.value = updatedMeals
     }
 
@@ -232,7 +231,8 @@ class ProductViewModel : ViewModel() {
         val index = updatedMeals.indexOfFirst { it.id == mealId }
         if (index != -1) {
             updatedMeals[index] = updatedMeals[index].copy(time = newTime)
-            _meals.value = updatedMeals
+            // Сортируем приёмы пищи по времени
+            _meals.value = updatedMeals.sortedBy { it.time }
         }
     }
 
