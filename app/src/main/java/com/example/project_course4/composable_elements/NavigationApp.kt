@@ -20,7 +20,7 @@ fun NavigationApp() {
     val viewModel: ProductViewModel = viewModel()
     NavHost(
         navController = navController,
-        startDestination = Screen.Main.route
+        startDestination = "main"
     ) {
         composable(Screen.Main.route) { backStackEntry ->
             MainScreen(
@@ -32,6 +32,14 @@ fun NavigationApp() {
             SelectProductScreen(
                 navController = navController,
                 viewModel = viewModel
+            )
+        }
+        composable("selectProductWithMeal/{mealId}") { backStackEntry ->
+            val mealId = backStackEntry.arguments?.getString("mealId")
+            SelectProductScreen(
+                navController = navController,
+                viewModel = viewModel,
+                mealId = mealId
             )
         }
     }

@@ -28,10 +28,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.project_course4.Meal
+import com.example.project_course4.MealNutrition
+import com.example.project_course4.Product
 import com.example.project_course4.ProductViewModel
+import com.example.project_course4.SelectedProduct
 import com.example.project_course4.Screen
 import com.example.project_course4.ui.theme.CarbColor
 import com.example.project_course4.ui.theme.FatColor
@@ -42,8 +47,13 @@ fun MainScreen(
     navController: NavController,
     viewModel: ProductViewModel,
 ) {
-    // Получаем финальный выбор продуктов из ViewModel
-    val selectedProducts by viewModel.finalSelection.collectAsState()
+    // Инициализация приёмов пищи при первом запуске
+    LaunchedEffect(Unit) {
+        viewModel.initializeMeals()
+    }
+    
+    // Получаем список приёмов пищи из ViewModel
+    val meals by viewModel.meals.collectAsState()
     val currentProductForWeight by viewModel.currentProductForWeight.collectAsState()
     val shouldShowWeightInput by viewModel.shouldShowWeightInput.collectAsState()
 
@@ -62,20 +72,21 @@ fun MainScreen(
         )
     }
 
-    val totalCalories = selectedProducts.sumOf {
-        (it.product.calories.toDouble() * it.weight / 100)
+    // Общие итоги по всем приёмам пищи (если нужно)
+    val totalCalories = meals.sumOf { meal ->
+        viewModel.getMealNutrition(meal.id).calories.toDouble()
     }.toFloat()
 
-    val totalProtein = selectedProducts.sumOf {
-        (it.product.protein.toDouble() * it.weight / 100)
+    val totalProtein = meals.sumOf { meal ->
+        viewModel.getMealNutrition(meal.id).protein.toDouble()
     }.toFloat()
 
-    val totalFats = selectedProducts.sumOf {
-        (it.product.fats.toDouble() * it.weight / 100)
+    val totalFats = meals.sumOf { meal ->
+        viewModel.getMealNutrition(meal.id).fats.toDouble()
     }.toFloat()
 
-    val totalCarbs = selectedProducts.sumOf {
-        (it.product.carbs.toDouble() * it.weight / 100)
+    val totalCarbs = meals.sumOf { meal ->
+        viewModel.getMealNutrition(meal.id).carbs.toDouble()
     }.toFloat()
 
     Box(
@@ -86,87 +97,87 @@ fun MainScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 80.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+                .padding(bottom = 80.dp), // Вернули отступ снизу к исходному значению
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Column {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-                        .background(Color.LightGray)
-                )
-                LazyColumn(
-                    Modifier
-                        .weight(1f)
-                        .padding(horizontal = 10.dp, vertical = 15.dp)
-                ) {
-                    items(selectedProducts) { selectedProduct ->
-                        var showOptions by remember { mutableStateOf(false) }
-
-                        val product = selectedProduct.product
-                        DishItem(
-                            dishName = product.name,
-                            proteins = product.protein * selectedProduct.weight / 100,
-                            fats = product.fats * selectedProduct.weight / 100,
-                            carbs = product.carbs * selectedProduct.weight / 100,
-                            calories = product.calories * selectedProduct.weight / 100,
-                            weight = selectedProduct.weight,
-                            onEdit = {
-                                showOptions = false
-                                // Для редактирования используем существующую функцию editProductWeight
-                                viewModel.editProductWeight(product, selectedProduct.weight)
-                            },
-                            onDelete = {
-                                showOptions = false
-                                viewModel.removeProduct(product)
-                            }
-                        )
-                    }
-                }
-                HorizontalDivider(
-                    color = Color.LightGray,
-                    thickness = 1.dp,
-                    modifier = Modifier
-                        .padding(horizontal = 5.dp)
-                )
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 10.dp, vertical = 10.dp)
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(text = String.format("%.1f", totalProtein), color = ProteinColor)
-                        Spacer(modifier = Modifier.padding(start = 12.dp))
-                        Text(text = String.format("%.1f", totalFats), color = FatColor)
-                        Spacer(modifier = Modifier.padding(start = 12.dp))
-                        Text(text = String.format("%.1f", totalCarbs), color = CarbColor)
-                    }
-                    Spacer(Modifier.weight(1f))
-                    Text(text = String.format("%.0f ккал.", totalCalories), modifier = Modifier.padding(end = 5.dp))
+            // Список приёмов пищи
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                items(meals) { meal ->
+                    val products = viewModel.getProductsForMeal(meal.id)
+                    val nutrition = viewModel.getMealNutrition(meal.id)
+                    
+                    MealItem(
+                        meal = meal,
+                        products = products,
+                        nutrition = nutrition,
+                        onTimeClick = { selectedMeal ->
+                            // Обработка нажатия на время (редактирование времени)
+                            // Пока оставим пустым, можно будет реализовать позже
+                        },
+                        onAddProductClick = { selectedMeal ->
+                            // Загружаем продукты и переходим к экрану выбора продукта
+                            viewModel.loadProducts()
+                            // Здесь нужно будет передать meal.id, чтобы знать, в какой приём пищи добавлять
+                            navController.navigate("selectProductWithMeal/${selectedMeal.id}")
+                        },
+                        onEditProduct = { product, selectedMeal ->
+                            // Редактирование веса продукта
+                            viewModel.editProductWeightInMeal(product, selectedMeal.id, products.find { it.product == product }?.weight ?: 0)
+                        },
+                        onDeleteProduct = { product, selectedMeal ->
+                            // Удаление продукта из приёма пищи
+                            viewModel.removeProductFromMeal(product, selectedMeal.id)
+                        },
+                        onMealOptionsClick = { selectedMeal ->
+                            // Обработка нажатия на кнопку с тремя точками (удаление приёма пищи)
+                            viewModel.removeMeal(selectedMeal.id)
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
-        }
-        
-        // Кнопка + поверх всех элементов в правом нижнем углу
-        Button(
-            onClick = {
-                viewModel.loadProducts()
-                navController.navigate(Screen.SelectProduct.route)
-            },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp)
-                .size(60.dp),
-            shape = CircleShape,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF2196F3),
-                contentColor = Color.White
-            )
-        ) {
-            Text("+", fontSize = 24.sp)
+            
+            // Кнопка "Добавить приём пищи"
+            Button(
+                onClick = { viewModel.addMeal() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .align(Alignment.CenterHorizontally),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFE0E0E0)
+                )
+            ) {
+                Text("Добавить приём пищи")
+            }
+            
+            // Общие итоги
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp)
+                    .background(Color.LightGray, androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                    .padding(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Итого", fontWeight = FontWeight.Bold)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(text = String.format("%.1f", totalProtein), color = ProteinColor)
+                        Text(text = String.format("%.1f", totalFats), color = FatColor)
+                        Text(text = String.format("%.1f", totalCarbs), color = CarbColor)
+                        Text(text = String.format("%.0f ккал.", totalCalories))
+                    }
+                }
+            }
         }
     }
 }

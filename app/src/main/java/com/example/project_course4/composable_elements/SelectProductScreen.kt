@@ -27,7 +27,8 @@ import com.example.project_course4.ProductViewModel
 @Composable
 fun SelectProductScreen(
     navController: NavController,
-    viewModel: ProductViewModel
+    viewModel: ProductViewModel,
+    mealId: String? = null
 ){
     val products by viewModel.products.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -53,7 +54,15 @@ fun SelectProductScreen(
                 actions = {
                     Button(
                         onClick = {
-                            viewModel.saveCurrentSelection()
+                            if (mealId != null) {
+                                // Если мы пришли из конкретного приёма пищи, сохраняем выбор с указанием mealId
+                                currentSelection.forEach { product ->
+                                    viewModel.addProductToMeal(product, 100, mealId) // По умолчанию 100 грамм
+                                }
+                            } else {
+                                // Иначе сохраняем в общий список
+                                viewModel.saveCurrentSelection()
+                            }
                             navController.popBackStack()
                         },
                         enabled = currentSelection.isNotEmpty(),
