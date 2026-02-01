@@ -47,6 +47,11 @@ class ProductViewModel : ViewModel() {
     private var _editingMealId = MutableStateFlow<String?>(null)
     var editingMealId: StateFlow<String?> = _editingMealId.asStateFlow()
 
+    // Функция для установки идентификатора приёма пищи
+    fun setEditingMealId(mealId: String?) {
+        _editingMealId.value = mealId
+    }
+
     init {
         loadProducts()
     }
@@ -76,16 +81,24 @@ class ProductViewModel : ViewModel() {
         _currentSelection.value = current
     }
 
+    fun addPendingProduct(product: Product) {
+        val currentPending = _pendingProducts.value.toMutableList()
+        if (!currentPending.contains(product)) {
+            currentPending.add(product)
+            _pendingProducts.value = currentPending
+        }
+    }
+
+    fun clearCurrentSelection() {
+        _currentSelection.value = emptySet()
+    }
+    
     fun saveCurrentSelection() {
         val selected = _currentSelection.value.toList()
         if (selected.isNotEmpty()) {
             _pendingProducts.value = selected
             _shouldShowWeightInput.value = true
         }
-        _currentSelection.value = emptySet()
-    }
-
-    fun clearCurrentSelection() {
         _currentSelection.value = emptySet()
     }
 

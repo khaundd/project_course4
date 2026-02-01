@@ -36,12 +36,11 @@ fun WeightInputDialog(
 ) {
     var weightInput by remember { mutableStateOf("0") }
 
-    // Используем LaunchedEffect для автоматического закрытия, когда продуктов больше нет
-    val currentProductForWeight by viewModel.currentProductForWeight.collectAsState()
+    // Используем LaunchedEffect для отслеживания состояния ввода веса
+    val shouldShowWeightInput by viewModel.shouldShowWeightInput.collectAsState()
 
-    LaunchedEffect(currentProductForWeight) {
-        if (currentProductForWeight == null) {
-            // Когда продукты закончились, вызываем завершение
+    LaunchedEffect(shouldShowWeightInput) {
+        if (!shouldShowWeightInput) {
             onDismiss()
         }
     }
@@ -98,9 +97,14 @@ fun WeightInputDialog(
                 Button(
                     onClick = {
                         val weight = weightInput.toIntOrNull() ?: 0
-                        // При редактировании мы уже удалили старую запись, поэтому просто добавляем с новым весом
-                        viewModel.addProductWithWeight(weight)
-                        weightInput = "0"
+                        if (weight > 0) {
+                            viewModel.addProductWithWeight(weight)
+                            weightInput = "0"
+                        }
+                        // Проверяем, есть ли еще продукты для обработки
+                        if (viewModel.pendingProducts.value.isEmpty()) {
+                            onDismiss()
+                        }
                     }
                 ) {
                     Text("+")

@@ -41,6 +41,7 @@ import com.example.project_course4.Screen
 import com.example.project_course4.ui.theme.CarbColor
 import com.example.project_course4.ui.theme.FatColor
 import com.example.project_course4.ui.theme.ProteinColor
+import com.example.project_course4.composable_elements.charts.NutritionChart
 
 @Composable
 fun MainScreen(
@@ -97,9 +98,19 @@ fun MainScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 80.dp), // Вернули отступ снизу к исходному значению
+                .padding(bottom = 80.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // Полукруговая диаграмма БЖУ
+            NutritionChart(
+                protein = totalProtein,
+                fats = totalFats,
+                carbs = totalCarbs,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(320.dp)
+                    .padding(start = 16.dp, end = 16.dp, top = 104.dp, bottom = 104.dp)
+            )
             // Список приёмов пищи
             LazyColumn(
                 modifier = Modifier
@@ -121,7 +132,8 @@ fun MainScreen(
                         onAddProductClick = { selectedMeal ->
                             // Загружаем продукты и переходим к экрану выбора продукта
                             viewModel.loadProducts()
-                            // Здесь нужно будет передать meal.id, чтобы знать, в какой приём пищи добавлять
+                            // Передаем mealId для последующего добавления продукта в конкретный приём пищи
+                            viewModel.setEditingMealId(selectedMeal.id)
                             navController.navigate("selectProductWithMeal/${selectedMeal.id}")
                         },
                         onEditProduct = { product, selectedMeal ->
@@ -155,29 +167,7 @@ fun MainScreen(
                 Text("Добавить приём пищи")
             }
             
-            // Общие итоги
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp)
-                    .background(Color.LightGray, androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
-                    .padding(8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("Итого", fontWeight = FontWeight.Bold)
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(text = String.format("%.1f", totalProtein), color = ProteinColor)
-                        Text(text = String.format("%.1f", totalFats), color = FatColor)
-                        Text(text = String.format("%.1f", totalCarbs), color = CarbColor)
-                        Text(text = String.format("%.0f ккал.", totalCalories))
-                    }
-                }
-            }
+
         }
     }
 }
