@@ -33,6 +33,7 @@ fun SelectProductScreen(
     val products by viewModel.products.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val currentSelection by viewModel.currentSelection.collectAsState()
+    val shouldShowProductCreation by viewModel.shouldShowProductCreation.collectAsState()
 
     Scaffold(
         topBar = {
@@ -55,10 +56,8 @@ fun SelectProductScreen(
                     Button(
                         onClick = {
                             if (mealId != null) {
-                                // Если мы пришли из конкретного приёма пищи, сохраняем выбор с указанием mealId
-                                currentSelection.forEach { product ->
-                                    viewModel.addProductToMeal(product, 100, mealId) // По умолчанию 100 грамм
-                                }
+                                // Добавляем продукты в приём пищи через диалог ввода веса
+                                viewModel.addSelectionToMealWithWeightInput()
                             } else {
                                 // Иначе сохраняем в общий список
                                 viewModel.saveCurrentSelection()
@@ -70,11 +69,21 @@ fun SelectProductScreen(
                     ) {
                         Text("+")
                     }
+                    
+                    // Кнопка для добавления нового продукта
+                    Button(
+                        onClick = {
+                            viewModel.navigateToProductCreation(navController)
+                        },
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        Text("Новый")
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.White,
                     titleContentColor = Color.Black,
-                ),
+                )
             )
         }
     ) { paddingValues ->
@@ -102,5 +111,7 @@ fun SelectProductScreen(
                 }
             }
         }
+        
+
     }
 }

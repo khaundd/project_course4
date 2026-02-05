@@ -2,9 +2,8 @@ package com.example.project_course4
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.NavController
 import com.example.project_course4.api.ClientAPI
-import com.example.project_course4.Meal
-import com.example.project_course4.MealNutrition
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,6 +14,18 @@ import java.util.UUID
 class ProductViewModel : ViewModel() {
     private val _products = MutableStateFlow<List<Product>>(emptyList())
     val products: StateFlow<List<Product>> = _products
+
+    // Состояние для создания нового продукта
+    private var _productCreationState = MutableStateFlow(ProductCreationState())
+    val productCreationState: StateFlow<ProductCreationState> = _productCreationState.asStateFlow()
+
+    // Флаг, показывающий нужно ли показывать экран создания продукта
+    private var _shouldShowProductCreation = MutableStateFlow(false)
+    val shouldShowProductCreation: StateFlow<Boolean> = _shouldShowProductCreation.asStateFlow()
+
+    // Флаг, указывающий, что продукты добавляются из списка
+    private var _isAddingFromList = MutableStateFlow(false)
+    var isAddingFromList: StateFlow<Boolean> = _isAddingFromList.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
@@ -56,6 +67,40 @@ class ProductViewModel : ViewModel() {
         loadProducts()
     }
 
+    // Функция для обновления состояния создания продукта
+    fun updateProductCreationState(newState: ProductCreationState) {
+        _productCreationState.value = newState
+    }
+
+    // Функция для сброса состояния создания продукта
+    fun resetProductCreationState() {
+        _productCreationState.value = ProductCreationState()
+    }
+
+    // Функция для показа экрана создания продукта
+    fun showProductCreationScreen() {
+        resetProductCreationState()
+        _shouldShowProductCreation.value = true
+    }
+
+    // Функция для скрытия экрана создания продукта
+    fun hideProductCreationScreen() {
+        _shouldShowProductCreation.value = false
+        resetProductCreationState()
+    }
+
+    // Функция для навигации на экран создания продукта
+    fun navigateToProductCreation(navController: NavController) {
+        resetProductCreationState()
+        navController.navigate("product_creation")
+    }
+
+    // Функция для возврата с экрана создания продукта
+    fun navigateBackFromProductCreation(navController: NavController) {
+        navController.popBackStack()
+        resetProductCreationState()
+    }
+
     fun loadProducts() {
         viewModelScope.launch {
             _isLoading.value = true
@@ -95,9 +140,50 @@ class ProductViewModel : ViewModel() {
     
     fun saveCurrentSelection() {
         val selected = _currentSelection.value.toList()
+        val mealId = _editingMealId.value ?: "default"
+        
         if (selected.isNotEmpty()) {
-            _pendingProducts.value = selected
+            // Фильтруем продукты, которых еще нет в приёме пищи
+            val productsToAdd = selected.filter { product ->
+                _finalSelection.value.none { 
+                    it.product == product && it.mealId == mealId 
+                }
+            }
+            
+            if (productsToAdd.isNotEmpty()) {
+                _pendingProducts.value = productsToAdd
+                _shouldShowWeightInput.value = true
+                // Устанавливаем флаг, что это добавление из списка
+                _isAddingFromList.value = true
+            } else {
+                // Все выбранные продукты уже есть в приёме пищи
+                _shouldShowWeightInput.value = false
+            }
+        }
+        _currentSelection.value = emptySet()
+    }
+
+    // Добавить выбранные продукты в приём пищи через диалог ввода веса (editingMealId уже установлен).
+    fun addSelectionToMealWithWeightInput() {
+        val selected = _currentSelection.value.toList()
+        if (selected.isEmpty()) return
+        
+        val mealId = _editingMealId.value ?: "default"
+        // Фильтруем продукты, которых еще нет в приёме пищи
+        val productsToAdd = selected.filter { product ->
+            _finalSelection.value.none { 
+                it.product == product && it.mealId == mealId 
+            }
+        }
+        
+        if (productsToAdd.isNotEmpty()) {
+            _pendingProducts.value = productsToAdd
             _shouldShowWeightInput.value = true
+            // Устанавливаем флаг, что это добавление из списка
+            _isAddingFromList.value = true
+        } else {
+            // Все выбранные продукты уже есть в приёме пищи
+            _shouldShowWeightInput.value = false
         }
         _currentSelection.value = emptySet()
     }
@@ -116,12 +202,23 @@ class ProductViewModel : ViewModel() {
             }
             
             if (existingProductIndex != -1) {
-                // Если продукт уже существует, заменяем его вес
-                updatedSelection[existingProductIndex] = SelectedProduct(
-                    product = currentProduct,
-                    weight = weight,
-                    mealId = mealId
-                )
+                // Используем флаг isAddingFromList для определения режима
+                if (isAddingFromList.value) {
+                    // Режим добавления из списка - суммируем вес
+                    val existingWeight = updatedSelection[existingProductIndex].weight
+                    updatedSelection[existingProductIndex] = SelectedProduct(
+                        product = currentProduct,
+                        weight = existingWeight + weight,
+                        mealId = mealId
+                    )
+                } else {
+                    // Режим редактирования - заменяем вес
+                    updatedSelection[existingProductIndex] = SelectedProduct(
+                        product = currentProduct,
+                        weight = weight,
+                        mealId = mealId
+                    )
+                }
             } else {
                 // Если продукт новый, добавляем его
                 updatedSelection.add(
@@ -143,6 +240,8 @@ class ProductViewModel : ViewModel() {
             } else {
                 _currentProductForWeight.value = null
                 _shouldShowWeightInput.value = false
+                // Сбрасываем флаг после завершения ввода
+                _isAddingFromList.value = false
             }
         }
     }
@@ -182,6 +281,15 @@ class ProductViewModel : ViewModel() {
         _editingMealId.value = "default"
     }
 
+    // Функция для редактирования веса продукта в приёме пищи
+    fun editProductWeightInMeal(product: Product, mealId: String, currentWeight: Int) {
+        _currentProductForWeight.value = product
+        _pendingProducts.value = listOf(product)
+        _shouldShowWeightInput.value = true
+        _editingMealId.value = mealId
+        checkAndStartWeightInput()
+    }
+
     // Функция для удаления продукта из списка (все приёмы пищи)
     fun removeProduct(product: Product) {
         val updatedSelection = _finalSelection.value.toMutableList()
@@ -201,6 +309,7 @@ class ProductViewModel : ViewModel() {
         _pendingProducts.value = emptyList()
         _shouldShowWeightInput.value = false
         _editingMealId.value = null
+        _isAddingFromList.value = false
     }
 
     // Инициализация приёмов пищи
@@ -267,14 +376,7 @@ class ProductViewModel : ViewModel() {
         _finalSelection.value = updatedSelection
     }
 
-    // Редактирование веса продукта в приёме пищи
-    fun editProductWeightInMeal(product: Product, mealId: String, currentWeight: Int) {
-        _currentProductForWeight.value = product
-        _pendingProducts.value = listOf(product)
-        _shouldShowWeightInput.value = true
-        _editingMealId.value = mealId
-        checkAndStartWeightInput()
-    }
+
 
     // Получение продуктов для конкретного приёма пищи
     fun getProductsForMeal(mealId: String): List<SelectedProduct> {
