@@ -7,6 +7,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.project_course4.ProductViewModel
 import com.example.project_course4.Screen
+import com.example.project_course4.composable_elements.auth.LoginScreen
+import com.example.project_course4.composable_elements.auth.RegistrationScreen
 
 @Composable
 fun NavigationApp() {
@@ -14,7 +16,7 @@ fun NavigationApp() {
     val viewModel: ProductViewModel = viewModel()
     NavHost(
         navController = navController,
-        startDestination = "main"
+        startDestination = Screen.Registration.route
     ) {
         composable(Screen.Main.route) { backStackEntry ->
             MainScreen(
@@ -40,6 +42,16 @@ fun NavigationApp() {
             ProductCreationScreen(
                 navController = navController,
                 viewModel = viewModel
+            )
+        }
+        composable(Screen.Login.route) { backStackEntry ->
+            LoginScreen(
+                navController = navController
+            )
+        }
+        composable(Screen.Registration.route) { backStackEntry ->
+            RegistrationScreen(
+                navController = navController
             )
         }
     }
