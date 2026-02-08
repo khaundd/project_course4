@@ -28,7 +28,8 @@ import com.example.project_course4.viewmodel.ProductViewModel
 fun SelectProductScreen(
     navController: NavController,
     viewModel: ProductViewModel,
-    mealId: String? = null
+    mealId: String? = null,
+    onBarcodeScan: (String) -> Unit = {}
 ){
     val products by viewModel.products.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -78,6 +79,14 @@ fun SelectProductScreen(
                         modifier = Modifier.padding(end = 8.dp)
                     ) {
                         Text("Новый")
+                    }
+                    
+                    // Кнопка для сканирования штрих-кода
+                    Button(
+                        onClick = { onBarcodeScan("OPEN_SCANNER") },
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        Text("Сканировать")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
