@@ -26,7 +26,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.project_course4.Product
-import com.example.project_course4.ProductViewModel
+import com.example.project_course4.viewmodel.ProductViewModel
 
 @Composable
 fun WeightInputDialog(

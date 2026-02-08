@@ -32,21 +32,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.project_course4.Meal
 import com.example.project_course4.MealNutrition
 import com.example.project_course4.Product
-import com.example.project_course4.ProductViewModel
 import com.example.project_course4.SelectedProduct
 import com.example.project_course4.Screen
 import com.example.project_course4.ui.theme.CarbColor
 import com.example.project_course4.ui.theme.FatColor
 import com.example.project_course4.ui.theme.ProteinColor
 import com.example.project_course4.composable_elements.charts.NutritionChart
+import com.example.project_course4.viewmodel.ProductViewModel
 
 @Composable
 fun MainScreen(
     navController: NavController,
-    viewModel: ProductViewModel,
+    viewModel: ProductViewModel
 ) {
     // Инициализация приёмов пищи при первом запуске
     LaunchedEffect(Unit) {

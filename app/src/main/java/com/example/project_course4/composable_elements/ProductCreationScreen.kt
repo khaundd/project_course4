@@ -13,8 +13,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.project_course4.ProductCreationValidator
-import com.example.project_course4.ProductViewModel
 import com.example.project_course4.ValidationResult
+import com.example.project_course4.viewmodel.ProductViewModel
 
 @Composable
 fun ProductCreationScreen(

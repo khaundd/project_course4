@@ -12,6 +12,7 @@ class Validation {
     var height by mutableStateOf("")
     var weight by mutableStateOf("")
     var age by mutableStateOf("")
+    var code by mutableStateOf("")
 
     var loginError by mutableStateOf("")
     var passwordError by mutableStateOf("")
@@ -19,103 +20,111 @@ class Validation {
     var heightError by mutableStateOf("")
     var weightError by mutableStateOf("")
     var ageError by mutableStateOf("")
+    var codeError by mutableStateOf("")
+
+    // Для хранения сообщений для всплывающих уведомлений
+    var toastMessage by mutableStateOf<String?>(null)
+
+    // Сброс сообщения уведомления после показа
+    fun clearToastMessage() {
+        toastMessage = null
+    }
 
     private val loginRegex = Regex("^[a-zA-Zа-яА-Я0-9_.-]*$")
 
     fun validateLogin() {
-        if (login.isNotEmpty()) {
-            if (login.length > 32) {
-                loginError = "Логин не должен превышать 32 символа"
-            } else if (!login.matches(loginRegex)) {
-                loginError = "Логин содержит недопустимые символы"
-            } else {
+        if (login.isEmpty()) {
+            loginError = "Логин не может быть пустым"
+        }
+        else if (login.length > 32) {
+            loginError = "Логин не должен превышать 32 символа"
+        }
+        else if (!login.matches(loginRegex)) {
+            loginError = "Логин содержит недопустимые символы"
+        }
+        else {
                 loginError = ""
-            }
-        } else {
-            loginError = ""
         }
     }
 
     fun validateEmail() {
-        if (email.isNotEmpty()) {
-            if (email.contains(" ")) {
-                emailError = "Почта не должна содержать пробелы"
-            } else if (email.length > 60) {
-                emailError = "Почта не должна превышать 60 символов"
-            } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                emailError = "Некорректный формат почты"
-            } else {
-                emailError = ""
-            }
+        if (email.isEmpty()) {
+            emailError = "Почта не может быть пустой"
+        } else if (email.contains(" ")) {
+            emailError = "Почта не должна содержать пробелы"
+        } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            emailError = "Некорректный формат почты"
         } else {
             emailError = ""
         }
     }
 
     fun validateHeight() {
-        if (height.isNotEmpty()) {
-            if (height.contains(" ")) {
-                heightError = "Рост не должен содержать пробелы"
-            } else if (height.contains(",")) {
-                heightError = "Используйте точку для десятичных дробей"
-            } else {
-                try {
-                    val heightValue = height.toDouble()
-                    if (heightValue <= 0) {
-                        heightError = "Рост должен быть больше 0"
-                    } else {
-                        heightError = ""
-                    }
-                } catch (e: NumberFormatException) {
-                    heightError = "Введите корректное число"
+        if (height.isEmpty()) {
+            heightError = "Укажите рост"
+        } else if (height.contains(",")) {
+            heightError = "Используйте точку (.)"
+        } else if (height.endsWith(".")) {
+            heightError = "Введите число после точки или удалите точку"
+        } else {
+            // Проверка количества знаков после точки только если есть десятичная часть
+            if (height.contains(".")) {
+                val decimalPart = height.substringAfter(".")
+                if (decimalPart.length > 2) {
+                    heightError = "Максимум 2 знака после точки"
+                    return
                 }
             }
-        } else {
-            heightError = ""
+            
+            val h = height.toFloatOrNull()
+            if (h == null || h <= 0) {
+                heightError = "Некорректный рост"
+            } else if (h > 300) {
+                heightError = "Рост не может быть больше 300 см"
+            } else {
+                heightError = ""
+            }
         }
     }
 
     fun validateWeight() {
-        if (weight.isNotEmpty()) {
-            if (weight.contains(" ")) {
-                weightError = "Вес не должен содержать пробелы"
-            } else if (weight.contains(",")) {
-                weightError = "Используйте точку для десятичных дробей"
-            } else {
-                try {
-                    val weightValue = weight.toDouble()
-                    if (weightValue <= 0) {
-                        weightError = "Вес должен быть больше 0"
-                    } else {
-                        weightError = ""
-                    }
-                } catch (e: NumberFormatException) {
-                    weightError = "Введите корректное число"
+        if (weight.isEmpty()) {
+            weightError = "Укажите вес"
+        } else if (weight.contains(",")) {
+            weightError = "Используйте точку (.)"
+        } else if (weight.endsWith(".")) {
+            weightError = "Введите число после точки или удалите точку"
+        } else {
+            // Проверка количества знаков после точки только если есть десятичная часть
+            if (weight.contains(".")) {
+                val decimalPart = weight.substringAfter(".")
+                if (decimalPart.length > 2) {
+                    weightError = "Максимум 2 знака после точки"
+                    return
                 }
             }
-        } else {
-            weightError = ""
+            
+            val w = weight.toFloatOrNull()
+            if (w == null || w <= 0) {
+                weightError = "Некорректный вес"
+            } else if (w > 635) {
+                weightError = "Вес не может быть больше 635 кг"
+            } else {
+                weightError = ""
+            }
         }
     }
 
     fun validateAge() {
-        if (age.isNotEmpty()) {
-            if (age.contains(" ")) {
-                ageError = "Возраст не должен содержать пробелы"
-            } else {
-                try {
-                    val ageValue = age.toInt()
-                    if (ageValue <= 0 || ageValue > 150) {
-                        ageError = "Возраст должен быть от 1 до 150"
-                    } else {
-                        ageError = ""
-                    }
-                } catch (e: NumberFormatException) {
-                    ageError = "Введите целое число"
-                }
-            }
+        if (age.isEmpty()) {
+            ageError = "Укажите возраст"
         } else {
-            ageError = ""
+            val a = age.toIntOrNull()
+            if (a == null || a <= 0 || a > 150) {
+                ageError = "Возраст от 1 до 150"
+            } else {
+                ageError = ""
+            }
         }
     }
 
@@ -133,13 +142,23 @@ class Validation {
         }
     }
 
-    fun isValid(): Boolean {
-        validateLogin()
-        validatePassword()
-        validateEmail()
-        validateHeight()
-        validateWeight()
-        validateAge()
+    fun validateCode() {
+        if (code.isEmpty()) {
+            codeError = "Код не может быть пустым"
+        } else if (code.length != 6) {
+            codeError = "Код должен содержать 6 цифр"
+        } else if (!code.all { it.isDigit() }) {
+            codeError = "Код должен содержать только цифры"
+        } else {
+            codeError = ""
+        }
+    }
+
+    fun isValidForLogin(): Boolean {
+        return emailError.isEmpty()&&passwordError.isEmpty()
+    }
+
+    fun isValidForRegistration(): Boolean {
         
         return loginError.isEmpty() && 
                passwordError.isEmpty() && 

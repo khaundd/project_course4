@@ -2,13 +2,16 @@ package com.example.project_course4.composable_elements
 
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.project_course4.ProductViewModel
+import androidx.navigation.navArgument
 import com.example.project_course4.Screen
 import com.example.project_course4.composable_elements.auth.LoginScreen
 import com.example.project_course4.composable_elements.auth.RegistrationScreen
+import com.example.project_course4.composable_elements.auth.verification.VerificationScreen
+import com.example.project_course4.viewmodel.ProductViewModel
 
 @Composable
 fun NavigationApp() {
@@ -53,6 +56,13 @@ fun NavigationApp() {
             RegistrationScreen(
                 navController = navController
             )
+        }
+        composable(
+            route = "${Screen.Verification.route}?email={email}",
+            arguments = listOf(navArgument("email") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val email = backStackEntry.arguments?.getString("email") ?: ""
+            VerificationScreen(navController = navController, email = email)
         }
     }
 }

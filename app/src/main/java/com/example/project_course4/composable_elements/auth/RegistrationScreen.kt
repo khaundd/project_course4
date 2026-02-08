@@ -2,237 +2,281 @@ package com.example.project_course4.composable_elements.auth
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.*
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.buildAnnotatedString
 import com.example.project_course4.Screen
 import com.example.project_course4.utils.Validation
 import androidx.compose.runtime.LaunchedEffect
-
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.project_course4.ViewModel
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 @Composable
 fun RegistrationScreen(navController: NavController) {
+    val viewModel: ViewModel = viewModel()
     val validation = remember { Validation() }
+    var isLoading by remember { mutableStateOf(false) }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
-    // Мониторинг изменений полей для мгновенной валидации
-    LaunchedEffect(validation.login) {
-        validation.validateLogin()
+    // 1. Состояние для Snackbar
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // 2. Эффект для показа уведомлений
+    LaunchedEffect(validation.toastMessage) {
+        validation.toastMessage?.let { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Short
+            )
+            validation.clearToastMessage()
+        }
     }
 
-    // Мониторинг изменений поля password для мгновенной валидации, только если поле не пустое
+    // Мониторинг валидации (оставляем вашу логику с showErrors)
+    LaunchedEffect(validation.login) {
+        if (validation.login.isNotEmpty()) validation.validateLogin()
+    }
+
     LaunchedEffect(validation.password) {
-        if (validation.password.isNotEmpty()) {
-            validation.validatePassword()
-        } else {
-            validation.passwordError = ""
-        }
+        if (validation.password.isNotEmpty()) validation.validatePassword()
+        else validation.passwordError = ""
     }
 
     LaunchedEffect(validation.email) {
-        validation.validateEmail()
+        if (validation.email.isNotEmpty()) validation.validateEmail()
     }
+    LaunchedEffect(validation.height) { if (validation.height.isNotEmpty()) validation.validateHeight() }
+    LaunchedEffect(validation.weight) { if (validation.weight.isNotEmpty()) validation.validateWeight() }
+    LaunchedEffect(validation.age) { if (validation.age.isNotEmpty()) validation.validateAge() }
 
-    LaunchedEffect(validation.height) {
-        validation.validateHeight()
-    }
-
-    LaunchedEffect(validation.weight) {
-        validation.validateWeight()
-    }
-
-    LaunchedEffect(validation.age) {
-        validation.validateAge()
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        OutlinedTextField(
-            value = validation.login,
-            onValueChange = { newValue ->
-                validation.login = newValue
-            },
-            label = { Text("Логин") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-            isError = validation.loginError.isNotEmpty()
-        )
-        if (validation.loginError.isNotEmpty()) {
-            Text(
-                text = validation.loginError,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.align(Alignment.Start)
-            )
+    // 3. Обертка в Scaffold
+    Scaffold(
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState) { data ->
+                // Можно кастомизировать внешний вид Snackbar здесь
+                Snackbar(
+                    containerColor = MaterialTheme.colorScheme.inverseSurface,
+                    contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+                    snackbarData = data
+                )
+            }
         }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = validation.password,
-            onValueChange = { newValue ->
-                validation.password = newValue
-            },
-            label = { Text("Пароль") },
-            isError = validation.passwordError.isNotEmpty(),
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        if (validation.passwordError.isNotEmpty()) {
-            Text(
-                text = validation.passwordError,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.align(Alignment.Start)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = validation.email,
-            onValueChange = { newValue ->
-                validation.email = newValue
-            },
-            label = { Text("Почта") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
-        )
-        if (validation.emailError.isNotEmpty()) {
-            Text(
-                text = validation.emailError,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.align(Alignment.Start)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = validation.height,
-            onValueChange = { newValue ->
-                validation.height = newValue
-            },
-            label = { Text("Рост") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-        )
-        if (validation.heightError.isNotEmpty()) {
-            Text(
-                text = validation.heightError,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.align(Alignment.Start)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = validation.weight,
-            onValueChange = { newValue ->
-                validation.weight = newValue
-            },
-            label = { Text("Вес") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-        )
-        if (validation.weightError.isNotEmpty()) {
-            Text(
-                text = validation.weightError,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.align(Alignment.Start)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = validation.age,
-            onValueChange = { newValue ->
-                validation.age = newValue
-            },
-            label = { Text("Возраст") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-        )
-        if (validation.ageError.isNotEmpty()) {
-            Text(
-                text = validation.ageError,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.align(Alignment.Start)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Button(
-            onClick = {
-                var isValid = true
-
-                validation.validatePassword(isEmptyValid = true)
-                if (!validation.isValid()) {
-                    isValid = false
-                }
-
-                if (isValid) {
-                    navController.navigate(Screen.Main.route)
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
+    ) { paddingValues ->
+        // Добавляем VerticalScroll, так как полей много и они могут не влезть на экран
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()), // Чтобы экран можно было скроллить
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Text("Зарегистрироваться")
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            OutlinedTextField(
+                value = validation.login,
+                onValueChange = {
+                    validation.login = it
+                    validation.validateLogin()
+                                },
+                label = { Text("Логин") },
+                modifier = Modifier.fillMaxWidth(),
+                isError = validation.loginError.isNotEmpty()
+            )
+            if (validation.loginError.isNotEmpty()) {
+                Text(
+                    text = validation.loginError,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.align(Alignment.Start).padding(start = 16.dp)
+                )
+            }
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Есть аккаунт? ")
-            val annotatedText = buildAnnotatedString {
-                withStyle(
-                    style = SpanStyle(
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                        textDecoration = TextDecoration.Underline
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = validation.password,
+                onValueChange = {
+                    validation.password = it
+                    validation.validatePassword()
+                                },
+                label = { Text("Пароль") },
+                modifier = Modifier.fillMaxWidth(),
+                isError = validation.passwordError.isNotEmpty(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+            )
+            if (validation.passwordError.isNotEmpty()) {
+                Text(
+                    text = validation.passwordError,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.align(Alignment.Start).padding(start = 16.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = validation.email,
+                onValueChange = {
+                    validation.email = it
+                    validation.validateEmail()
+                },
+                label = { Text("Почта") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                isError = validation.emailError.isNotEmpty()
+            )
+
+            if (validation.emailError.isNotEmpty()) {
+                Text(
+                    text = validation.emailError,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.align(Alignment.Start).padding(start = 16.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = validation.height,
+                onValueChange = {
+                    validation.height = it
+                    validation.validateHeight()
+                },
+                label = { Text("Рост") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                isError = validation.heightError.isNotEmpty()
+            )
+            if (validation.heightError.isNotEmpty()) {
+                Text(
+                    text = validation.heightError,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.align(Alignment.Start).padding(start = 16.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = validation.weight,
+                onValueChange = {
+                    validation.weight = it
+                    validation.validateWeight()
+                },
+                label = { Text("Вес") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                isError = validation.weightError.isNotEmpty()
+            )
+            if (validation.weightError.isNotEmpty()) {
+                Text(
+                    text = validation.weightError,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.align(Alignment.Start).padding(start = 16.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = validation.age,
+                onValueChange = {
+                    validation.age = it
+                    validation.validateAge()
+                },
+                label = { Text("Возраст") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                isError = validation.ageError.isNotEmpty()
+            )
+            if (validation.ageError.isNotEmpty()) {
+                Text(
+                    text = validation.ageError,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.align(Alignment.Start).padding(start = 16.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                onClick = {
+                    keyboardController?.hide()
+                    if (validation.isValidForRegistration()) {
+                        val h = validation.height.toFloatOrNull() ?: 0f
+                        val w = validation.weight.toFloatOrNull() ?: 0f
+                        val a = validation.age.toIntOrNull() ?: 0
+
+                        isLoading = true
+                        viewModel.register(
+                            username = validation.login,
+                            password = validation.password,
+                            email = validation.email,
+                            height = h,
+                            bodyweight = w,
+                            age = a,
+                            onSuccess = {
+                                isLoading = false
+                                navController.navigate(Screen.Verification.route + "?email=${validation.email}")
+                            },
+                            onError = { error ->
+                                isLoading = false
+                                validation.toastMessage = error
+                            }
+                        )
+                    } else {
+                        validation.toastMessage = "Пожалуйста, исправьте ошибки в форме"
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
-                ) {
-                    append("Войти")
+                } else {
+                    Text("Зарегистрироваться")
                 }
             }
-            Text(
-                text = annotatedText,
-                modifier = Modifier.clickable { navController.navigate(Screen.Login.route) }
-            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Есть аккаунт? ")
+                Text(
+                    text = "Войти",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    textDecoration = TextDecoration.Underline,
+                    modifier = Modifier.clickable { navController.navigate(Screen.Login.route) }
+                )
+            }
         }
     }
 }
