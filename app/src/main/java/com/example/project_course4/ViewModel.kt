@@ -6,8 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.example.project_course4.api.ClientAPI
 import kotlinx.coroutines.launch
 
-class ViewModel : ViewModel() {
-    private val clientAPI = ClientAPI()
+class ViewModel(
+    private val clientAPI: ClientAPI,
+    private val sessionManager: SessionManager
+) : ViewModel() {
     
     // Функция для регистрации пользователя
     fun register(
@@ -45,23 +47,14 @@ class ViewModel : ViewModel() {
         onError: (String) -> Unit
     ) {
         viewModelScope.launch {
-            try {
-                Log.d("ViewModel", "Попытка входа для: $email")
-                val result = clientAPI.login(email, password)
-                result.fold(
-                    onSuccess = { message ->
-                        Log.d("ViewModel", "Вход успешен: $message")
-                        onSuccess(message)
-                    },
-                    onFailure = { error ->
-                        Log.d("ViewModel", "Ошибка входа: ${'$'}{error.message}")
-                        onError(error.message ?: "Неизвестная ошибка при авторизации")
-                    }
-                )
-            } catch (e: Exception) {
-                Log.e("ViewModel", "Исключение при входе: ${'$'}{e.message}", e)
-                onError(e.message ?: "Неизвестная ошибка при авторизации")
-            }
+            val result = clientAPI.login(email, password)
+            result.fold(
+                onSuccess = { token ->
+                    sessionManager.saveAuthToken(token) // Сохраняем полученный токен!
+                    onSuccess("Вход выполнен")
+                },
+                onFailure = { error -> onError(error.message ?: "Ошибка") }
+            )
         }
     }
     

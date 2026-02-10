@@ -13,13 +13,11 @@ import com.example.project_course4.Screen
 import com.example.project_course4.ViewModel
 import com.example.project_course4.utils.Validation
 import androidx.compose.runtime.LaunchedEffect
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.material3.Text
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 
 @Composable
-fun VerificationScreen(navController: NavController, email: String) {
-    val viewModel: ViewModel = viewModel()
+fun VerificationScreen(navController: NavController, email: String, viewModel: ViewModel) {
     val validation = remember { Validation() }
     var isLoading by remember { mutableStateOf(false) }
 

@@ -20,8 +20,7 @@ import com.example.project_course4.ViewModel
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 
 @Composable
-fun LoginScreen(navController: NavController) {
-    val viewModel: ViewModel = viewModel()
+fun LoginScreen(navController: NavController, viewModel: ViewModel) {
     val validation = remember { Validation() }
     var isLoading by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current

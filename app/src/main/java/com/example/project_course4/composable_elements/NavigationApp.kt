@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -15,6 +16,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.project_course4.Screen
+import com.example.project_course4.SessionManager
+import com.example.project_course4.ViewModel
+import com.example.project_course4.api.ClientAPI
 import com.example.project_course4.composable_elements.auth.LoginScreen
 import com.example.project_course4.composable_elements.auth.RegistrationScreen
 import com.example.project_course4.composable_elements.auth.verification.VerificationScreen
@@ -25,8 +29,9 @@ import com.example.project_course4.viewmodel.ProductViewModel
 fun NavigationApp() {
     val context = LocalContext.current
     val navController = rememberNavController()
-    val viewModel: ProductViewModel = viewModel()
     val scannerManager = remember { BarcodeScannerManager(context) }     // Инициализируем менеджер сканера
+    val sessionManager = remember { SessionManager(context) }
+    val clientAPI = remember { ClientAPI(sessionManager) }
 
     // Общая функция обработки сканирования
     val handleScanning = {
@@ -37,15 +42,46 @@ fun NavigationApp() {
             onError = { TODO("щас пока не нужна эта обработка ошибок") }
         )
     }
+
+    // куда направить пользователя
+    // если токен есть, то отправляем на главную, иначе на логин
+    val startDestination = if (sessionManager.fetchAuthToken() != null) {
+        Screen.Main.route
+    } else {
+        Screen.Login.route
+    }
+
+    // фабрика для создания ViewModel
+    val factory = remember {
+        object : ViewModelProvider.Factory {
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return when {
+                    // Для ProductViewModel
+                    modelClass.isAssignableFrom(ProductViewModel::class.java) ->
+                        ProductViewModel(clientAPI, sessionManager) as T
+
+                    // Для ViewModel (логин/регистрация)
+                    modelClass.isAssignableFrom(ViewModel::class.java) ->
+                        ViewModel(clientAPI, sessionManager) as T
+
+                    else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
+                }
+            }
+        }
+    }
+
+    // экземпляры ViewModel
+    val productViewModel: ProductViewModel = viewModel(factory = factory)
+    val authViewModel: ViewModel = viewModel(factory = factory)
     
     NavHost(
         navController = navController,
-        startDestination = Screen.Registration.route
+        startDestination = startDestination // Используем вычисленный путь
     ) {
         composable(Screen.Main.route) { backStackEntry ->
             MainScreen(
                 navController = navController,
-                viewModel = viewModel,
+                viewModel = productViewModel,
                 onBarcodeScan = {
                     handleScanning()
                 }
@@ -56,7 +92,7 @@ fun NavigationApp() {
             val mealId = backStackEntry.arguments?.getString("mealId")
             SelectProductScreen(
                 navController = navController,
-                viewModel = viewModel,
+                viewModel = productViewModel,
                 mealId = mealId,
                 onBarcodeScan = {
                     handleScanning()
@@ -66,24 +102,26 @@ fun NavigationApp() {
         composable(Screen.SelectProduct.route) {backStackEntry ->
             SelectProductScreen(
                 navController = navController,
-                viewModel = viewModel
+                viewModel = productViewModel
             )
         }
 
         composable(Screen.ProductCreation.route) { backStackEntry ->
             ProductCreationScreen(
                 navController = navController,
-                viewModel = viewModel
+                viewModel = productViewModel
             )
         }
         composable(Screen.Login.route) { backStackEntry ->
             LoginScreen(
-                navController = navController
+                navController = navController,
+                viewModel = authViewModel
             )
         }
         composable(Screen.Registration.route) { backStackEntry ->
             RegistrationScreen(
-                navController = navController
+                navController = navController,
+                viewModel = authViewModel
             )
         }
         composable(
@@ -91,7 +129,7 @@ fun NavigationApp() {
             arguments = listOf(navArgument("email") { type = NavType.StringType })
         ) { backStackEntry ->
             val email = backStackEntry.arguments?.getString("email") ?: ""
-            VerificationScreen(navController = navController, email = email)
+            VerificationScreen(navController = navController, email = email, viewModel = authViewModel)
         }
     }
 }

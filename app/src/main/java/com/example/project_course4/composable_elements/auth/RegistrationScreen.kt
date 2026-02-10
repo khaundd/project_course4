@@ -25,8 +25,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.project_course4.ViewModel
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 @Composable
-fun RegistrationScreen(navController: NavController) {
-    val viewModel: ViewModel = viewModel()
+fun RegistrationScreen(navController: NavController, viewModel: ViewModel) {
     val validation = remember { Validation() }
     var isLoading by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current

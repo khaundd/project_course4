@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.project_course4"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -52,6 +52,7 @@ dependencies {
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.content.negotiation)
     implementation (libs.ktor.serialization.kotlinx.json.v237)
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
     implementation (libs.kotlinx.serialization.json)
 

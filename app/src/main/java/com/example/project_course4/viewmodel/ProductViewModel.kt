@@ -8,6 +8,7 @@ import com.example.project_course4.MealNutrition
 import com.example.project_course4.Product
 import com.example.project_course4.ProductCreationState
 import com.example.project_course4.SelectedProduct
+import com.example.project_course4.SessionManager
 import com.example.project_course4.api.ClientAPI
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,7 +17,10 @@ import kotlinx.coroutines.launch
 import java.time.LocalTime
 import java.util.UUID
 
-class ProductViewModel : ViewModel() {
+class ProductViewModel(
+    private val clientAPI: ClientAPI,
+    private val sessionManager: SessionManager
+) : ViewModel() {
     private val _products = MutableStateFlow<List<Product>>(emptyList())
     val products: StateFlow<List<Product>> = _products
 
@@ -110,8 +114,7 @@ class ProductViewModel : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val apiClient = ClientAPI()
-                val loadedProducts = apiClient.getProducts()
+                val loadedProducts = clientAPI.getProducts()
                 _products.value = loadedProducts
             } catch (e: Exception) {
                 _products.value = emptyList()

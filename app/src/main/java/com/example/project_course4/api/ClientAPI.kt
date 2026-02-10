@@ -2,26 +2,44 @@ package com.example.project_course4.api
 
 import android.util.Log
 import com.example.project_course4.Product
+import com.example.project_course4.SessionManager
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import io.ktor.http.headers
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
-class ClientAPI {
+class ClientAPI (private val sessionManager: SessionManager){
 
     private val BASE_URL: String = "https://loftily-adequate-urchin.cloudpub.ru"
     private val client = HttpClient(CIO) {
         install(ContentNegotiation.Plugin) {
-            json()
+            json(
+                Json {
+                    ignoreUnknownKeys = true // Это поможет не падать, если сервер прислал лишние поля
+                    coerceInputValues = true
+                }
+            )
+        }
+
+        // Этот блок автоматически добавляет заголовок к каждому запросу
+        defaultRequest {
+            val token = sessionManager.fetchAuthToken()
+            if (!token.isNullOrEmpty()) {
+                headers.append("Authorization", "Bearer $token")
+            }
         }
     }
     
@@ -34,7 +52,7 @@ class ClientAPI {
                 val products = response.body<List<Product>>()
                 products
             } catch (e: Exception) {
-                Log.e("api_test", "Ошибка в getProducts: ${'$'}{e.message}", e)
+                Log.e("api_test", "Ошибка в getProducts: ${e.message}", e)
                 emptyList()
             }
         }
@@ -88,29 +106,20 @@ class ClientAPI {
         val url = "$BASE_URL/login"
         return withContext(Dispatchers.IO) {
             try {
-                val loginData = mapOf(
-                    "email" to email,
-                    "password" to password
-                )
                 val response = client.post(url) {
                     contentType(ContentType.Application.Json)
-                    setBody(loginData)
+                    setBody(mapOf("email" to email, "password" to password))
                 }
-                
-                when (response.status.value) {
-                    in 200..299 -> {
-                        val responseBody = response.body<ApiResponse>()
-                        Log.d("api_test", "Успешный вход: ${'$'}{responseBody.message}")
-                        Result.success(responseBody.message ?: "Вход выполнен успешно")
-                    }
-                    else -> {
-                        val errorResponse = response.body<ApiResponse>()
-                        Log.d("api_test", "Ошибка авторизации: ${'$'}{errorResponse.error}")
-                        Result.failure(Exception(errorResponse.error ?: "Неизвестная ошибка при авторизации"))
-                    }
+                val rawResponse = response.bodyAsText()
+                Log.d("api_test", "Ответ сервера: $rawResponse")
+                val body = response.body<ApiResponse>()
+                if (response.status.value in 200..299 && body.token != null) {
+                    Result.success(body.token) // Возвращаем токен в случае успеха
+                } else {
+                    Result.failure(Exception(body.error ?: "Ошибка входа"))
                 }
             } catch (e: Exception) {
-                Log.e("api_test", "Ошибка в login: ${'$'}{e.message}", e)
+                Log.e("api_test", "Ошибка в login: ${e.message}", e)
                 Result.failure(e)
             }
         }
@@ -155,5 +164,7 @@ class ClientAPI {
 @Serializable
 private data class ApiResponse(
     val message: String? = null,
-    val error: String? = null
+    val error: String? = null,
+    val token: String? = null, // Добавляем поле для токена
+    val user_id: Int? = null   // Опционально, если нужно сохранить id
 )
