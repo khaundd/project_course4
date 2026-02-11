@@ -8,6 +8,7 @@ import android.util.Patterns
 class Validation {
     var login by mutableStateOf("")
     var password by mutableStateOf("")
+    var passwordConfirmation by mutableStateOf("")
     var email by mutableStateOf("")
     var height by mutableStateOf("")
     var weight by mutableStateOf("")
@@ -16,6 +17,7 @@ class Validation {
 
     var loginError by mutableStateOf("")
     var passwordError by mutableStateOf("")
+    var passwordConfirmationError by mutableStateOf("")
     var emailError by mutableStateOf("")
     var heightError by mutableStateOf("")
     var weightError by mutableStateOf("")
@@ -131,6 +133,8 @@ class Validation {
     fun validatePassword(isEmptyValid: Boolean = false) {
         if (password.isEmpty() && !isEmptyValid) {
             passwordError = "Пароль не может быть пустым"
+        } else if (password.length < 8) {
+            passwordError = "Пароль должен содержать минимум 8 символов"
         } else if (password.length > 32) {
             passwordError = "Пароль не должен превышать 32 символа"
         } else if (password.contains(" ")) {
@@ -139,6 +143,16 @@ class Validation {
             passwordError = "Пароль не должен содержать кириллицу"
         } else {
             passwordError = ""
+        }
+    }
+    
+    fun validatePasswordConfirmation() {
+        if (passwordConfirmation.isEmpty()) {
+            passwordConfirmationError = "Пароль не может быть пустым"
+        } else if (passwordConfirmation != password) {
+            passwordConfirmationError = "Пароли не совпадают"
+        } else {
+            passwordConfirmationError = ""
         }
     }
 
@@ -162,6 +176,7 @@ class Validation {
         
         return loginError.isEmpty() && 
                passwordError.isEmpty() && 
+               passwordConfirmationError.isEmpty() && 
                emailError.isEmpty() && 
                heightError.isEmpty() && 
                weightError.isEmpty() && 

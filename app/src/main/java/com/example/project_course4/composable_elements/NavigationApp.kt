@@ -84,6 +84,10 @@ fun NavigationApp() {
                 viewModel = productViewModel,
                 onBarcodeScan = {
                     handleScanning()
+                },
+                onLogout = {
+                    // Вызываем logout через API с навигацией
+                    authViewModel.logoutAndNavigate(navController)
                 }
             )
         }

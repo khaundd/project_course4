@@ -124,6 +124,30 @@ class ClientAPI (private val sessionManager: SessionManager){
             }
         }
     }
+
+    suspend fun logout(): Result<String> {
+        val url = "$BASE_URL/logout"
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = client.post(url) {
+                    contentType(ContentType.Application.Json)
+                }
+                // Независимо от ответа сервера, очищаем локальный токен
+                sessionManager.clearData()
+
+                if (response.status.value in 200..299) {
+                    Result.success("Выход выполнен успешно")
+                } else {
+                    Result.failure(Exception("Сервер вернул ошибку при выходе"))
+                }
+            } catch (e: Exception) {
+                Log.e("api_test", "Ошибка в logout: ${e.message}", e)
+                // Даже если сети нет, токен лучше удалить локально
+                sessionManager.clearData()
+                Result.failure(e)
+            }
+        }
+    }
     
     // Функция подтверждения email
     suspend fun verifyEmail(email: String, code: String): Result<String> {

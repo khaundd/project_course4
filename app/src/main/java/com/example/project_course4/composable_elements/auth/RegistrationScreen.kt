@@ -24,6 +24,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.project_course4.ViewModel
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+
 @Composable
 fun RegistrationScreen(navController: NavController, viewModel: ViewModel) {
     val validation = remember { Validation() }
@@ -111,15 +113,43 @@ fun RegistrationScreen(navController: NavController, viewModel: ViewModel) {
                 onValueChange = {
                     validation.password = it
                     validation.validatePassword()
-                                },
+                    // При изменении пароля проверяем соответствие с подтверждением
+                    if (validation.passwordConfirmation.isNotEmpty()) {
+                        validation.validatePasswordConfirmation()
+                    }
+                },
                 label = { Text("Пароль") },
                 modifier = Modifier.fillMaxWidth(),
                 isError = validation.passwordError.isNotEmpty(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                visualTransformation = PasswordVisualTransformation()
             )
             if (validation.passwordError.isNotEmpty()) {
                 Text(
                     text = validation.passwordError,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.align(Alignment.Start).padding(start = 16.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = validation.passwordConfirmation,
+                onValueChange = {
+                    validation.passwordConfirmation = it
+                    validation.validatePasswordConfirmation()
+                },
+                label = { Text("Подтвердите пароль") },
+                modifier = Modifier.fillMaxWidth(),
+                isError = validation.passwordConfirmationError.isNotEmpty(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                visualTransformation = PasswordVisualTransformation()
+            )
+            if (validation.passwordConfirmationError.isNotEmpty()) {
+                Text(
+                    text = validation.passwordConfirmationError,
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.align(Alignment.Start).padding(start = 16.dp)

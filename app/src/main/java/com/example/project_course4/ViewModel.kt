@@ -3,6 +3,7 @@ package com.example.project_course4
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.NavController
 import com.example.project_course4.api.ClientAPI
 import kotlinx.coroutines.launch
 
@@ -10,6 +11,48 @@ class ViewModel(
     private val clientAPI: ClientAPI,
     private val sessionManager: SessionManager
 ) : ViewModel() {
+    
+    // Функция для выхода из аккаунта
+    fun logout(
+        onSuccess: (String) -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            val result = clientAPI.logout()
+            result.fold(
+                onSuccess = { message ->
+                    sessionManager.clearData()
+                    onSuccess(message)
+                },
+                onFailure = { error ->
+                    sessionManager.clearData()
+                    onError(error.message ?: "Ошибка при выходе")
+                }
+            )
+        }
+    }
+    
+    // Функция для выхода из аккаунта с навигацией и отслеживанием состояния
+    fun logoutAndNavigate(
+        navController: NavController,
+        onLoggingOut: (Boolean) -> Unit = {}
+    ) {
+        onLoggingOut(true)
+        logout(
+            onSuccess = { message ->
+                onLoggingOut(false)
+                navController.navigate(Screen.Login.route) {
+                    popUpTo(Screen.Main.route) { inclusive = true }
+                }
+            },
+            onError = { error ->
+                onLoggingOut(false)
+                navController.navigate(Screen.Login.route) {
+                    popUpTo(Screen.Main.route) { inclusive = true }
+                }
+            }
+        )
+    }
     
     // Функция для регистрации пользователя
     fun register(

@@ -18,6 +18,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.project_course4.ViewModel
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 
 @Composable
 fun LoginScreen(navController: NavController, viewModel: ViewModel) {
@@ -94,7 +95,8 @@ fun LoginScreen(navController: NavController, viewModel: ViewModel) {
                 label = { Text("Пароль") },
                 modifier = Modifier.fillMaxWidth(),
                 isError = validation.passwordError.isNotEmpty(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                visualTransformation = PasswordVisualTransformation()
             )
             if (validation.passwordError.isNotEmpty()) {
                 Text(
