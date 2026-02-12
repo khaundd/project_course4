@@ -100,16 +100,17 @@ fun MainScreen(
                 protein = totalProtein,
                 fats = totalFats,
                 carbs = totalCarbs,
+                totalCalories = totalCalories,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(320.dp)
-                    .padding(start = 16.dp, end = 16.dp, top = 104.dp, bottom = 104.dp)
+                    .height(220.dp)
+                    .padding(top = 24.dp, bottom = 8.dp)
             )
             // Список приёмов пищи
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                    .padding(horizontal = 8.dp)
             ) {
                 items(meals) { meal ->
                     val products = viewModel.getProductsForMeal(meal.id)
