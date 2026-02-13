@@ -1,38 +1,33 @@
 package com.example.project_course4.composable_elements
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
+import com.example.project_course4.Screen
 import com.example.project_course4.composable_elements.charts.NutritionChart
+import com.example.project_course4.dialogs.CustomCalendarDialog
 import com.example.project_course4.viewmodel.ProductViewModel
+import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     navController: NavController,
@@ -40,167 +35,198 @@ fun MainScreen(
     onBarcodeScan: (String) -> Unit,
     onLogout: () -> Unit,
 ) {
-    // Инициализация приёмов пищи при первом запуске
-    LaunchedEffect(Unit) {
-        viewModel.initializeMeals()
-    }
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
 
-    var isLoading by remember { mutableStateOf(false) }
+    // Следим за текущим маршрутом для выделения в меню
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
 
-    // Получаем список приёмов пищи из ViewModel
-    val meals by viewModel.meals.collectAsState()
-    val currentProductForWeight by viewModel.currentProductForWeight.collectAsState()
-    val shouldShowWeightInput by viewModel.shouldShowWeightInput.collectAsState()
+    var showCustomCalendar by remember { mutableStateOf(false) }
+    var selectedLocalDate by remember { mutableStateOf(LocalDate.now()) }
 
-    // автоматический запуск ввода веса
-    LaunchedEffect(shouldShowWeightInput) {
-        if (shouldShowWeightInput) {
-            viewModel.checkAndStartWeightInput()
+    // Текст для кнопки в TopAppBar
+    val dateButtonText = remember(selectedLocalDate) {
+        val today = LocalDate.now()
+        val label = when (selectedLocalDate) {
+            today -> "Сегодня"
+            today.minusDays(1) -> "Вчера"
+            today.plusDays(1) -> "Завтра"
+            else -> selectedLocalDate.format(DateTimeFormatter.ofPattern("EEE", Locale("ru")))
+                .replaceFirstChar { it.uppercase() }
         }
+        "$label, ${selectedLocalDate.format(DateTimeFormatter.ofPattern("MMM dd", Locale("ru")))}"
     }
 
-    if (currentProductForWeight != null && shouldShowWeightInput) {
-        WeightInputDialog(
-            product = currentProductForWeight!!,
-            viewModel = viewModel,
-            onDismiss = { viewModel.clearWeightInput() }
-        )
-    }
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Меню", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleLarge)
 
-    // Общие итоги по всем приёмам пищи (если нужно)
-    val totalCalories = meals.sumOf { meal ->
-        viewModel.getMealNutrition(meal.id).calories.toDouble()
-    }.toFloat()
+                // Пункт: Главная
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Restaurant, contentDescription = null) },
+                    label = { Text("Дневник питания") },
+                    selected = currentRoute == Screen.Main.route,
+                    onClick = { scope.launch { drawerState.close() } },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
 
-    val totalProtein = meals.sumOf { meal ->
-        viewModel.getMealNutrition(meal.id).protein.toDouble()
-    }.toFloat()
+                // Пункт: Создать продукт
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.AddCircle, contentDescription = null) },
+                    label = { Text("Создать продукт") },
+                    selected = currentRoute == Screen.ProductCreation.route,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        navController.navigate(Screen.ProductCreation.route)
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
 
-    val totalFats = meals.sumOf { meal ->
-        viewModel.getMealNutrition(meal.id).fats.toDouble()
-    }.toFloat()
-
-    val totalCarbs = meals.sumOf { meal ->
-        viewModel.getMealNutrition(meal.id).carbs.toDouble()
-    }.toFloat()
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
+                // Можно добавить другие экраны здесь...
+            }
+        }
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = 80.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // Полукруговая диаграмма БЖУ
-            NutritionChart(
-                protein = totalProtein,
-                fats = totalFats,
-                carbs = totalCarbs,
-                totalCalories = totalCalories,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(220.dp)
-                    .padding(top = 24.dp, bottom = 8.dp)
-            )
-            // Список приёмов пищи
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 8.dp)
-            ) {
-                items(meals) { meal ->
-                    val products = viewModel.getProductsForMeal(meal.id)
-                    val nutrition = viewModel.getMealNutrition(meal.id)
-                    
-                    MealItem(
-                        meal = meal,
-                        products = products,
-                        nutrition = nutrition,
-                        onTimeClick = { selectedMeal ->
-                            // Передаём новый объект Meal с обновлённым временем
-                            viewModel.updateMealTime(selectedMeal.id, selectedMeal.time)
-                        },
-                        onAddProductClick = { selectedMeal ->
-                            // Загружаем продукты и переходим к экрану выбора продукта
-                            viewModel.loadProducts()
-                            // Передаем mealId для последующего добавления продукта в конкретный приём пищи
-                            viewModel.setEditingMealId(selectedMeal.id)
-                            navController.navigate("selectProductWithMeal/${selectedMeal.id}")
-                        },
-                        onEditProduct = { product, selectedMeal ->
-                            // Редактирование веса продукта
-                            viewModel.editProductWeightInMeal(product, selectedMeal.id, products.find { it.product == product }?.weight ?: 0)
-                        },
-                        onDeleteProduct = { product, selectedMeal ->
-                            // Удаление продукта из приёма пищи
-                            viewModel.removeProductFromMeal(product, selectedMeal.id)
-                        },
-                        onMealOptionsClick = { selectedMeal ->
-                            // Обработка нажатия на кнопку с тремя точками (удаление приёма пищи)
-                            viewModel.removeMeal(selectedMeal.id)
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable { showCustomCalendar = true }.padding(8.dp)
+                        ) {
+                            Text(dateButtonText, style = MaterialTheme.typography.bodyLarge)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(Icons.Default.CalendarMonth, contentDescription = null)
                         }
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                            Icon(Icons.Default.Menu, contentDescription = null)
+                        }
+                    }
+                )
+            }
+        ) { paddingValues ->
+            // --- ТУТ ВАШ СУЩЕСТВУЮЩИЙ КОД ИЗ BOX ---
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues) // Важно: используем отступы Scaffold
+                    .background(Color.White)
+            ) {
+                // Инициализация приёмов пищи
+                LaunchedEffect(Unit) { viewModel.initializeMeals() }
+
+                var isLoading by remember { mutableStateOf(false) }
+                val meals by viewModel.meals.collectAsState()
+                val currentProductForWeight by viewModel.currentProductForWeight.collectAsState()
+                val shouldShowWeightInput by viewModel.shouldShowWeightInput.collectAsState()
+
+                LaunchedEffect(shouldShowWeightInput) {
+                    if (shouldShowWeightInput) viewModel.checkAndStartWeightInput()
                 }
-            }
-            
-            // Кнопка "Добавить приём пищи"
-            Button(
-                onClick = { viewModel.addMeal() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .align(Alignment.CenterHorizontally),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFE0E0E0)
-                )
-            ) {
-                Text("Добавить приём пищи")
-            }
-            
-            // Кнопка сканирования штрих-кода
-            Button(
-                onClick = { onBarcodeScan("OPEN_SCANNER") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .align(Alignment.CenterHorizontally),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFE0E0E0)
-                )
-            ) {
-                Text("Сканировать штрих-код")
-            }
-            
-            // Кнопка выхода из аккаунта
-            Button(
-                onClick = {
-                    isLoading = true
-                    onLogout()
-                          },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .align(Alignment.CenterHorizontally),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFE0E0E0)
-                ),
-                enabled = !isLoading
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary
+
+                if (currentProductForWeight != null && shouldShowWeightInput) {
+                    WeightInputDialog(
+                        product = currentProductForWeight!!,
+                        viewModel = viewModel,
+                        onDismiss = { viewModel.clearWeightInput() }
                     )
-                } else {
-                    Text("Выйти из аккаунта")
+                }
+
+                // Расчет нутриентов
+                val totalCalories = meals.sumOf { viewModel.getMealNutrition(it.id).calories.toDouble() }.toFloat()
+                val totalProtein = meals.sumOf { viewModel.getMealNutrition(it.id).protein.toDouble() }.toFloat()
+                val totalFats = meals.sumOf { viewModel.getMealNutrition(it.id).fats.toDouble() }.toFloat()
+                val totalCarbs = meals.sumOf { viewModel.getMealNutrition(it.id).carbs.toDouble() }.toFloat()
+
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    NutritionChart(
+                        protein = totalProtein,
+                        fats = totalFats,
+                        carbs = totalCarbs,
+                        totalCalories = totalCalories,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(220.dp)
+                            .padding(top = 8.dp, bottom = 8.dp)
+                    )
+
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 8.dp)
+                    ) {
+                        items(meals) { meal ->
+                            val products = viewModel.getProductsForMeal(meal.id)
+                            val nutrition = viewModel.getMealNutrition(meal.id)
+
+                            MealItem(
+                                meal = meal,
+                                products = products,
+                                nutrition = nutrition,
+                                onTimeClick = { m -> viewModel.updateMealTime(m.id, m.time) },
+                                onAddProductClick = { m ->
+                                    viewModel.loadProducts()
+                                    viewModel.setEditingMealId(m.id)
+                                    navController.navigate("selectProductWithMeal/${m.id}")
+                                },
+                                onEditProduct = { p, m -> viewModel.editProductWeightInMeal(p, m.id, products.find { it.product == p }?.weight ?: 0) },
+                                onDeleteProduct = { p, m -> viewModel.removeProductFromMeal(p, m.id) },
+                                onMealOptionsClick = { m -> viewModel.removeMeal(m.id) }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                    }
+
+                    // Блок кнопок внизу
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = { viewModel.addMeal() },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0E0E0))
+                        ) { Text("Добавить приём пищи", color = Color.Black) }
+
+                        Button(
+                            onClick = { onBarcodeScan("OPEN_SCANNER") },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0E0E0))
+                        ) { Text("Сканировать штрих-код", color = Color.Black) }
+
+                        Button(
+                            onClick = { isLoading = true; onLogout() },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0E0E0)),
+                            enabled = !isLoading
+                        ) {
+                            if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            else Text("Выйти из аккаунта", color = Color.Black)
+                        }
+                    }
                 }
             }
         }
+    }
+
+    // Окно календаря
+    if (showCustomCalendar) {
+        CustomCalendarDialog(
+            initialDate = selectedLocalDate,
+            viewModel = viewModel,
+            onDateSelected = { newDate -> selectedLocalDate = newDate },
+            onDismiss = { showCustomCalendar = false }
+        )
     }
 }

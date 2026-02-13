@@ -183,12 +183,3 @@ class ClientAPI (private val sessionManager: SessionManager){
         }
     }
 }
-
-// Класс для десериализации ответов API
-@Serializable
-private data class ApiResponse(
-    val message: String? = null,
-    val error: String? = null,
-    val token: String? = null, // Добавляем поле для токена
-    val user_id: Int? = null   // Опционально, если нужно сохранить id
-)

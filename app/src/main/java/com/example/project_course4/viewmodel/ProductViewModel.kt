@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
 
@@ -411,5 +412,10 @@ class ProductViewModel(
         }.toFloat()
         
         return MealNutrition(totalProtein, totalFats, totalCarbs, totalCalories)
+    }
+    fun getCaloriesForDate(date: LocalDate): Int {
+        // В будущем здесь будет запрос к БД или API по конкретной дате
+        // Пока возвращаем случайное число для теста или 0
+        return if (date == LocalDate.now()) 1500 else 0
     }
 }
