@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kotlin.parcelize)
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -54,9 +55,11 @@ dependencies {
     implementation (libs.ktor.serialization.kotlinx.json.v237)
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation("androidx.compose.material:material-icons-extended:1.7.0")
-
+    val room_version = "2.8.4"
+    implementation(libs.androidx.room.runtime)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.room.ktx)
     implementation (libs.kotlinx.serialization.json)
-
     implementation (libs.androidx.navigation.navigation.safe.args.generator)
     implementation (libs.androidx.navigation.compose)
     implementation (libs.androidx.appcompat)

@@ -106,5 +106,5 @@ fun ProductElement(
 @Preview(showBackground = true)
 @Composable
 fun ProductElementPreview(){
-    ProductElement(Product("Филе", 10f, 2f, 1f, 62f), false) {}
+    ProductElement(Product(1,"Филе", 10f, 2f, 1f, 62f), false) {}
 }

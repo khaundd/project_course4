@@ -7,6 +7,6 @@ import kotlinx.serialization.Serializable
 data class ApiResponse(
     val message: String? = null,
     val error: String? = null,
-    val token: String? = null, // Добавляем поле для токена
-    val user_id: Int? = null   // Опционально, если нужно сохранить id
+    val token: String? = null,
+    val user_id: Int? = null
 )

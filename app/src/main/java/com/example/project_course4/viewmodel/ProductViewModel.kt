@@ -7,23 +7,30 @@ import com.example.project_course4.Meal
 import com.example.project_course4.MealNutrition
 import com.example.project_course4.Product
 import com.example.project_course4.ProductCreationState
+import com.example.project_course4.ProductRepository
 import com.example.project_course4.SelectedProduct
 import com.example.project_course4.SessionManager
 import com.example.project_course4.api.ClientAPI
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
 
 class ProductViewModel(
-    private val clientAPI: ClientAPI,
-    private val sessionManager: SessionManager
+    private val repository: ProductRepository
 ) : ViewModel() {
     private val _products = MutableStateFlow<List<Product>>(emptyList())
-    val products: StateFlow<List<Product>> = _products
+    val products: StateFlow<List<Product>> = repository.getProductsFlow()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
     // Состояние для создания нового продукта
     private var _productCreationState = MutableStateFlow(ProductCreationState())
@@ -74,7 +81,9 @@ class ProductViewModel(
     }
 
     init {
-        loadProducts()
+        viewModelScope.launch {
+            repository.fetchInitialProducts()
+        }
     }
 
     // Функция для обновления состояния создания продукта
@@ -111,19 +120,19 @@ class ProductViewModel(
         resetProductCreationState()
     }
 
-    fun loadProducts() {
-        viewModelScope.launch {
-            _isLoading.value = true
-            try {
-                val loadedProducts = clientAPI.getProducts()
-                _products.value = loadedProducts
-            } catch (e: Exception) {
-                _products.value = emptyList()
-            } finally {
-                _isLoading.value = false
-            }
-        }
-    }
+//    fun loadProducts() {
+//        viewModelScope.launch {
+//            _isLoading.value = true
+//            try {
+//                val loadedProducts = clientAPI.getProducts()
+//                _products.value = loadedProducts
+//            } catch (e: Exception) {
+//                _products.value = emptyList()
+//            } finally {
+//                _isLoading.value = false
+//            }
+//        }
+//    }
 
     fun toggleCurrentSelection(product: Product) {
         val current = _currentSelection.value.toMutableSet()
@@ -418,4 +427,15 @@ class ProductViewModel(
         // Пока возвращаем случайное число для теста или 0
         return if (date == LocalDate.now()) 1500 else 0
     }
+
+//    fun initialSync(currentUserId: Int) {
+//        viewModelScope.launch {
+//            // 1. Тянем 50 записей с сервера
+//            val remoteProducts = clientAPI.getInitialProducts()
+//            // 2. Превращаем их в локальные сущности и помечаем isSavedLocally = true
+//            val localEntities = remoteProducts.map { it.toEntity(isSavedLocally = true) }
+//            // 3. Сохраняем в Room
+//            db.productDao().insertAll(localEntities)
+//        }
+//    }
 }

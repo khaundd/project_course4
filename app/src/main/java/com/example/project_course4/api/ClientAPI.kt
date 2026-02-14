@@ -44,8 +44,8 @@ class ClientAPI (private val sessionManager: SessionManager){
     }
     
     // Существующая функция получения продуктов
-    suspend fun getProducts(): List<Product> {
-        val url = "$BASE_URL/products"
+    suspend fun getProducts(limit: Int? = null): List<Product> {
+        val url = if (limit != null) "$BASE_URL/products?limit=$limit" else "$BASE_URL/products"
         return withContext(Dispatchers.IO) {
             try {
                 val response = client.get(url)
@@ -114,7 +114,15 @@ class ClientAPI (private val sessionManager: SessionManager){
                 Log.d("api_test", "Ответ сервера: $rawResponse")
                 val body = response.body<ApiResponse>()
                 if (response.status.value in 200..299 && body.token != null) {
-                    Result.success(body.token) // Возвращаем токен в случае успеха
+                    // Извлекаем ID. Если он вдруг null, используем -1 или выбрасываем ошибку
+                    val userId = body.user_id ?: -1
+
+                    if (userId != -1) {
+                        sessionManager.saveUserId(userId)
+                        Result.success(body.token)// Возвращаем токен в случае успеха
+                    } else {
+                        Result.failure(Exception("Сервер не вернул ID пользователя"))
+                    }
                 } else {
                     Result.failure(Exception(body.error ?: "Ошибка входа"))
                 }

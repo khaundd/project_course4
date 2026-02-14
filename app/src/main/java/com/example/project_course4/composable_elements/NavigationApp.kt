@@ -15,6 +15,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.room.Room
+import com.example.project_course4.ProductRepository
 import com.example.project_course4.Screen
 import com.example.project_course4.SessionManager
 import com.example.project_course4.ViewModel
@@ -23,6 +25,7 @@ import com.example.project_course4.composable_elements.auth.LoginScreen
 import com.example.project_course4.composable_elements.auth.RegistrationScreen
 import com.example.project_course4.composable_elements.auth.verification.VerificationScreen
 import com.example.project_course4.composable_elements.scanner.BarcodeScannerManager
+import com.example.project_course4.local_db.AppDatabase
 import com.example.project_course4.viewmodel.ProductViewModel
 
 @Composable
@@ -32,6 +35,22 @@ fun NavigationApp() {
     val scannerManager = remember { BarcodeScannerManager(context) }     // Инициализируем менеджер сканера
     val sessionManager = remember { SessionManager(context) }
     val clientAPI = remember { ClientAPI(sessionManager) }
+
+    val database = remember {
+        Room.databaseBuilder(
+            context.applicationContext,
+            AppDatabase::class.java,
+            "my_database"
+        ).build()
+    }
+
+    val productRepository = remember {
+        ProductRepository(
+            productDao = database.productsDao(),
+            clientAPI = clientAPI,
+            sessionManager = sessionManager
+        )
+    }
 
     // Общая функция обработки сканирования
     val handleScanning = {
@@ -58,7 +77,7 @@ fun NavigationApp() {
                 return when {
                     // Для ProductViewModel
                     modelClass.isAssignableFrom(ProductViewModel::class.java) ->
-                        ProductViewModel(clientAPI, sessionManager) as T
+                        ProductViewModel(productRepository) as T
 
                     // Для ViewModel (логин/регистрация)
                     modelClass.isAssignableFrom(ViewModel::class.java) ->

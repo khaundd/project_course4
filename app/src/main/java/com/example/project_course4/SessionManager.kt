@@ -27,4 +27,10 @@ class SessionManager(context: Context) {
     fun clearData() {
         sharedPreferences.edit { clear() }
     }
+
+    fun saveUserId(userId: Int) {
+        sharedPreferences.edit { putInt("user_id", userId) }
+    }
+
+    fun fetchUserId(): Int = sharedPreferences.getInt("user_id", -1)
 }

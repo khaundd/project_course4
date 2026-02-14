@@ -111,7 +111,6 @@ fun MainScreen(
                 )
             }
         ) { paddingValues ->
-            // --- ТУТ ВАШ СУЩЕСТВУЮЩИЙ КОД ИЗ BOX ---
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -174,7 +173,7 @@ fun MainScreen(
                                 nutrition = nutrition,
                                 onTimeClick = { m -> viewModel.updateMealTime(m.id, m.time) },
                                 onAddProductClick = { m ->
-                                    viewModel.loadProducts()
+//                                    viewModel.loadProducts()
                                     viewModel.setEditingMealId(m.id)
                                     navController.navigate("selectProductWithMeal/${m.id}")
                                 },
