@@ -1,5 +1,6 @@
 package com.example.project_course4.composable_elements
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -86,7 +87,7 @@ fun MainScreen(
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
 
-                // Можно добавить другие экраны здесь...
+                // здесь будут другие экраны
             }
         }
     ) {
@@ -174,11 +175,19 @@ fun MainScreen(
                                 onTimeClick = { m -> viewModel.updateMealTime(m.id, m.time) },
                                 onAddProductClick = { m ->
 //                                    viewModel.loadProducts()
+                                    if (shouldShowWeightInput){
+                                    val components = viewModel.finalSelection.value.map { selected ->
+                                        selected.product.productId to selected.weight.toUShort()
+                                    }
+                                    viewModel.saveCurrentMeal(meal.id)
+                                    }
                                     viewModel.setEditingMealId(m.id)
                                     navController.navigate("selectProductWithMeal/${m.id}")
                                 },
                                 onEditProduct = { p, m -> viewModel.editProductWeightInMeal(p, m.id, products.find { it.product == p }?.weight ?: 0) },
-                                onDeleteProduct = { p, m -> viewModel.removeProductFromMeal(p, m.id) },
+                                onDeleteProduct = { p, m ->
+                                    Log.d("DeleteProduct","Удаляемый продукт: $p, id приема пищи: ${m.id}")
+                                    viewModel.removeProductFromMeal(p, m.id) },
                                 onMealOptionsClick = { m -> viewModel.removeMeal(m.id) }
                             )
                             Spacer(modifier = Modifier.height(8.dp))
@@ -193,7 +202,7 @@ fun MainScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Button(
-                            onClick = { viewModel.addMeal() },
+                            onClick = { viewModel.addMeal("...") },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0E0E0))
                         ) { Text("Добавить приём пищи", color = Color.Black) }

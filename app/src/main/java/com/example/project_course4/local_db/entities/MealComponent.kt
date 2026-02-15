@@ -11,10 +11,17 @@ import androidx.room.PrimaryKey
             parentColumns = ["productId"],
             childColumns = ["productId"],
             onDelete = ForeignKey.CASCADE // Если продукт удалится, удалятся и компоненты
-        )
+        ),
+        ForeignKey(
+            entity = MealMealComponent::class,
+            parentColumns = ["id"],
+            childColumns = ["mealMealComponentId"], // Ссылка на ID из таблицы выше
+            onDelete = ForeignKey.CASCADE
+        ),
     ])
 data class MealComponent(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val productId: Int,
+    val mealMealComponentId: Int,
     val weight: UShort,
 )

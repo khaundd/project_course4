@@ -120,7 +120,5 @@ fun SelectProductScreen(
                 }
             }
         }
-        
-
     }
 }

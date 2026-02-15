@@ -26,7 +26,6 @@ fun TimePickerDialog(
     onTimeSelected: (LocalTime) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
     var selectedHour by remember { mutableStateOf(initialTime.hour) }
     var selectedMinute by remember { mutableStateOf(initialTime.minute) }
     

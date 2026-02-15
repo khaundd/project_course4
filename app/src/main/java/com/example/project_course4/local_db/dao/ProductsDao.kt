@@ -18,4 +18,7 @@ interface ProductsDao {
 
     @Query("SELECT * FROM products WHERE createdBy = :userId OR isSavedLocally = 1")
     fun getUserProducts(userId: Int): Flow<List<Products>>
+
+    @Query("SELECT * FROM products WHERE productId IN (:ids)")
+    suspend fun getProductsByIds(ids: List<Int>): List<Products>
 }

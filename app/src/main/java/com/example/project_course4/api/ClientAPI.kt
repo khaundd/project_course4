@@ -14,11 +14,9 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
-import io.ktor.http.headers
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 class ClientAPI (private val sessionManager: SessionManager){
@@ -115,7 +113,8 @@ class ClientAPI (private val sessionManager: SessionManager){
                 val body = response.body<ApiResponse>()
                 if (response.status.value in 200..299 && body.token != null) {
                     // Извлекаем ID. Если он вдруг null, используем -1 или выбрасываем ошибку
-                    val userId = body.user_id ?: -1
+                    Log.d("api_test", "body: $body")
+                    val userId = body.userId ?: -1
 
                     if (userId != -1) {
                         sessionManager.saveUserId(userId)

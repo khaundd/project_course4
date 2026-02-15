@@ -8,7 +8,7 @@ import androidx.room.PrimaryKey
     tableName = "meal_meal_plan_day",
     foreignKeys = [
         ForeignKey(
-            entity = Meal::class,
+            entity = MealEntity::class,
             parentColumns = ["mealId"],
             childColumns = ["mealId"],
             onDelete = ForeignKey.CASCADE

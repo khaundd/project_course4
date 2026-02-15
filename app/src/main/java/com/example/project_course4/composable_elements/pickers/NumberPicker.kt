@@ -85,7 +85,7 @@ fun NumberPicker(
         LaunchedEffect(listState.isScrollInProgress) {
             if (!listState.isScrollInProgress) {
                 // Небольшая задержка для завершения анимации
-                kotlinx.coroutines.delay(100)
+                delay(100)
                 
                 // Получаем текущую позицию прокрутки
                 val visibleItems = listState.layoutInfo.visibleItemsInfo

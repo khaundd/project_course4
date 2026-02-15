@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
-import com.example.project_course4.local_db.entities.Meal
+import com.example.project_course4.local_db.entities.MealEntity
 import com.example.project_course4.local_db.dao.MealDao
 import com.example.project_course4.local_db.dao.ProductsDao
 import com.example.project_course4.local_db.entities.*
@@ -13,7 +13,7 @@ import com.example.project_course4.local_db.entities.*
 @Database(
     entities = [
         DishComposition::class,
-        Meal::class,
+        MealEntity::class,
         MealComponent::class,
         MealMealComponent::class,
         MealMealPlanDay::class,
@@ -23,7 +23,7 @@ import com.example.project_course4.local_db.entities.*
         Products::class,
         UserMealPlan::class
     ],
-    version = 1
+    version = 2
 )
 @TypeConverters(DatabaseConverters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -40,7 +40,9 @@ object DatabaseProvider {
                 context.applicationContext,
                 AppDatabase::class.java,
                 "app_db"
-            ).build()
+            )
+                .fallbackToDestructiveMigration(true)
+                .build()
             INSTANCE = instance
             instance
         }

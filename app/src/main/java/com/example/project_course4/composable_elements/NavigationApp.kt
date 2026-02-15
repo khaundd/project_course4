@@ -48,7 +48,8 @@ fun NavigationApp() {
         ProductRepository(
             productDao = database.productsDao(),
             clientAPI = clientAPI,
-            sessionManager = sessionManager
+            sessionManager = sessionManager,
+            mealDao = database.mealDao()
         )
     }
 
