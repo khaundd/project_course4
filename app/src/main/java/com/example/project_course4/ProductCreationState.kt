@@ -1,8 +1,5 @@
 package com.example.project_course4
 
-/**
- * Состояние для создания нового продукта
- */
 data class ProductCreationState(
     val name: String = "",
     val protein: String = "",
@@ -16,17 +13,11 @@ data class ProductCreationState(
     val barcodeError: String? = null
 )
 
-/**
- * Результат валидации поля
- */
 sealed class ValidationResult {
     object Valid : ValidationResult()
     data class Invalid(val errorMessage: String) : ValidationResult()
 }
 
-/**
- * Валидатор для полей создания продукта
- */
 class ProductCreationValidator {
     
     fun validateName(name: String): ValidationResult {

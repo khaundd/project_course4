@@ -29,7 +29,6 @@ fun TimePickerDialog(
     var selectedHour by remember { mutableStateOf(initialTime.hour) }
     var selectedMinute by remember { mutableStateOf(initialTime.minute) }
     
-    // Создаем объект LocalTime только при необходимости
     val selectedTime by remember(selectedHour, selectedMinute) {
         mutableStateOf(initialTime.withHour(selectedHour).withMinute(selectedMinute))
     }
@@ -48,7 +47,7 @@ fun TimePickerDialog(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(16.dp)
             ) {
-                // Часы
+                // часы
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -62,7 +61,7 @@ fun TimePickerDialog(
                     )
                 }
 
-                // Минуты
+                // минуты
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {

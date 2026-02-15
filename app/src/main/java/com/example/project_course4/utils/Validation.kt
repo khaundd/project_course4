@@ -24,10 +24,9 @@ class Validation {
     var ageError by mutableStateOf("")
     var codeError by mutableStateOf("")
 
-    // Для хранения сообщений для всплывающих уведомлений
+    // для хранения сообщений для всплывающих уведомлений
     var toastMessage by mutableStateOf<String?>(null)
 
-    // Сброс сообщения уведомления после показа
     fun clearToastMessage() {
         toastMessage = null
     }
@@ -69,7 +68,7 @@ class Validation {
         } else if (height.endsWith(".")) {
             heightError = "Введите число после точки или удалите точку"
         } else {
-            // Проверка количества знаков после точки только если есть десятичная часть
+            // проверка количества знаков после точки только если есть десятичная часть
             if (height.contains(".")) {
                 val decimalPart = height.substringAfter(".")
                 if (decimalPart.length > 2) {
@@ -97,7 +96,7 @@ class Validation {
         } else if (weight.endsWith(".")) {
             weightError = "Введите число после точки или удалите точку"
         } else {
-            // Проверка количества знаков после точки только если есть десятичная часть
+            // проверка количества знаков после точки только если есть десятичная часть
             if (weight.contains(".")) {
                 val decimalPart = weight.substringAfter(".")
                 if (decimalPart.length > 2) {

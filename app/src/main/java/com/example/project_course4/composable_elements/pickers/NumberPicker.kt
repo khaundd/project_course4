@@ -29,7 +29,7 @@ fun NumberPicker(
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     
-    // Автоматическая прокрутка к текущему значению при инициализации
+    // автоматическая прокрутка к текущему значению при инициализации
     LaunchedEffect(value) {
         if (wheelModeEnabled) {
             val targetIndex = value - range.first
@@ -38,9 +38,6 @@ fun NumberPicker(
             }
         }
     }
-    
-    // Удаляем этот эффект, так как его функциональность теперь в другом эффекте
-
     val items = remember(range) { range.toList() }
     
     Box(
@@ -76,22 +73,22 @@ fun NumberPicker(
             }
         }
         
-        // Добавляем невидимый элемент для фокусировки
+        // невидимый элемент для фокусировки
         LaunchedEffect(Unit) {
             listState.scrollToItem(value - range.first)
         }
         
-            // Эффект для обновления значения при изменении позиции прокрутки
+            // эффект для обновления значения при изменении позиции прокрутки
         LaunchedEffect(listState.isScrollInProgress) {
             if (!listState.isScrollInProgress) {
-                // Небольшая задержка для завершения анимации
+                // небольшая задержка для завершения анимации
                 delay(100)
                 
-                // Получаем текущую позицию прокрутки
+                // получаем текущую позицию прокрутки
                 val visibleItems = listState.layoutInfo.visibleItemsInfo
                 if (visibleItems.isNotEmpty()) {
-                    // Находим элемент, который ближе всего к центру
-                    val centerPosition = 60f // Половина высоты контента
+                    // находим элемент, который ближе всего к центру
+                    val centerPosition = 60f
                     var closestItem = visibleItems[0]
                     var minDistance = kotlin.math.abs(visibleItems[0].offset.toFloat() + visibleItems[0].size / 2 - centerPosition)
                     
@@ -103,13 +100,12 @@ fun NumberPicker(
                         }
                     }
                     
-                    // Обновляем значение, если оно изменилось
                     val newValue = items[closestItem.index]
                     if (newValue != value) {
                         onValueChange(newValue)
                     }
                     
-                    // Прокручиваем к ближайшему элементу, если еще не на нем
+                    // прокручиваем к ближайшему элементу, если еще не на нем
                     if (closestItem.index != listState.firstVisibleItemIndex) {
                         coroutineScope.launch {
                             listState.animateScrollToItem(closestItem.index)

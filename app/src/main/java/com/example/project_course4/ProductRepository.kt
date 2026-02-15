@@ -19,7 +19,7 @@ class ProductRepository(
     private val sessionManager: SessionManager,
     private val mealDao: MealDao
 ) {
-    // Наблюдаем за базой данных и конвертируем Entity в UI-модели
+    // наблюдаем за базой данных и конвертируем Entity в UI-модели
     fun getProductsFlow(): Flow<List<Product>> {
         val userId = sessionManager.fetchUserId()
         return productDao.getUserProducts(userId).map { list ->
@@ -30,7 +30,6 @@ class ProductRepository(
     suspend fun fetchInitialProducts() {
         try {
             val currentUserId = sessionManager.fetchUserId()
-            // Предполагается, что вы обновили ClientAPI для поддержки limit
             val response = clientAPI.getProducts(limit = 50)
             val entities = response.map { it.toEntity(isSavedLocally = true, currentUserId = currentUserId) }
             productDao.insertProducts(entities)

@@ -36,13 +36,12 @@ fun WeightInputDialog(
 ) {
     var weightInput by remember { mutableStateOf("0") }
 
-    // При инициализации компонента определяем начальный вес
+    // при инициализации компонента определяем начальный вес
     LaunchedEffect(product) {
-        // В режиме добавления из списка всегда начинаем с 0
         if (viewModel.isAddingFromList.value) {
             weightInput = "0"
         } else {
-            // В режиме редактирования показываем текущий вес продукта
+            // в режиме редактирования показываем текущий вес продукта
             val existingProduct = viewModel.finalSelection.value.find { it.product == product }
             if (existingProduct != null) {
                 weightInput = existingProduct.weight.toString()
@@ -52,7 +51,7 @@ fun WeightInputDialog(
         }
     }
 
-    // Используем LaunchedEffect для отслеживания состояния ввода веса
+    // отслеживание состояния ввода веса
     val shouldShowWeightInput by viewModel.shouldShowWeightInput.collectAsState()
 
     LaunchedEffect(shouldShowWeightInput) {

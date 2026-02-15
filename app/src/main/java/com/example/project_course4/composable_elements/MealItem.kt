@@ -48,7 +48,7 @@ fun MealItem(
     mealBackgroundColor: Color = Color(0xFFF5F5F5)
 ) {
     var showOptions by remember { mutableStateOf(false) }
-    
+
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
     var showTimePicker by remember { mutableStateOf(false) }
     
@@ -73,7 +73,6 @@ fun MealItem(
                 onDismiss = { showTimePicker = false }
             )
         }
-        // Заголовок приёма пищи с временем и кнопкой с тремя точками
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -97,19 +96,16 @@ fun MealItem(
             }
         }
         
-        // Разделительная линия
         HorizontalDivider(
             color = Color.Black,
             thickness = 1.dp,
             modifier = Modifier.padding(vertical = 8.dp)
         )
         
-        // Список блюд или сообщение о пустом списке
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
             if (products.isEmpty()) {
-                // Текст "Здесь ничего нет"
                 Text(
                     text = "Здесь ничего нет",
                     modifier = Modifier
@@ -118,7 +114,6 @@ fun MealItem(
                     textAlign = TextAlign.Center
                 )
                 
-                // Кнопка "Добавить" под текстом, с правого края, с отступом снизу 4 dp
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -151,13 +146,11 @@ fun MealItem(
                             onEdit = { onEditProduct(selectedProduct.product, meal) },
                             onDelete = { onDeleteProduct(selectedProduct.product, meal) }
                         )
-                        // Добавляем отступ после каждого блюда, кроме последнего
                         if (index < products.size - 1) {
                             Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
                     
-                    // Кнопка "Добавить" под последним блюдом, с правого края
                     Box(
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -174,16 +167,13 @@ fun MealItem(
                 }
             }
             
-            // Разделительная линия и БЖУ только для непустого приёма пищи
             if (products.isNotEmpty()) {
-                // Разделительная линия
                 HorizontalDivider(
                     color = Color.Black,
                     thickness = 1.dp,
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
                 
-                // Отображение БЖУ и калорийности
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()

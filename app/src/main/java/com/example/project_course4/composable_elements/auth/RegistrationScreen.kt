@@ -32,10 +32,8 @@ fun RegistrationScreen(navController: NavController, viewModel: ViewModel) {
     var isLoading by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    // 1. Состояние для Snackbar
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // 2. Эффект для показа уведомлений
     LaunchedEffect(validation.toastMessage) {
         validation.toastMessage?.let { message ->
             snackbarHostState.showSnackbar(
@@ -46,7 +44,6 @@ fun RegistrationScreen(navController: NavController, viewModel: ViewModel) {
         }
     }
 
-    // Мониторинг валидации (оставляем вашу логику с showErrors)
     LaunchedEffect(validation.login) {
         if (validation.login.isNotEmpty()) validation.validateLogin()
     }
@@ -63,11 +60,9 @@ fun RegistrationScreen(navController: NavController, viewModel: ViewModel) {
     LaunchedEffect(validation.weight) { if (validation.weight.isNotEmpty()) validation.validateWeight() }
     LaunchedEffect(validation.age) { if (validation.age.isNotEmpty()) validation.validateAge() }
 
-    // 3. Обертка в Scaffold
     Scaffold(
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState) { data ->
-                // Можно кастомизировать внешний вид Snackbar здесь
                 Snackbar(
                     containerColor = MaterialTheme.colorScheme.inverseSurface,
                     contentColor = MaterialTheme.colorScheme.inverseOnSurface,
@@ -76,13 +71,12 @@ fun RegistrationScreen(navController: NavController, viewModel: ViewModel) {
             }
         }
     ) { paddingValues ->
-        // Добавляем VerticalScroll, так как полей много и они могут не влезть на экран
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(16.dp)
-                .verticalScroll(rememberScrollState()), // Чтобы экран можно было скроллить
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -113,7 +107,6 @@ fun RegistrationScreen(navController: NavController, viewModel: ViewModel) {
                 onValueChange = {
                     validation.password = it
                     validation.validatePassword()
-                    // При изменении пароля проверяем соответствие с подтверждением
                     if (validation.passwordConfirmation.isNotEmpty()) {
                         validation.validatePasswordConfirmation()
                     }

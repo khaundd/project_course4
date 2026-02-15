@@ -26,23 +26,18 @@ fun LoginScreen(navController: NavController, viewModel: ViewModel) {
     var isLoading by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    // 1. Состояние для Snackbar
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // 2. Слушаем изменения toastMessage и показываем Snackbar
     LaunchedEffect(validation.toastMessage) {
         validation.toastMessage?.let { message ->
-            // Показываем снекбар
             snackbarHostState.showSnackbar(
                 message = message,
                 duration = SnackbarDuration.Short
             )
-            // Очищаем сообщение в модели после показа
             validation.clearToastMessage()
         }
     }
 
-    // Мониторинг валидации
     LaunchedEffect(validation.email) {
         if (validation.email.isNotEmpty()) validation.validateEmail()
     }
@@ -50,14 +45,13 @@ fun LoginScreen(navController: NavController, viewModel: ViewModel) {
         if (validation.password.isNotEmpty()) validation.validatePassword()
     }
 
-    // 3. Используем Scaffold для правильного размещения Snackbar
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues) // Важно использовать padding от Scaffold
+                .padding(paddingValues)
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
@@ -149,7 +143,6 @@ fun LoginScreen(navController: NavController, viewModel: ViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Текст "Зарегистрироваться"
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Нет аккаунта? ")
                 Text(

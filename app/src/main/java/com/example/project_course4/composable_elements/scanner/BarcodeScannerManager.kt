@@ -9,7 +9,7 @@ import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 
 class BarcodeScannerManager(private val context: Context) {
 
-    // Настраиваем опции: только EAN_13 и автозум
+    // опции: EAN_13 и автозум
     private val options = GmsBarcodeScannerOptions.Builder()
         .setBarcodeFormats(Barcode.FORMAT_EAN_13)
         .enableAutoZoom()
@@ -17,10 +17,6 @@ class BarcodeScannerManager(private val context: Context) {
 
     private val scanner = GmsBarcodeScanning.getClient(context, options)
 
-    /**
-     * Запускает системный сканер Google.
-     * @param onCodeScanned колбэк, вызываемый при успешном получении кода
-     */
     fun startScanning(onResult: (String) -> Unit, onError: (Exception) -> Unit) {
         scanner.startScan()
             .addOnSuccessListener { barcode ->
@@ -36,5 +32,6 @@ class BarcodeScannerManager(private val context: Context) {
             .addOnCanceledListener {
                 Log.d("BarcodeScanner", "Сканирование отменено пользователем")
             }
+        //TODO onError
     }
 }

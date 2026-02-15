@@ -29,13 +29,11 @@ fun NutritionChart(
     totalCalories: Float,
     modifier: Modifier = Modifier
 ) {
-    // Константы норм
     val targetProtein = 100f
     val targetFats = 70f
     val targetCarbs = 230f
     val targetCalories = targetProtein * 4 + targetFats * 9 + targetCarbs * 4
 
-    // Расчет долей в общей дуге (180 градусов) на основе весов норм
     val totalTargetWeight = targetProtein + targetFats + targetCarbs
 
     Canvas(
@@ -43,8 +41,8 @@ fun NutritionChart(
             .fillMaxWidth()
             .height(220.dp)
     ) {
-        val strokeWidthTarget = 60f  // Толщина линии нормы
-        val strokeWidthProgress = 60f // Толщина линии съеденного
+        val strokeWidthTarget = 60f  // толщина линии нормы
+        val strokeWidthProgress = 60f // толщина линии съеденного
         val centerX = size.width / 2
         val centerY = size.height * 0.9f
         val radius = size.width * 0.35f
@@ -57,7 +55,6 @@ fun NutritionChart(
             textAlign = AndroidPaint.Align.CENTER
         }
 
-        // Данные для отрисовки: Текущее, Норма, Цвет, Название
         val layers = listOf(
             Triple(protein, targetProtein, ProteinColor to "Белки"),
             Triple(fats, targetFats, FatColor to "Жиры"),
@@ -68,10 +65,10 @@ fun NutritionChart(
 
         layers.forEach { (current, target, info) ->
             val (color, label) = info
-            // Угол, который этот нутриент занимает в общей норме
+            // угол, нутриент занимает в общей норме
             val segmentMaxAngle = maxAngle * (target / totalTargetWeight)
 
-            // 1. Рисуем подложку (Норма) - полупрозрачная или светлая
+            // подложка с нормой
             drawArc(
                 color = color.copy(alpha = 0.2f),
                 startAngle = currentAngle,
@@ -82,8 +79,8 @@ fun NutritionChart(
                 style = Stroke(width = strokeWidthTarget, cap = StrokeCap.Round)
             )
 
-            // 2. Рисуем прогресс (Съеденное)
-            // Ограничиваем sweepAngle, чтобы полоса не выходила за пределы своей секции нормы (max 100%)
+            // прогресс (съеденное)
+            // ограничиваем sweepAngle, чтобы полоса не выходила за пределы своей секции нормы (max 100%)
             val progressPercent = (current / target).coerceAtMost(1f)
             val progressSweepAngle = segmentMaxAngle * progressPercent
 
@@ -99,7 +96,7 @@ fun NutritionChart(
                 )
             }
 
-            // 3. Легенда (только для нормы) огибает область
+            // легенда
             drawContext.canvas.nativeCanvas.apply {
                 val path = AndroidPath()
                 val rectF = RectF(
@@ -113,7 +110,7 @@ fun NutritionChart(
                 textPaint.isFakeBoldText = false
                 drawTextOnPath(label, path, 0f, 0f, textPaint)
 
-                // Значение внутри (съеденные граммы)
+                // съеденные граммы
                 val midAngle = currentAngle + progressSweepAngle / 2
                 val angleRad = Math.toRadians(midAngle.toDouble())
                 val vX = centerX + (radius * kotlin.math.cos(angleRad)).toFloat()
@@ -130,15 +127,15 @@ fun NutritionChart(
             currentAngle += segmentMaxAngle
         }
 
-        // 4. Текст по центру (Калории)
+        // калории
         drawContext.canvas.nativeCanvas.apply {
-            // Съеденные калории (Bold)
+            // съеденные (жирный)
             textPaint.color = AndroidColor.BLACK
             textPaint.textSize = 64f
             textPaint.isFakeBoldText = true
             drawText("${totalCalories.toInt()}", centerX, centerY - 80f, textPaint)
 
-            // Норма калорий
+            // норма
             textPaint.textSize = 32f
             textPaint.isFakeBoldText = false
             textPaint.color = AndroidColor.GRAY

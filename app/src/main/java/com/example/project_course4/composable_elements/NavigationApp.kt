@@ -32,7 +32,7 @@ import com.example.project_course4.viewmodel.ProductViewModel
 fun NavigationApp() {
     val context = LocalContext.current
     val navController = rememberNavController()
-    val scannerManager = remember { BarcodeScannerManager(context) }     // Инициализируем менеджер сканера
+    val scannerManager = remember { BarcodeScannerManager(context) }
     val sessionManager = remember { SessionManager(context) }
     val clientAPI = remember { ClientAPI(sessionManager) }
 
@@ -53,7 +53,7 @@ fun NavigationApp() {
         )
     }
 
-    // Общая функция обработки сканирования
+    // функция обработки сканирования
     val handleScanning = {
         scannerManager.startScanning(
             onResult = { barcode ->
@@ -76,11 +76,9 @@ fun NavigationApp() {
         object : ViewModelProvider.Factory {
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
                 return when {
-                    // Для ProductViewModel
                     modelClass.isAssignableFrom(ProductViewModel::class.java) ->
                         ProductViewModel(productRepository) as T
 
-                    // Для ViewModel (логин/регистрация)
                     modelClass.isAssignableFrom(ViewModel::class.java) ->
                         ViewModel(clientAPI, sessionManager) as T
 
@@ -90,13 +88,12 @@ fun NavigationApp() {
         }
     }
 
-    // экземпляры ViewModel
     val productViewModel: ProductViewModel = viewModel(factory = factory)
     val authViewModel: ViewModel = viewModel(factory = factory)
     
     NavHost(
         navController = navController,
-        startDestination = startDestination // Используем вычисленный путь
+        startDestination = startDestination // используем вычисленный путь
     ) {
         composable(Screen.Main.route) { backStackEntry ->
             MainScreen(
@@ -106,7 +103,6 @@ fun NavigationApp() {
                     handleScanning()
                 },
                 onLogout = {
-                    // Вызываем logout через API с навигацией
                     authViewModel.logoutAndNavigate(navController)
                 }
             )

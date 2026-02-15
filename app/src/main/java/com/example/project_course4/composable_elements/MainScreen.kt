@@ -39,14 +39,12 @@ fun MainScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    // Следим за текущим маршрутом для выделения в меню
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
     var showCustomCalendar by remember { mutableStateOf(false) }
     var selectedLocalDate by remember { mutableStateOf(LocalDate.now()) }
 
-    // Текст для кнопки в TopAppBar
     val dateButtonText = remember(selectedLocalDate) {
         val today = LocalDate.now()
         val label = when (selectedLocalDate) {
@@ -66,7 +64,6 @@ fun MainScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Меню", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleLarge)
 
-                // Пункт: Главная
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Default.Restaurant, contentDescription = null) },
                     label = { Text("Дневник питания") },
@@ -75,7 +72,6 @@ fun MainScreen(
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
 
-                // Пункт: Создать продукт
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Default.AddCircle, contentDescription = null) },
                     label = { Text("Создать продукт") },
@@ -115,7 +111,7 @@ fun MainScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues) // Важно: используем отступы Scaffold
+                    .padding(paddingValues)
                     .background(Color.White)
             ) {
                 // Инициализация приёмов пищи
@@ -138,7 +134,6 @@ fun MainScreen(
                     )
                 }
 
-                // Расчет нутриентов
                 val totalCalories = meals.sumOf { viewModel.getMealNutrition(it.id).calories.toDouble() }.toFloat()
                 val totalProtein = meals.sumOf { viewModel.getMealNutrition(it.id).protein.toDouble() }.toFloat()
                 val totalFats = meals.sumOf { viewModel.getMealNutrition(it.id).fats.toDouble() }.toFloat()
@@ -174,11 +169,10 @@ fun MainScreen(
                                 nutrition = nutrition,
                                 onTimeClick = { m -> viewModel.updateMealTime(m.id, m.time) },
                                 onAddProductClick = { m ->
-//                                    viewModel.loadProducts()
                                     if (shouldShowWeightInput){
-                                    val components = viewModel.finalSelection.value.map { selected ->
-                                        selected.product.productId to selected.weight.toUShort()
-                                    }
+                                        viewModel.finalSelection.value.map { selected ->
+                                            selected.product.productId to selected.weight.toUShort()
+                                        }
                                     viewModel.saveCurrentMeal(meal.id)
                                     }
                                     viewModel.setEditingMealId(m.id)
@@ -194,7 +188,6 @@ fun MainScreen(
                         }
                     }
 
-                    // Блок кнопок внизу
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -228,7 +221,7 @@ fun MainScreen(
         }
     }
 
-    // Окно календаря
+    // окно календаря
     if (showCustomCalendar) {
         CustomCalendarDialog(
             initialDate = selectedLocalDate,

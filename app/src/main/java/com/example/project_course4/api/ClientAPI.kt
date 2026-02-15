@@ -26,7 +26,7 @@ class ClientAPI (private val sessionManager: SessionManager){
         install(ContentNegotiation.Plugin) {
             json(
                 Json {
-                    ignoreUnknownKeys = true // Это поможет не падать, если сервер прислал лишние поля
+                    ignoreUnknownKeys = true // поможет не падать, если сервер прислал лишние поля
                     coerceInputValues = true
                 }
             )
@@ -40,8 +40,6 @@ class ClientAPI (private val sessionManager: SessionManager){
             }
         }
     }
-    
-    // Существующая функция получения продуктов
     suspend fun getProducts(limit: Int? = null): List<Product> {
         val url = if (limit != null) "$BASE_URL/products?limit=$limit" else "$BASE_URL/products"
         return withContext(Dispatchers.IO) {
@@ -55,8 +53,7 @@ class ClientAPI (private val sessionManager: SessionManager){
             }
         }
     }
-    
-    // Функция регистрации пользователя
+
     suspend fun register(
         username: String,
         password: String,
@@ -68,7 +65,6 @@ class ClientAPI (private val sessionManager: SessionManager){
         val url = "$BASE_URL/register"
         return withContext(Dispatchers.IO) {
             try {
-                // Преобразуем все значения в строки для сериализации
                 val userData = mapOf<String, String>(
                     "username" to username,
                     "password" to password,
@@ -98,8 +94,7 @@ class ClientAPI (private val sessionManager: SessionManager){
             }
         }
     }
-    
-    // Функция авторизации пользователя
+
     suspend fun login(email: String, password: String): Result<String> {
         val url = "$BASE_URL/login"
         return withContext(Dispatchers.IO) {
@@ -112,7 +107,6 @@ class ClientAPI (private val sessionManager: SessionManager){
                 Log.d("api_test", "Ответ сервера: $rawResponse")
                 val body = response.body<ApiResponse>()
                 if (response.status.value in 200..299 && body.token != null) {
-                    // Извлекаем ID. Если он вдруг null, используем -1 или выбрасываем ошибку
                     Log.d("api_test", "body: $body")
                     val userId = body.userId ?: -1
 
@@ -149,19 +143,16 @@ class ClientAPI (private val sessionManager: SessionManager){
                 }
             } catch (e: Exception) {
                 Log.e("api_test", "Ошибка в logout: ${e.message}", e)
-                // Даже если сети нет, токен лучше удалить локально
                 sessionManager.clearData()
                 Result.failure(e)
             }
         }
     }
-    
-    // Функция подтверждения email
+
     suspend fun verifyEmail(email: String, code: String): Result<String> {
         val url = "$BASE_URL/verify-email"
         return withContext(Dispatchers.IO) {
             try {
-                // Преобразуем значения в строки для сериализации
                 val verificationData = mapOf<String, String>(
                     "email" to email,
                     "code" to code

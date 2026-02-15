@@ -28,7 +28,7 @@ fun Product.toEntity(isSavedLocally: Boolean, currentUserId: Int): Products {
         carbs = this.carbs,
         barcode = this.barcode,
         isDish = this.isDish,
-        createdBy = this.createdBy ?: currentUserId, // Если с сервера не пришел ID, ставим текущий
+        createdBy = this.createdBy ?: currentUserId, // если с сервера не пришел ID, ставим текущий
         isSavedLocally = isSavedLocally
     )
 }

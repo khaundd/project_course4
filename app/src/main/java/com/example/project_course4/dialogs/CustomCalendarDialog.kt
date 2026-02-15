@@ -37,7 +37,7 @@ fun CustomCalendarDialog(
     val daysInMonth = remember(currentMonth) {
         (1..currentMonth.lengthOfMonth()).map { currentMonth.atDay(it) }
     }
-    // Отступ для начала месяца (чтобы Пн был под Пн)
+    // чтобы Пн был под Пн и т.д.
     val firstDayOffset = currentMonth.atDay(1).dayOfWeek.value - 1
 
     Dialog(onDismissRequest = onDismiss) {
@@ -47,7 +47,6 @@ fun CustomCalendarDialog(
             modifier = Modifier.fillMaxWidth().padding(16.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                // Шапка календаря: Месяц и Стрелки
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -68,7 +67,6 @@ fun CustomCalendarDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Дни недели
                 Row(modifier = Modifier.fillMaxWidth()) {
                     listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс").forEach { day ->
                         Text(
@@ -83,12 +81,10 @@ fun CustomCalendarDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Сетка дней
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(7),
                     modifier = Modifier.height(280.dp) // Фиксированная высота сетки
                 ) {
-                    // Пустые ячейки для смещения начала месяца
                     items(firstDayOffset) { Spacer(modifier = Modifier.fillMaxSize()) }
 
                     items(daysInMonth) { date ->
@@ -119,7 +115,7 @@ fun CustomCalendarDialog(
                                 Text(
                                     text = calories.toString(),
                                     fontSize = 8.sp,
-                                    color = Color(0xFF4CAF50), // Зеленый цвет для калорий
+                                    color = Color(0xFF4CAF50), // цвет для калорий
                                     lineHeight = 8.sp
                                 )
                             }

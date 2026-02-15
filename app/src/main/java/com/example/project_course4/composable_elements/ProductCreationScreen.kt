@@ -25,7 +25,7 @@ fun ProductCreationScreen(
     val validator = remember { ProductCreationValidator() }
     var calories by rememberSaveable { mutableStateOf(0f) }
 
-    // Обновляем калорийность при изменении БЖУ
+    // обновляем калорийность при изменении БЖУ
     LaunchedEffect(state.protein, state.fats, state.carbs) {
         val protein = state.protein.toFloatOrNull() ?: 0f
         val fats = state.fats.toFloatOrNull() ?: 0f
@@ -46,12 +46,10 @@ fun ProductCreationScreen(
             modifier = Modifier.padding(bottom = 16.dp)
         )
         
-        // Вертикальный список пар: метка - поле ввода
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Пара: метка и поле ввода для названия
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -84,7 +82,6 @@ fun ProductCreationScreen(
                 )
             }
             
-            // Пара: метка и поле ввода для белков
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -118,7 +115,6 @@ fun ProductCreationScreen(
                 )
             }
             
-            // Пара: метка и поле ввода для жиров
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -152,7 +148,6 @@ fun ProductCreationScreen(
                 )
             }
             
-            // Пара: метка и поле ввода для углеводов
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -186,7 +181,6 @@ fun ProductCreationScreen(
                 )
             }
             
-            // Пара: метка и поле отображения калорийности
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -206,7 +200,6 @@ fun ProductCreationScreen(
                 )
             }
             
-            // Пара: метка и поле ввода для штрих-кода
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -221,7 +214,6 @@ fun ProductCreationScreen(
                     value = state.barcode,
                     onValueChange = { barcode ->
                         val newState = state.copy(barcode = barcode)
-                        // Пока нет валидации штрих-кода, просто копируем значение
                         viewModel.updateProductCreationState(newState)
                     },
                     singleLine = true,
@@ -230,7 +222,6 @@ fun ProductCreationScreen(
             }
         }
         
-        // Кнопки действий
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -246,7 +237,6 @@ fun ProductCreationScreen(
 
             Button(
                 onClick = {
-                    // Валидация всех полей перед сохранением
                     val nameValidation = validator.validateName(state.name)
                     val proteinValidation = validator.validateFloatValue(state.protein, "Белки")
                     val fatsValidation = validator.validateFloatValue(state.fats, "Жиры")
@@ -262,13 +252,11 @@ fun ProductCreationScreen(
 
                     viewModel.updateProductCreationState(updatedState)
 
-                    // Если нет ошибок, можно сохранить продукт (пока просто закрываем экран)
-                    if (updatedState.nameError == null && 
+                    if (updatedState.nameError == null &&
                         updatedState.proteinError == null && 
                         updatedState.fatsError == null && 
                         updatedState.carbsError == null) {
-                        // Здесь будет вызов функции сохранения продукта в БД
-                        // Пока просто закрываем экран
+                        // здесь будет вызов функции сохранения продукта в БД
                         viewModel.hideProductCreationScreen()
                     }
                 },

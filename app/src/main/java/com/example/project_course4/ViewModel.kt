@@ -12,7 +12,6 @@ class ViewModel(
     private val sessionManager: SessionManager
 ) : ViewModel() {
     
-    // Функция для выхода из аккаунта
     fun logout(
         onSuccess: (String) -> Unit = {},
         onError: (String) -> Unit = {}
@@ -32,7 +31,6 @@ class ViewModel(
         }
     }
     
-    // Функция для выхода из аккаунта с навигацией и отслеживанием состояния
     fun logoutAndNavigate(
         navController: NavController,
         onLoggingOut: (Boolean) -> Unit = {}
@@ -54,7 +52,6 @@ class ViewModel(
         )
     }
     
-    // Функция для регистрации пользователя
     fun register(
         username: String,
         password: String,
@@ -82,7 +79,6 @@ class ViewModel(
         }
     }
     
-    // Функция для авторизации пользователя
     fun login(
         email: String,
         password: String,
@@ -93,7 +89,7 @@ class ViewModel(
             val result = clientAPI.login(email, password)
             result.fold(
                 onSuccess = { token ->
-                    sessionManager.saveAuthToken(token) // Сохраняем полученный токен!
+                    sessionManager.saveAuthToken(token) // сохраняем полученный токен
                     onSuccess("Вход выполнен")
                 },
                 onFailure = { error -> onError(error.message ?: "Ошибка") }
@@ -101,7 +97,6 @@ class ViewModel(
         }
     }
     
-    // Функция для подтверждения email
     fun verifyEmail(
         email: String,
         code: String,

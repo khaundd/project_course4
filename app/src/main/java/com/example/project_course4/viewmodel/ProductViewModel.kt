@@ -10,19 +10,15 @@ import com.example.project_course4.Product
 import com.example.project_course4.ProductCreationState
 import com.example.project_course4.ProductRepository
 import com.example.project_course4.SelectedProduct
-import com.example.project_course4.SessionManager
-import com.example.project_course4.api.ClientAPI
 import com.example.project_course4.local_db.entities.MealEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
-import java.util.UUID
 
 class ProductViewModel(
     private val repository: ProductRepository
@@ -34,52 +30,52 @@ class ProductViewModel(
             initialValue = emptyList()
         )
 
-    // Состояние для создания нового продукта
+    // состояние для создания нового продукта
     private var _productCreationState = MutableStateFlow(ProductCreationState())
     val productCreationState: StateFlow<ProductCreationState> = _productCreationState.asStateFlow()
 
-    // Флаг, показывающий нужно ли показывать экран создания продукта
+    // флаг, показывающий нужно ли показывать экран создания продукта
     private var _shouldShowProductCreation = MutableStateFlow(false)
     val shouldShowProductCreation: StateFlow<Boolean> = _shouldShowProductCreation.asStateFlow()
 
-    // Флаг, указывающий, что продукты добавляются из списка
+    // флаг, указывающий, что продукты добавляются из списка
     private var _isAddingFromList = MutableStateFlow(false)
     var isAddingFromList: StateFlow<Boolean> = _isAddingFromList.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
-    // Текущий временный выбор на экране выбора продуктов
+    // текущий временный выбор на экране выбора продуктов
     private var _currentSelection = MutableStateFlow<Set<Product>>(emptySet())
     var currentSelection: StateFlow<Set<Product>> = _currentSelection.asStateFlow()
 
-    // Продукты, ожидающие ввода веса
+    // продукты, ожидающие ввода веса
     private var _pendingProducts = MutableStateFlow<List<Product>>(emptyList())
     var pendingProducts: StateFlow<List<Product>> = _pendingProducts.asStateFlow()
 
-    // Окончательный выбор на главном экране
+    // окончательный выбор на главном экране
     private var _finalSelection = MutableStateFlow<List<SelectedProduct>>(emptyList())
     var finalSelection: StateFlow<List<SelectedProduct>> = _finalSelection.asStateFlow()
 
-    // Список приёмов пищи
+    // список приёмов пищи
     private var _meals = MutableStateFlow<List<Meal>>(emptyList())
     var meals: StateFlow<List<Meal>> = _meals.asStateFlow()
 
-    // Текущий продукт для ввода веса
+    // текущий продукт для ввода веса
     private var _currentProductForWeight = MutableStateFlow<Product?>(null)
     var currentProductForWeight: StateFlow<Product?> = _currentProductForWeight.asStateFlow()
 
-    // Флаг, показывающий нужно ли начинать ввод веса
+    // флаг, показывающий нужно ли начинать ввод веса
     private var _shouldShowWeightInput = MutableStateFlow(false)
     var shouldShowWeightInput: StateFlow<Boolean> = _shouldShowWeightInput.asStateFlow()
 
-    // Идентификатор приёма пищи, в котором происходит редактирование
+    // идентификатор приёма пищи, в котором происходит редактирование
     private var _editingMealId = MutableStateFlow<Int?>(null)
     var editingMealId: StateFlow<Int?> = _editingMealId.asStateFlow()
 
     private var tempMealIdCounter = -1
 
-    // Функция для установки идентификатора приёма пищи
+    // функция для установки идентификатора приёма пищи
     fun setEditingMealId(mealId: Int?) {
         _editingMealId.value = mealId
     }
@@ -91,7 +87,7 @@ class ProductViewModel(
         }
     }
 
-    /** Загружает приёмы пищи и выбранные продукты из локальной БД (при старте приложения). */
+    //загружает приёмы пищи и выбранные продукты из локальной БД (при старте приложения).
     fun loadMealsFromDb() {
         viewModelScope.launch {
             try {
@@ -109,23 +105,19 @@ class ProductViewModel(
         }
     }
 
-    // Функция для обновления состояния создания продукта
     fun updateProductCreationState(newState: ProductCreationState) {
         _productCreationState.value = newState
     }
 
-    // Функция для сброса состояния создания продукта
     fun resetProductCreationState() {
         _productCreationState.value = ProductCreationState()
     }
 
-    // Функция для скрытия экрана создания продукта
     fun hideProductCreationScreen() {
         _shouldShowProductCreation.value = false
         resetProductCreationState()
     }
 
-    // Функция для навигации на экран создания продукта
     fun navigateToProductCreation(navController: NavController) {
         resetProductCreationState()
         navController.navigate("product_creation")
@@ -170,13 +162,13 @@ class ProductViewModel(
         _currentSelection.value = emptySet()
     }
 
-    // Добавить выбранные продукты в приём пищи через диалог ввода веса (editingMealId уже установлен).
+    // добавить выбранные продукты в приём пищи через диалог ввода веса (editingMealId уже установлен).
     fun addSelectionToMealWithWeightInput() {
         val selected = _currentSelection.value.toList()
         if (selected.isEmpty()) return
         
         val mealId = _editingMealId.value ?: "default"
-        // Фильтруем продукты, которых еще нет в приёме пищи
+        // фильтруем продукты, которых еще нет в приёме пищи
         val productsToAdd = selected.filter { product ->
             _finalSelection.value.none { 
                 it.product == product && it.mealId == mealId 
@@ -186,10 +178,10 @@ class ProductViewModel(
         if (productsToAdd.isNotEmpty()) {
             _pendingProducts.value = productsToAdd
             _shouldShowWeightInput.value = true
-            // Устанавливаем флаг, что это добавление из списка
+            // устанавливаем флаг, что это добавление из списка
             _isAddingFromList.value = true
         } else {
-            // Все выбранные продукты уже есть в приёме пищи
+            // все выбранные продукты уже есть в приёме пищи
             _shouldShowWeightInput.value = false
         }
         _currentSelection.value = emptySet()
@@ -203,25 +195,25 @@ class ProductViewModel(
         if (currentProduct != null) {
             val updatedSelection = _finalSelection.value.toMutableList()
             
-            // Проверяем, есть ли продукт с таким же product и mealId
+            // проверяем, есть ли продукт с таким же product и mealId
             val existingProductIndex = updatedSelection.indexOfFirst { 
                 it.product == currentProduct && it.mealId == mealId 
             }
             
             if (existingProductIndex != -1) {
                 val existing = updatedSelection[existingProductIndex]
-                // Используем флаг isAddingFromList для определения режима
+                // используем флаг isAddingFromList для определения режима
                 if (isAddingFromList.value) {
-                    // Режим добавления из списка - суммируем вес, сохраняем junctionId
+                    // режим добавления из списка - суммируем вес, сохраняем junctionId
                     updatedSelection[existingProductIndex] = existing.copy(
                         weight = existing.weight + weight
                     )
                 } else {
-                    // Режим редактирования - только меняем вес в существующей записи, junctionId сохраняем
+                    // режим редактирования - только меняем вес в существующей записи, junctionId сохраняем
                     updatedSelection[existingProductIndex] = existing.copy(weight = weight)
                 }
             } else {
-                // Если продукт новый, добавляем его
+                // если продукт новый, добавляем его
                 updatedSelection.add(
                     SelectedProduct(
                         product = currentProduct,
@@ -252,10 +244,9 @@ class ProductViewModel(
         val productsInMeal = getProductsForMeal(mealId)
 
         if (productsInMeal.isNotEmpty()) {
-            val componentsData = productsInMeal.map {
+            productsInMeal.map {
                 it.product.productId to it.weight.toUShort()
             }
-            // Вызываем сохранение в репозиторий
             saveCurrentMeal(mealInfo.id)
         }
     }
@@ -283,9 +274,8 @@ class ProductViewModel(
         }
     }
 
-    // Функция для редактирования веса продукта в приёме пищи
     fun editProductWeightInMeal(product: Product, mealId: Int, currentWeight: Int) {
-        _isAddingFromList.value = false // режим редактирования — не суммировать вес
+        _isAddingFromList.value = false
         _currentProductForWeight.value = product
         _pendingProducts.value = listOf(product)
         _shouldShowWeightInput.value = true
@@ -301,21 +291,14 @@ class ProductViewModel(
 
         viewModelScope.launch {
             try {
-                // 1. Удаление из БД
+                // удаление из БД
                 selectedToRemove?.junctionId?.let { jId ->
                     repository.deleteProductFromMeal(jId)
                 }
-
-                // 2. МГНОВЕННОЕ ОБНОВЛЕНИЕ UI
-                // Используем filter, чтобы создать НОВУЮ ссылку на список
                 _finalSelection.value = _finalSelection.value.filter { it != selectedToRemove }
 
                 Log.d("DeleteProduct", "Продукт удален, список обновлен")
 
-                // 3. Если в приеме ничего не осталось - удаляем сам прием
-                if (_finalSelection.value.none { it.mealId == mealId }) {
-                    removeMeal(mealId)
-                }
             } catch (e: Exception) {
                 Log.e("DeleteProduct", "Ошибка удаления: ${e.message}")
             }
@@ -330,7 +313,6 @@ class ProductViewModel(
         _isAddingFromList.value = false
     }
 
-    // Инициализация приёмов пищи
     fun initializeMeals() {
         if (_meals.value.isEmpty()) {
             val defaultMeals = listOf(
@@ -342,29 +324,25 @@ class ProductViewModel(
         }
     }
 
-    // Добавление нового приёма пищи
     fun addMeal(name: String) {
         val newMeal = Meal(
             id = tempMealIdCounter--, // Временный ID: -1, -2 и т.д.
             time = LocalTime.now(),
             name = name
         )
-        _meals.value = _meals.value + newMeal
+        _meals.value += newMeal
     }
 
-    // Удаление приёма пищи
-    fun removeMeal(mealId: Int) { // Принимает Int
+    fun removeMeal(mealId: Int) {
         Log.d("MealDelete", "Попытка удаления приёма пищи с ID: $mealId")
 
         viewModelScope.launch {
             try {
-                // Если ID > 0, значит приём пищи уже есть в БД
+                // если ID > 0, значит приём пищи уже есть в БД
                 if (mealId > 0) {
                     Log.d("MealDelete", "Удаление из локальной БД по ID: $mealId")
                     repository.deleteMealFromDb(mealId)
                 }
-
-                // Удаляем из UI-состояний
                 _meals.value = _meals.value.filter { it.id != mealId }
                 _finalSelection.value = _finalSelection.value.filter { it.mealId != mealId }
 
@@ -375,23 +353,20 @@ class ProductViewModel(
         }
     }
 
-    // Обновление времени приёма пищи
     fun updateMealTime(mealId: Int, newTime: LocalTime) {
         val updatedMeals = _meals.value.toMutableList()
         val index = updatedMeals.indexOfFirst { it.id == mealId }
         if (index != -1) {
             updatedMeals[index] = updatedMeals[index].copy(time = newTime)
-            // Сортируем приёмы пищи по времени
+            // сортируем приёмы пищи по времени
             _meals.value = updatedMeals.sortedBy { it.time }
         }
     }
 
-    // Получение продуктов для конкретного приёма пищи
     fun getProductsForMeal(mealId: Int): List<SelectedProduct> {
         return _finalSelection.value.filter { it.mealId == mealId }
     }
 
-    // Получение общих БЖУ и калорийности для приёма пищи
     fun getMealNutrition(mealId: Int): MealNutrition {
         val products = getProductsForMeal(mealId)
         val totalCalories = products.sumOf {
@@ -413,23 +388,20 @@ class ProductViewModel(
         return MealNutrition(totalProtein, totalFats, totalCarbs, totalCalories)
     }
     fun getCaloriesForDate(date: LocalDate): Int {
-        // В будущем здесь будет запрос к БД или API по конкретной дате
+        // в будущем здесь будет запрос к БД или API по конкретной дате
         return if (date == LocalDate.now()) 1500 else 0
     }
 
-    fun saveCurrentMeal(mealIdInUi: Int) { // Используем Int, как договаривались ранее
+    fun saveCurrentMeal(mealIdInUi: Int) {
         viewModelScope.launch {
             try {
                 val mealToSave = _meals.value.find { it.id == mealIdInUi } ?: return@launch
 
-                // 1. Фильтруем продукты этого приема пищи
                 val productsInThisMeal = _finalSelection.value.filter { it.mealId == mealIdInUi }
 
-                // 2. Разделяем на "Обновить" и "Вставить"
                 val toUpdate = productsInThisMeal.filter { it.junctionId != null }
                 val toInsert = productsInThisMeal.filter { it.junctionId == null }
 
-                // --- ЛОГИКА ОБНОВЛЕНИЯ ---
                 toUpdate.forEach { selected ->
                     selected.junctionId?.let { jId ->
                         repository.updateProductWeight(jId, selected.weight.toUShort())
@@ -437,14 +409,13 @@ class ProductViewModel(
                     }
                 }
 
-                // --- ЛОГИКА ВСТАВКИ ---
                 if (toInsert.isNotEmpty()) {
                     val componentsData = toInsert.map {
                         it.product.productId to it.weight.toUShort()
                     }
 
                     if (mealIdInUi <= 0) {
-                        // Если сам прием пищи еще не в БД
+                        // если сам прием пищи еще не в БД
                         val newMealEntity = MealEntity(
                             name = mealToSave.name,
                             mealTime = System.currentTimeMillis()
@@ -452,7 +423,7 @@ class ProductViewModel(
                         val (generatedMealId, newJunctionIds) = repository.saveFullMeal(newMealEntity, componentsData)
                         syncStateAfterSave(mealIdInUi, generatedMealId, newJunctionIds)
                     } else {
-                        // Если прием уже в БД, просто добавляем в него новые компоненты
+                        // если прием уже в БД, просто добавляем в него новые компоненты
                         val newJunctionIds = repository.addComponentsToExistingMeal(mealIdInUi, componentsData)
                         syncStateAfterSave(mealIdInUi, mealIdInUi, newJunctionIds)
                     }
@@ -465,20 +436,16 @@ class ProductViewModel(
         }
     }
 
-    // Вспомогательная функция для прошивки ID в UI
     private fun syncStateAfterSave(oldMealId: Int, realMealId: Int, newJunctionIds: List<Int>) {
         var junctionIdx = 0
 
-        // Обновляем список приемов
         _meals.value = _meals.value.map {
             if (it.id == oldMealId) it.copy(id = realMealId) else it
         }
 
-        // Обновляем список продуктов
         _finalSelection.value = _finalSelection.value.map { selected ->
             if (selected.mealId == oldMealId) {
                 if (selected.junctionId == null) {
-                    // Присваиваем ID только что вставленным продуктам
                     val updated = selected.copy(
                         mealId = realMealId,
                         junctionId = newJunctionIds.getOrNull(junctionIdx)
@@ -486,25 +453,11 @@ class ProductViewModel(
                     junctionIdx++
                     updated
                 } else {
-                    // У уже существующих просто обновляем mealId, если он изменился
                     selected.copy(mealId = realMealId)
                 }
             } else {
                 selected
             }
-        }
-    }
-
-    // Вспомогательная функция для обновления стейтов
-    private fun updateUiAfterSave(oldId: Int, newId: Int) {
-        // Обновляем список приемов
-        _meals.value = _meals.value.map {
-            if (it.id == oldId) it.copy(id = newId) else it
-        }
-
-        // Обновляем продукты (ВАЖНО: здесь мы принудительно меняем mealId)
-        _finalSelection.value = _finalSelection.value.map {
-            if (it.mealId == oldId) it.copy(mealId = newId) else it
         }
     }
 }

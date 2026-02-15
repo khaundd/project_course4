@@ -71,7 +71,6 @@ fun SelectProductScreen(
                         Text("+")
                     }
                     
-                    // Кнопка для добавления нового продукта
                     Button(
                         onClick = {
                             viewModel.navigateToProductCreation(navController)
@@ -81,7 +80,6 @@ fun SelectProductScreen(
                         Text("Новый")
                     }
                     
-                    // Кнопка для сканирования штрих-кода
                     Button(
                         onClick = { onBarcodeScan("OPEN_SCANNER") },
                         modifier = Modifier.padding(end = 8.dp)

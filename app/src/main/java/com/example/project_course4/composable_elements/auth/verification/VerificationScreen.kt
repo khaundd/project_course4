@@ -21,12 +21,9 @@ fun VerificationScreen(navController: NavController, email: String, viewModel: V
     val validation = remember { Validation() }
     var isLoading by remember { mutableStateOf(false) }
 
-    // Контроллер клавиатуры
     val keyboardController = LocalSoftwareKeyboardController.current
-    // Состояние для Snackbar
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Эффект для показа ошибок через Snackbar (если нужно)
     LaunchedEffect(validation.toastMessage) {
         validation.toastMessage?.let { message ->
             snackbarHostState.showSnackbar(message)
@@ -34,7 +31,6 @@ fun VerificationScreen(navController: NavController, email: String, viewModel: V
         }
     }
 
-    // Мониторинг изменений поля кода
     LaunchedEffect(validation.code) {
         if (validation.code.isNotEmpty()) {
             validation.validateCode()
@@ -95,7 +91,7 @@ fun VerificationScreen(navController: NavController, email: String, viewModel: V
                     }
 
                     isLoading = true
-                    validation.codeError = "" // Очищаем текст ошибки перед запросом
+                    validation.codeError = ""
 
                     viewModel.verifyEmail(
                         email = email,
@@ -113,7 +109,7 @@ fun VerificationScreen(navController: NavController, email: String, viewModel: V
                     )
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !isLoading // Кнопка выключена во время загрузки
+                enabled = !isLoading // кнопка выключена во время загрузки
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
@@ -128,10 +124,8 @@ fun VerificationScreen(navController: NavController, email: String, viewModel: V
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Текст под полем ввода (сделали более темным)
             Text(
                 text = "Код был отправлен на $email",
-                // Используем onSurface без прозрачности или с высокой альфой (0.8f - 1.0f)
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.align(Alignment.CenterHorizontally)
