@@ -33,7 +33,6 @@ import java.util.Locale
 fun MainScreen(
     navController: NavController,
     viewModel: ProductViewModel,
-    onBarcodeScan: (String) -> Unit,
     onLogout: () -> Unit,
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -75,10 +74,10 @@ fun MainScreen(
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Default.AddCircle, contentDescription = null) },
                     label = { Text("Создать продукт") },
-                    selected = currentRoute == Screen.ProductCreation.route,
+                    selected = currentRoute?.startsWith(Screen.ProductCreation.route) == true,
                     onClick = {
                         scope.launch { drawerState.close() }
-                        navController.navigate(Screen.ProductCreation.route)
+                        navController.navigate("productCreation?barcode=")
                     },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
@@ -199,12 +198,6 @@ fun MainScreen(
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0E0E0))
                         ) { Text("Добавить приём пищи", color = Color.Black) }
-
-                        Button(
-                            onClick = { onBarcodeScan("OPEN_SCANNER") },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0E0E0))
-                        ) { Text("Сканировать штрих-код", color = Color.Black) }
 
                         Button(
                             onClick = { isLoading = true; onLogout() },

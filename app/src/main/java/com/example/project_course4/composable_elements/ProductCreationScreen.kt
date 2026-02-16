@@ -2,6 +2,8 @@ package com.example.project_course4.composable_elements
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Scanner
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -19,9 +21,18 @@ import com.example.project_course4.viewmodel.ProductViewModel
 @Composable
 fun ProductCreationScreen(
     navController: NavController,
-    viewModel: ProductViewModel
+    viewModel: ProductViewModel,
+    onBarcodeScan: (String) -> Unit,
+    initialBarcode: String? = null
 ) {
     val state by viewModel.productCreationState.collectAsState()
+
+    // подставляем отсканированный штрих-код в поле
+    LaunchedEffect(initialBarcode) {
+        initialBarcode?.takeIf { it.isNotBlank() }?.let { barcode ->
+            viewModel.updateProductCreationState(state.copy(barcode = barcode))
+        }
+    }
     val validator = remember { ProductCreationValidator() }
     var calories by rememberSaveable { mutableStateOf(0f) }
 
@@ -210,15 +221,29 @@ fun ProductCreationScreen(
                         .weight(1f)
                         .padding(end = 8.dp)
                 )
-                TextField(
-                    value = state.barcode,
-                    onValueChange = { barcode ->
-                        val newState = state.copy(barcode = barcode)
-                        viewModel.updateProductCreationState(newState)
-                    },
-                    singleLine = true,
-                    modifier = Modifier.weight(2f)
-                )
+                Row(
+                    modifier = Modifier.weight(2f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextField(
+                        value = state.barcode,
+                        onValueChange = { barcode ->
+                            val newState = state.copy(barcode = barcode)
+                            viewModel.updateProductCreationState(newState)
+                        },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(
+                        onClick = { onBarcodeScan("OPEN_SCANNER") },
+                        modifier = Modifier.padding(start = 8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Scanner,
+                            contentDescription = "Сканировать штрих-код"
+                        )
+                    }
+                }
             }
         }
         
@@ -247,7 +272,7 @@ fun ProductCreationScreen(
                         proteinError = if (proteinValidation is ValidationResult.Invalid) proteinValidation.errorMessage else null,
                         fatsError = if (fatsValidation is ValidationResult.Invalid) fatsValidation.errorMessage else null,
                         carbsError = if (carbsValidation is ValidationResult.Invalid) carbsValidation.errorMessage else null,
-                        barcodeError = null // Сбрасываем ошибку штрих-кода при валидации
+                        barcodeError = null // cбрасываем ошибку штрих-кода при валидации
                     )
 
                     viewModel.updateProductCreationState(updatedState)

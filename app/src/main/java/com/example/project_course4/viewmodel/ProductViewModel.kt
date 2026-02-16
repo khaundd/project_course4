@@ -120,7 +120,7 @@ class ProductViewModel(
 
     fun navigateToProductCreation(navController: NavController) {
         resetProductCreationState()
-        navController.navigate("product_creation")
+        navController.navigate("productCreation?barcode=")
     }
 
     fun toggleCurrentSelection(product: Product) {

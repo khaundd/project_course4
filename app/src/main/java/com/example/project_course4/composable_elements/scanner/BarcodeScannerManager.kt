@@ -21,17 +21,17 @@ class BarcodeScannerManager(private val context: Context) {
         scanner.startScan()
             .addOnSuccessListener { barcode ->
                 barcode.displayValue?.let {
-                    Toast.makeText(context, "Штрих-код - $it", Toast.LENGTH_LONG).show()
                     onResult(it)
                 }
             }
             .addOnFailureListener { e ->
                 Log.e("BarcodeScanner", "Ошибка сканирования: ${e.message}")
-                Toast.makeText(context, "Ошибка сканера", Toast.LENGTH_SHORT).show()
+                val message = e.message ?: e.javaClass.simpleName
+                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                onError(e)
             }
             .addOnCanceledListener {
                 Log.d("BarcodeScanner", "Сканирование отменено пользователем")
             }
-        //TODO onError
     }
 }

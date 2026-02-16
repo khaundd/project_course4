@@ -10,6 +10,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import android.widget.Toast
+import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -54,12 +56,17 @@ fun NavigationApp() {
     }
 
     // функция обработки сканирования
-    val handleScanning = {
+    val handleScanning = { navController: NavController ->
         scannerManager.startScanning(
             onResult = { barcode ->
                 Log.d("BarcodeScanner", "Scanned barcode: $barcode")
+                navController.navigate("productCreation?barcode=${java.net.URLEncoder.encode(barcode, Charsets.UTF_8.name())}")
             },
-            onError = { TODO("щас пока не нужна эта обработка ошибок") }
+            onError = { e ->
+                Log.e("BarcodeScanner", "Ошибка: $e")
+                val message = e.message ?: e.javaClass.simpleName
+                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            }
         )
     }
 
@@ -99,9 +106,6 @@ fun NavigationApp() {
             MainScreen(
                 navController = navController,
                 viewModel = productViewModel,
-                onBarcodeScan = {
-                    handleScanning()
-                },
                 onLogout = {
                     authViewModel.logoutAndNavigate(navController)
                 }
@@ -115,7 +119,7 @@ fun NavigationApp() {
                 viewModel = productViewModel,
                 mealId = mealId,
                 onBarcodeScan = {
-                    handleScanning()
+                    handleScanning(navController)
                 }
             )
         }
@@ -126,10 +130,35 @@ fun NavigationApp() {
             )
         }
 
+        composable(
+            route = "productCreation?barcode={barcode}",
+            arguments = listOf(
+                navArgument("barcode") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                    nullable = false
+                }
+            )
+        ) { backStackEntry ->
+            val barcodeArg = backStackEntry.arguments?.getString("barcode").orEmpty()
+            ProductCreationScreen(
+                navController = navController,
+                viewModel = productViewModel,
+                onBarcodeScan = {
+                    handleScanning(navController)
+                },
+                initialBarcode = barcodeArg.takeIf { it.isNotBlank() }
+            )
+        }
+        // альтернативный маршрут без параметра
         composable(Screen.ProductCreation.route) { backStackEntry ->
             ProductCreationScreen(
                 navController = navController,
-                viewModel = productViewModel
+                viewModel = productViewModel,
+                onBarcodeScan = {
+                    handleScanning(navController)
+                },
+                initialBarcode = null
             )
         }
         composable(Screen.Login.route) { backStackEntry ->
