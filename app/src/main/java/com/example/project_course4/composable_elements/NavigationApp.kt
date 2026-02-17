@@ -111,6 +111,13 @@ fun NavigationApp() {
                 }
             )
         }
+
+        composable(Screen.Profile.route) { backStackEntry ->
+            ProfileScreen(
+                navController = navController,
+                onLogout = { authViewModel.logoutAndNavigate(navController) }
+            )
+        }
         
         composable("selectProductWithMeal/{mealId}") { backStackEntry ->
             val mealId = backStackEntry.arguments?.getString("mealId")
