@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.project_course4.viewmodel.ProductViewModel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
@@ -39,6 +41,17 @@ fun CustomCalendarDialog(
     }
     // чтобы Пн был под Пн и т.д.
     val firstDayOffset = currentMonth.atDay(1).dayOfWeek.value - 1
+
+    // Кэш для калорий по датам
+    val caloriesCache = remember { mutableMapOf<LocalDate, Int>() }
+
+    fun getCaloriesForDate(date: LocalDate): Int {
+        return caloriesCache.getOrPut(date) {
+            runBlocking {
+                viewModel.getCaloriesForDate(date)
+            }
+        }
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -88,7 +101,7 @@ fun CustomCalendarDialog(
                     items(firstDayOffset) { Spacer(modifier = Modifier.fillMaxSize()) }
 
                     items(daysInMonth) { date ->
-                        val calories = viewModel.getCaloriesForDate(date)
+                        val calories = getCaloriesForDate(date)
                         val isToday = date == LocalDate.now()
 
                         Column(

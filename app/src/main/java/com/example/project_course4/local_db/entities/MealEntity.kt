@@ -8,4 +8,5 @@ data class MealEntity(
     @PrimaryKey(autoGenerate = true) val mealId: Int = 0,
     val name: String,
     val mealTime: Long,
+    val mealDate: Long, // дата в миллисекундах (начало дня)
 )

@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 
 class ProductViewModel(
     private val repository: ProductRepository
@@ -75,9 +76,18 @@ class ProductViewModel(
 
     private var tempMealIdCounter = -1
 
+    // Текущая выбранная дата
+    private var _selectedDate = MutableStateFlow(LocalDate.now())
+    var selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
+
     // функция для установки идентификатора приёма пищи
     fun setEditingMealId(mealId: Int?) {
         _editingMealId.value = mealId
+    }
+
+    fun setSelectedDate(date: LocalDate) {
+        _selectedDate.value = date
+        loadMealsForDate(date)
     }
 
     init {
@@ -101,6 +111,23 @@ class ProductViewModel(
             } catch (e: Exception) {
                 Log.e("ProductViewModel", "Ошибка загрузки приёмов из БД: ${e.message}", e)
                 initializeMeals()
+            }
+        }
+    }
+
+    fun loadMealsForDate(date: LocalDate) {
+        viewModelScope.launch {
+            try {
+                val (mealsFromDb, selectionFromDb) = repository.loadMealsByDate(date)
+                if (mealsFromDb.isNotEmpty()) {
+                    _meals.value = mealsFromDb.sortedBy { it.time }
+                    _finalSelection.value = selectionFromDb
+                } else {
+                    initializeMealsForDate(date)
+                }
+            } catch (e: Exception) {
+                Log.e("ProductViewModel", "Ошибка загрузки приёмов за дату $date: ${e.message}", e)
+                initializeMealsForDate(date)
             }
         }
     }
@@ -247,7 +274,9 @@ class ProductViewModel(
             productsInMeal.map {
                 it.product.productId to it.weight.toUShort()
             }
-            saveCurrentMeal(mealInfo.id)
+            viewModelScope.launch {
+                saveCurrentMeal(mealInfo.id)
+            }
         }
     }
 
@@ -317,11 +346,20 @@ class ProductViewModel(
         if (_meals.value.isEmpty()) {
             val defaultMeals = listOf(
                 Meal(id = tempMealIdCounter--, time = LocalTime.of(6, 0), name = "Завтрак"),
-                Meal(id = tempMealIdCounter--, time = LocalTime.of(12, 0), name = "Обед"),
-                Meal(id = tempMealIdCounter--, time = LocalTime.of(18, 0), name = "Ужин")
+                Meal(id = tempMealIdCounter--, time = LocalTime.of(11, 0), name = "Обед"),
+                Meal(id = tempMealIdCounter--, time = LocalTime.of(16, 0), name = "Ужин")
             ).sortedBy { it.time }
             _meals.value = defaultMeals
         }
+    }
+
+    fun initializeMealsForDate(date: LocalDate) {
+        _meals.value = listOf(
+            Meal(id = tempMealIdCounter--, time = LocalTime.of(6, 0), name = "Завтрак"),
+            Meal(id = tempMealIdCounter--, time = LocalTime.of(11, 0), name = "Обед"),
+            Meal(id = tempMealIdCounter--, time = LocalTime.of(16, 0), name = "Ужин")
+        ).sortedBy { it.time }
+        _finalSelection.value = emptyList()
     }
 
     fun addMeal(name: String) {
@@ -360,6 +398,16 @@ class ProductViewModel(
             updatedMeals[index] = updatedMeals[index].copy(time = newTime)
             // сортируем приёмы пищи по времени
             _meals.value = updatedMeals.sortedBy { it.time }
+            
+            // Обновляем время в БД
+            viewModelScope.launch {
+                try {
+                    repository.updateMealTime(mealId, newTime)
+                    Log.d("UpdateMealTime", "Время приёма пищи обновлено в БД: mealId=$mealId, time=$newTime")
+                } catch (e: Exception) {
+                    Log.e("UpdateMealTime", "Ошибка обновления времени: ${e.message}")
+                }
+            }
         }
     }
 
@@ -387,52 +435,60 @@ class ProductViewModel(
         
         return MealNutrition(totalProtein, totalFats, totalCarbs, totalCalories)
     }
-    fun getCaloriesForDate(date: LocalDate): Int {
-        // в будущем здесь будет запрос к БД или API по конкретной дате
-        return if (date == LocalDate.now()) 1500 else 0
+    suspend fun getCaloriesForDate(date: LocalDate): Int {
+        return try {
+            repository.getCaloriesForDate(date)
+        } catch (e: Exception) {
+            Log.e("Calories", "Ошибка получения калорий за дату $date: ${e.message}")
+            0
+        }
     }
 
-    fun saveCurrentMeal(mealIdInUi: Int) {
-        viewModelScope.launch {
-            try {
-                val mealToSave = _meals.value.find { it.id == mealIdInUi } ?: return@launch
+    suspend fun saveCurrentMeal(mealIdInUi: Int) {
+        try {
+            val mealToSave = _meals.value.find { it.id == mealIdInUi } ?: return
 
-                val productsInThisMeal = _finalSelection.value.filter { it.mealId == mealIdInUi }
+            val productsInThisMeal = _finalSelection.value.filter { it.mealId == mealIdInUi }
 
-                val toUpdate = productsInThisMeal.filter { it.junctionId != null }
-                val toInsert = productsInThisMeal.filter { it.junctionId == null }
+            val toUpdate = productsInThisMeal.filter { it.junctionId != null }
+            val toInsert = productsInThisMeal.filter { it.junctionId == null }
 
-                toUpdate.forEach { selected ->
-                    selected.junctionId?.let { jId ->
-                        repository.updateProductWeight(jId, selected.weight.toUShort())
-                        Log.d("SaveMeal", "Обновлен вес для существующего продукта. JunctionId: $jId")
-                    }
+            toUpdate.forEach { selected ->
+                selected.junctionId?.let { jId ->
+                    repository.updateProductWeight(jId, selected.weight.toUShort())
+                    Log.d("SaveMeal", "Обновлен вес для существующего продукта. JunctionId: $jId")
                 }
-
-                if (toInsert.isNotEmpty()) {
-                    val componentsData = toInsert.map {
-                        it.product.productId to it.weight.toUShort()
-                    }
-
-                    if (mealIdInUi <= 0) {
-                        // если сам прием пищи еще не в БД
-                        val newMealEntity = MealEntity(
-                            name = mealToSave.name,
-                            mealTime = System.currentTimeMillis()
-                        )
-                        val (generatedMealId, newJunctionIds) = repository.saveFullMeal(newMealEntity, componentsData)
-                        syncStateAfterSave(mealIdInUi, generatedMealId, newJunctionIds)
-                    } else {
-                        // если прием уже в БД, просто добавляем в него новые компоненты
-                        val newJunctionIds = repository.addComponentsToExistingMeal(mealIdInUi, componentsData)
-                        syncStateAfterSave(mealIdInUi, mealIdInUi, newJunctionIds)
-                    }
-                }
-
-                Log.i("SaveMeal", "Синхронизация завершена успешно")
-            } catch (e: Exception) {
-                Log.e("SaveMeal", "Ошибка сохранения: ${e.message}")
             }
+
+            if (toInsert.isNotEmpty()) {
+                val componentsData = toInsert.map {
+                    it.product.productId to it.weight.toUShort()
+                }
+
+                if (mealIdInUi <= 0) {
+                    // если сам прием пищи еще не в БД
+                    val currentDate = _selectedDate.value
+                    val mealDateTime = mealToSave.time.atDate(currentDate)
+                        .atZone(ZoneId.systemDefault())
+                        .toInstant().toEpochMilli()
+                    
+                    val newMealEntity = MealEntity(
+                        name = mealToSave.name,
+                        mealTime = mealDateTime,
+                        mealDate = currentDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                    )
+                    val (generatedMealId, newJunctionIds) = repository.saveFullMeal(newMealEntity, componentsData)
+                    syncStateAfterSave(mealIdInUi, generatedMealId, newJunctionIds)
+                } else {
+                    // если прием уже в БД, просто добавляем в него новые компоненты
+                    val newJunctionIds = repository.addComponentsToExistingMeal(mealIdInUi, componentsData)
+                    syncStateAfterSave(mealIdInUi, mealIdInUi, newJunctionIds)
+                }
+            }
+
+            Log.i("SaveMeal", "Синхронизация завершена успешно")
+        } catch (e: Exception) {
+            Log.e("SaveMeal", "Ошибка сохранения: ${e.message}")
         }
     }
 

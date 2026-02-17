@@ -23,7 +23,7 @@ import com.example.project_course4.local_db.entities.*
         Products::class,
         UserMealPlan::class
     ],
-    version = 2
+    version = 3
 )
 @TypeConverters(DatabaseConverters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -41,7 +41,6 @@ object DatabaseProvider {
                 AppDatabase::class.java,
                 "app_db"
             )
-                .fallbackToDestructiveMigration(true)
                 .build()
             INSTANCE = instance
             instance

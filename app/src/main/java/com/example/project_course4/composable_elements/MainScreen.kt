@@ -45,6 +45,13 @@ fun MainScreen(
     var showCustomCalendar by remember { mutableStateOf(false) }
     var selectedLocalDate by remember { mutableStateOf(LocalDate.now()) }
 
+    // Следим за изменением даты в ViewModel
+    LaunchedEffect(Unit) {
+        viewModel.selectedDate.collect { date ->
+            selectedLocalDate = date
+        }
+    }
+
     val dateButtonText = remember(selectedLocalDate) {
         val today = LocalDate.now()
         val label = when (selectedLocalDate) {
@@ -176,13 +183,13 @@ fun MainScreen(
                                 meal = meal,
                                 products = products,
                                 nutrition = nutrition,
-                                onTimeClick = { m -> viewModel.updateMealTime(m.id, m.time) },
+                                onTimeClick = { mealId, newTime -> viewModel.updateMealTime(mealId, newTime) },
                                 onAddProductClick = { m ->
                                     if (shouldShowWeightInput){
                                         viewModel.finalSelection.value.map { selected ->
                                             selected.product.productId to selected.weight.toUShort()
                                         }
-                                    viewModel.saveCurrentMeal(meal.id)
+                                        scope.launch { viewModel.saveCurrentMeal(meal.id) }
                                     }
                                     viewModel.setEditingMealId(m.id)
                                     navController.navigate("selectProductWithMeal/${m.id}")
@@ -229,7 +236,9 @@ fun MainScreen(
         CustomCalendarDialog(
             initialDate = selectedLocalDate,
             viewModel = viewModel,
-            onDateSelected = { newDate -> selectedLocalDate = newDate },
+            onDateSelected = { newDate -> 
+                viewModel.setSelectedDate(newDate)
+            },
             onDismiss = { showCustomCalendar = false }
         )
     }

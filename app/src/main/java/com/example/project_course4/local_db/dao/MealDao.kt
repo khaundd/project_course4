@@ -88,6 +88,12 @@ interface MealDao {
     @Query("SELECT * FROM meal ORDER BY mealTime")
     suspend fun getAllMeals(): List<MealEntity>
 
+    @Query("SELECT * FROM meal WHERE mealDate = :date ORDER BY mealTime")
+    suspend fun getMealsByDate(date: Long): List<MealEntity>
+
+    @Query("UPDATE meal SET mealTime = :newTime WHERE mealId = :mealId")
+    suspend fun updateMealTime(mealId: Int, newTime: Long)
+
     @Query("""
         SELECT mmc.mealId AS mealId, mmc.id AS junctionId, mc.productId AS productId, mc.weight AS weight
         FROM meal_component mc

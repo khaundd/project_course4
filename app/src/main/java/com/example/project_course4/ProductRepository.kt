@@ -1,8 +1,6 @@
 package com.example.project_course4
 
-import android.os.Build
 import android.util.Log
-import androidx.annotation.RequiresApi
 import com.example.project_course4.api.ClientAPI
 import com.example.project_course4.local_db.dao.MealDao
 import com.example.project_course4.local_db.dao.ProductsDao
@@ -10,6 +8,7 @@ import com.example.project_course4.local_db.entities.MealEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 
@@ -58,6 +57,69 @@ class ProductRepository(
 
     suspend fun updateProductWeight(junctionId: Int, newWeight: UShort) {
         mealDao.updateWeight(junctionId, newWeight)
+    }
+
+    suspend fun updateMealTime(mealId: Int, newTime: LocalTime) {
+        val timeInMillis = newTime.atDate(LocalDate.now())
+            .atZone(ZoneId.systemDefault())
+            .toInstant().toEpochMilli()
+        mealDao.updateMealTime(mealId, timeInMillis)
+    }
+
+    suspend fun loadMealsByDate(date: LocalDate): Pair<List<Meal>, List<SelectedProduct>> {
+        val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val mealEntities = mealDao.getMealsByDate(startOfDay)
+        val components = mealDao.getAllMealComponentsWithJunction()
+        
+        if (mealEntities.isEmpty()) {
+            return emptyList<Meal>() to emptyList()
+        }
+        
+        val productIds = components.map { it.productId }.distinct()
+        val productsMap = if (productIds.isEmpty()) emptyMap()
+        else productDao.getProductsByIds(productIds).associateBy { it.productId }
+
+        val meals = mealEntities.map { entity ->
+            val time = Instant.ofEpochMilli(entity.mealTime)
+                .atZone(ZoneId.systemDefault())
+                .toLocalTime()
+            Meal(id = entity.mealId, time = time, name = entity.name)
+        }
+
+        val selectedProducts = components.mapNotNull { comp ->
+            val productEntity = productsMap[comp.productId] ?: return@mapNotNull null
+            SelectedProduct(
+                product = productEntity.toUiModel(),
+                weight = comp.weight,
+                mealId = comp.mealId,
+                junctionId = comp.junctionId
+            )
+        }
+        return meals to selectedProducts
+    }
+
+    suspend fun getCaloriesForDate(date: LocalDate): Int {
+        val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val mealEntities = mealDao.getMealsByDate(startOfDay)
+        val components = mealDao.getAllMealComponentsWithJunction()
+        
+        if (mealEntities.isEmpty()) {
+            return 0
+        }
+        
+        val mealIds = mealEntities.map { it.mealId }.toSet()
+        val productIds = components.map { it.productId }.distinct()
+        val productsMap = if (productIds.isEmpty()) emptyMap()
+        else productDao.getProductsByIds(productIds).associateBy { it.productId }
+
+        return components
+            .filter { it.mealId in mealIds }
+            .mapNotNull { comp ->
+                val productEntity = productsMap[comp.productId] ?: return@mapNotNull null
+                val product = productEntity.toUiModel()
+                (product.calories * comp.weight / 100).toInt()
+            }
+            .sum()
     }
 
     /**

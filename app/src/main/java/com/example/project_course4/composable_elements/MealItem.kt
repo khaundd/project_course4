@@ -40,7 +40,7 @@ fun MealItem(
     meal: Meal,
     products: List<SelectedProduct>,
     nutrition: MealNutrition,
-    onTimeClick: (Meal) -> Unit,
+    onTimeClick: (Int, LocalTime) -> Unit,
     onAddProductClick: (Meal) -> Unit,
     onEditProduct: (Product, Meal) -> Unit,
     onDeleteProduct: (Product, Meal) -> Unit,
@@ -66,8 +66,8 @@ fun MealItem(
             TimePickerDialog(
                 initialTime = meal.time,
                 onTimeSelected = { newTime ->
-                    // Вызываем onTimeClick с обновлённым временем
-                    onTimeClick(meal.copy(time = newTime))
+                    // Вызываем onTimeClick с новым временем
+                    onTimeClick(meal.id, newTime)
                     showTimePicker = false
                 },
                 onDismiss = { showTimePicker = false }
