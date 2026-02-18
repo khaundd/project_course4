@@ -93,7 +93,7 @@ class ProductViewModel(
     init {
         viewModelScope.launch {
             repository.fetchInitialProducts()
-            loadMealsFromDb()
+            loadMealsForDate(_selectedDate.value)
         }
     }
 
