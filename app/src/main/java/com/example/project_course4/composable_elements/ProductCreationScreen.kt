@@ -255,7 +255,7 @@ fun ProductCreationScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Button(
-                onClick = { viewModel.hideProductCreationScreen() },
+                onClick = { navController.popBackStack() },
                 modifier = Modifier.weight(1f)
             ) {
                 Text("Отмена")
