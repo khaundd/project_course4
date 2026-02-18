@@ -15,7 +15,7 @@ import androidx.room.PrimaryKey
         ForeignKey(
             entity = MealMealComponent::class,
             parentColumns = ["id"],
-            childColumns = ["mealMealComponentId"], // Ссылка на ID из таблицы выше
+            childColumns = ["mealMealComponentId"],
             onDelete = ForeignKey.CASCADE
         ),
     ])

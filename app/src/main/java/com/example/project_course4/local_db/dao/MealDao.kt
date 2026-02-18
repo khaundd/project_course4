@@ -7,6 +7,7 @@ import androidx.room.Transaction
 import com.example.project_course4.local_db.entities.MealEntity
 import com.example.project_course4.local_db.entities.MealComponent
 import com.example.project_course4.local_db.entities.MealMealComponent
+import com.example.project_course4.local_db.MealComponentWithJunction
 
 @Dao
 interface MealDao {

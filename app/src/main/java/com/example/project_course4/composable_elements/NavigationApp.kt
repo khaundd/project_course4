@@ -21,7 +21,7 @@ import androidx.room.Room
 import com.example.project_course4.ProductRepository
 import com.example.project_course4.Screen
 import com.example.project_course4.SessionManager
-import com.example.project_course4.ViewModel
+import com.example.project_course4.AuthViewModel
 import com.example.project_course4.api.ClientAPI
 import com.example.project_course4.composable_elements.auth.LoginScreen
 import com.example.project_course4.composable_elements.auth.RegistrationScreen
@@ -83,21 +83,21 @@ fun NavigationApp() {
         object : ViewModelProvider.Factory {
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
                 return when {
-                    modelClass.isAssignableFrom(ProductViewModel::class.java) ->
-                        ProductViewModel(productRepository) as T
-
-                    modelClass.isAssignableFrom(ViewModel::class.java) ->
-                        ViewModel(clientAPI, sessionManager) as T
-
+                    modelClass.isAssignableFrom(ProductViewModel::class.java) -> {
+                        val authVm = AuthViewModel(clientAPI, sessionManager, database)
+                        ProductViewModel(productRepository, authVm) as T
+                    }
+                    modelClass.isAssignableFrom(AuthViewModel::class.java) ->
+                        AuthViewModel(clientAPI, sessionManager, database) as T
                     else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
                 }
             }
         }
     }
 
+    val authViewModel: AuthViewModel = viewModel(factory = factory)
     val productViewModel: ProductViewModel = viewModel(factory = factory)
-    val authViewModel: ViewModel = viewModel(factory = factory)
-    
+
     NavHost(
         navController = navController,
         startDestination = startDestination // используем вычисленный путь

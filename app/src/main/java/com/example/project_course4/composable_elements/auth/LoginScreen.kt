@@ -16,12 +16,12 @@ import com.example.project_course4.Screen
 import com.example.project_course4.utils.Validation
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.project_course4.ViewModel
+import com.example.project_course4.AuthViewModel
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 
 @Composable
-fun LoginScreen(navController: NavController, viewModel: ViewModel) {
+fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
     val validation = remember { Validation() }
     var isLoading by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current

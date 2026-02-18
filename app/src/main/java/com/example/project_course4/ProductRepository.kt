@@ -90,7 +90,7 @@ class ProductRepository(
             val productEntity = productsMap[comp.productId] ?: return@mapNotNull null
             SelectedProduct(
                 product = productEntity.toUiModel(),
-                weight = comp.weight,
+                weight = comp.weight.toInt(),
                 mealId = comp.mealId,
                 junctionId = comp.junctionId
             )
@@ -117,7 +117,7 @@ class ProductRepository(
             .mapNotNull { comp ->
                 val productEntity = productsMap[comp.productId] ?: return@mapNotNull null
                 val product = productEntity.toUiModel()
-                (product.calories * comp.weight / 100).toInt()
+                (product.calories * comp.weight.toInt() / 100).toInt()
             }
             .sum()
     }
@@ -147,7 +147,7 @@ class ProductRepository(
             val productEntity = productsMap[comp.productId] ?: return@mapNotNull null
             SelectedProduct(
                 product = productEntity.toUiModel(),
-                weight = comp.weight,
+                weight = comp.weight.toInt(),
                 mealId = comp.mealId,
                 junctionId = comp.junctionId
             )

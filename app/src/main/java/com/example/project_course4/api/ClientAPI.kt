@@ -18,6 +18,11 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import com.example.project_course4.local_db.entities.MealEntity
+import com.example.project_course4.local_db.entities.MealComponent
+import com.example.project_course4.local_db.dao.MealDao
+import com.example.project_course4.local_db.MealComponentWithJunction
+import com.example.project_course4.utils.DateUtils
 
 class ClientAPI (private val sessionManager: SessionManager){
 
@@ -89,7 +94,7 @@ class ClientAPI (private val sessionManager: SessionManager){
                     }
                 }
             } catch (e: Exception) {
-                Log.e("api_test", "Ошибка в register: ${'$'}{e.message}", e)
+                Log.e("api_test", "Ошибка в register: ${e.message}", e)
                 Result.failure(e)
             }
         }
@@ -176,6 +181,94 @@ class ClientAPI (private val sessionManager: SessionManager){
                 }
             } catch (e: Exception) {
                 Log.e("api_test", "Ошибка в verifyEmail: ${'$'}{e.message}", e)
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun syncMealsToServer(meals: List<MealEntity>, mealComponents: List<MealComponentWithJunction>): Result<String> {
+        val url = "$BASE_URL/meals/sync"
+        return withContext(Dispatchers.IO) {
+            try {
+                val mealsData = meals.map { meal ->
+                    val components = mealComponents
+                        .filter { it.mealId == meal.mealId }
+                        .map { component ->
+                            MealComponentData(
+                                productId = component.productId,
+                                weight = component.weight.toInt()
+                            )
+                        }
+                    
+                    MealData(
+                        name = meal.name,
+                        mealTime = DateUtils.combineDateTime(meal.mealTime, meal.mealDate),
+                        components = components
+                    )
+                }
+                
+                val syncRequest = MealSyncRequest(mealsData)
+                
+                Log.d("api_test", "Отправляемые данные на сервер: $syncRequest")
+                
+                val response = client.post(url) {
+                    contentType(ContentType.Application.Json)
+                    setBody(syncRequest)
+                }
+                
+                Log.d("api_test", "Статус ответа: ${response.status.value}")
+                
+                when (response.status.value) {
+                    in 200..299 -> {
+                        val responseBody = response.body<MealSyncResponse>()
+                        Log.d("api_test", "Ответ сервера: $responseBody")
+                        if (responseBody.success) {
+                            Result.success(responseBody.message ?: "Синхронизация успешна")
+                        } else {
+                            Result.failure(Exception(responseBody.message ?: "Ошибка синхронизации"))
+                        }
+                    }
+                    else -> {
+                        val errorResponse = response.body<MealSyncResponse>()
+                        Log.e("api_test", "Ошибка сервера: ${response.status.value}, ответ: $errorResponse")
+                        Result.failure(Exception(errorResponse?.message ?: "Ошибка сервера при синхронизации"))
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("api_test", "Ошибка в syncMealsToServer: ${e.message}", e)
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun loadMealsFromServer(): Result<List<MealData>> {
+        val url = "$BASE_URL/meals"
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("api_test", "Загрузка приемов пищи с сервера...")
+                
+                val response = client.get(url)
+                
+                Log.d("api_test", "Статус ответа при загрузке: ${response.status.value}")
+                
+                when (response.status.value) {
+                    in 200..299 -> {
+                        val responseBody = response.body<MealLoadResponse>()
+                        Log.d("api_test", "Ответ сервера при загрузке: $responseBody")
+                        if (responseBody.success && responseBody.meals != null) {
+                            Result.success(responseBody.meals)
+                        } else {
+                            Result.failure(Exception(responseBody.message ?: "Ошибка загрузки данных"))
+                        }
+                    }
+                    else -> {
+                        val errorResponse = response.body<MealLoadResponse>()
+                        Log.e("api_test", "Ошибка сервера при загрузке: ${response.status.value}, ответ: $errorResponse")
+                        Result.failure(Exception(errorResponse?.message ?: "Ошибка сервера при загрузке"))
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("api_test", "Ошибка в loadMealsFromServer: ${e.message}", e)
                 Result.failure(e)
             }
         }

@@ -1,7 +1,7 @@
 package com.example.project_course4.viewmodel
 
 import android.util.Log
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModel as AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
 import com.example.project_course4.Meal
@@ -10,6 +10,7 @@ import com.example.project_course4.Product
 import com.example.project_course4.ProductCreationState
 import com.example.project_course4.ProductRepository
 import com.example.project_course4.SelectedProduct
+import com.example.project_course4.AuthViewModel
 import com.example.project_course4.local_db.entities.MealEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,8 +23,9 @@ import java.time.LocalTime
 import java.time.ZoneId
 
 class ProductViewModel(
-    private val repository: ProductRepository
-) : ViewModel() {
+    private val repository: ProductRepository,
+    private val authViewModel: AuthViewModel
+) : AndroidViewModel() {
     val products: StateFlow<List<Product>> = repository.getProductsFlow()
         .stateIn(
             scope = viewModelScope,
@@ -94,6 +96,12 @@ class ProductViewModel(
         viewModelScope.launch {
             repository.fetchInitialProducts()
             loadMealsForDate(_selectedDate.value)
+            
+            // Подписываемся на события обновления данных от AuthViewModel
+            authViewModel.dataUpdateEvent.collect {
+                Log.d("ProductViewModel", "Получено событие обновления данных, перезагружаем")
+                loadMealsForDate(_selectedDate.value)
+            }
         }
     }
 
@@ -468,14 +476,17 @@ class ProductViewModel(
                 if (mealIdInUi <= 0) {
                     // если сам прием пищи еще не в БД
                     val currentDate = _selectedDate.value
-                    val mealDateTime = mealToSave.time.atDate(currentDate)
+                    val fullDateTime = mealToSave.time.atDate(currentDate)
                         .atZone(ZoneId.systemDefault())
                         .toInstant().toEpochMilli()
                     
+                    val startOfDay = currentDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                    val timeOnly = fullDateTime - startOfDay
+                    
                     val newMealEntity = MealEntity(
                         name = mealToSave.name,
-                        mealTime = mealDateTime,
-                        mealDate = currentDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                        mealTime = timeOnly, // Только время от начала дня
+                        mealDate = startOfDay // Начало дня
                     )
                     val (generatedMealId, newJunctionIds) = repository.saveFullMeal(newMealEntity, componentsData)
                     syncStateAfterSave(mealIdInUi, generatedMealId, newJunctionIds)
