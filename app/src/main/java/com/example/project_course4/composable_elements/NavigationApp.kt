@@ -148,6 +148,8 @@ fun NavigationApp() {
             )
         ) { backStackEntry ->
             val barcodeArg = backStackEntry.arguments?.getString("barcode").orEmpty()
+            Log.d("NavigationApp", "Получен barcodeArg из навигации: '$barcodeArg'")
+    Log.d("NavigationApp", "URL декодирован: '${java.net.URLDecoder.decode(barcodeArg, Charsets.UTF_8.name())}'")
             ProductCreationScreen(
                 navController = navController,
                 viewModel = productViewModel,

@@ -10,7 +10,8 @@ data class ProductCreationState(
     val proteinError: String? = null,
     val fatsError: String? = null,
     val carbsError: String? = null,
-    val barcodeError: String? = null
+    val barcodeError: String? = null,
+    val macrosError: String? = null // Ошибка суммы БЖУ
 )
 
 sealed class ValidationResult {
@@ -33,6 +34,22 @@ class ProductCreationValidator {
             value.isBlank() -> ValidationResult.Invalid("$fieldName не может быть пустым")
             !value.matches(Regex("^\\d*([\\.]\\d+)?")) -> ValidationResult.Invalid("Некорректное значение $fieldName")
             else -> ValidationResult.Valid
+        }
+    }
+
+    fun validateMacros(protein: String, fats: String, carbs: String): ValidationResult {
+        return try {
+            val proteinValue = protein.toFloatOrNull() ?: 0f
+            val fatsValue = fats.toFloatOrNull() ?: 0f
+            val carbsValue = carbs.toFloatOrNull() ?: 0f
+            val total = proteinValue + fatsValue + carbsValue
+            
+            when {
+                total > 100f -> ValidationResult.Invalid("Сумма БЖУ не может превышать 100 граммов")
+                else -> ValidationResult.Valid
+            }
+        } catch (e: Exception) {
+            ValidationResult.Invalid("Ошибка расчета БЖУ")
         }
     }
 

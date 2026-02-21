@@ -1,6 +1,7 @@
 package com.example.project_course4
 
 import android.os.Parcelable
+import android.util.Log
 import com.example.project_course4.local_db.entities.Products
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -15,10 +16,11 @@ data class Product(
     @SerialName("fats") val fats: Float,
     @SerialName("carbs") val carbs: Float,
     val calories: Float,
-    val barcode: Long = 0,
+    val barcode: String? = null,
     val isDish: Boolean = false,
     val createdBy: Int? = null
 ): Parcelable
+
 fun Product.toEntity(isSavedLocally: Boolean, currentUserId: Int): Products {
     return Products(
         productId = this.productId,
@@ -30,8 +32,11 @@ fun Product.toEntity(isSavedLocally: Boolean, currentUserId: Int): Products {
         isDish = this.isDish,
         createdBy = this.createdBy ?: currentUserId, // если с сервера не пришел ID, ставим текущий
         isSavedLocally = isSavedLocally
-    )
+    ).also { entity ->
+        Log.d("ProductMapping", "Product→Entity: name='${this.name}'→'${entity.productName}', protein=${this.protein}→${entity.protein}")
+    }
 }
+
 fun Products.toUiModel(): Product {
     return Product(
         productId = this.productId,
@@ -43,5 +48,7 @@ fun Products.toUiModel(): Product {
         barcode = this.barcode,
         isDish = this.isDish,
         createdBy = this.createdBy
-    )
+    ).also { product ->
+        Log.d("ProductMapping", "Entity→Product: productName='${this.productName}'→'${product.name}', protein=${this.protein}→${product.protein}")
+    }
 }

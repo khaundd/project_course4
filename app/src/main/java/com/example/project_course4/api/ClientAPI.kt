@@ -3,6 +3,9 @@ package com.example.project_course4.api
 import android.util.Log
 import com.example.project_course4.Product
 import com.example.project_course4.SessionManager
+import com.example.project_course4.api.ProductCreateRequest
+import com.example.project_course4.api.ProductCreateResponse
+import com.example.project_course4.api.ProductResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
@@ -299,6 +302,77 @@ class ClientAPI (private val sessionManager: SessionManager){
                 }
             } catch (e: Exception) {
                 Log.e("api_test", "Ошибка в loadMealsFromServer: ${e.message}", e)
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun checkProductNameExists(name: String): Result<Boolean> {
+        val url = "$BASE_URL/products/check-name"
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = client.post(url) {
+                    contentType(ContentType.Application.Json)
+                    setBody(mapOf("name" to name))
+                }
+                
+                when (response.status.value) {
+                    in 200..299 -> {
+                        val responseBody = response.body<NameCheckResponse>()
+                        Result.success(responseBody.exists)
+                    }
+                    else -> {
+                        val errorResponse = response.body<ApiResponse>()
+                        Result.failure(Exception(errorResponse?.error ?: "Ошибка проверки названия продукта"))
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("api_test", "Ошибка в checkProductNameExists: ${e.message}", e)
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun addProduct(product: ProductCreateRequest): Result<Product> {
+        val url = "$BASE_URL/products"
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = client.post(url) {
+                    contentType(ContentType.Application.Json)
+                    setBody(product)
+                }
+                
+                when (response.status.value) {
+                    in 200..299 -> {
+                        val responseBody = response.body<ProductCreateResponse>()
+                        Log.d("api_test", "Ответ сервера при добавлении продукта: $responseBody")
+                        if (responseBody.product != null) {
+                            val productResponse = responseBody.product
+                            Log.d("api_test", "ProductResponse от сервера: name=${productResponse.name}, protein=${productResponse.protein}")
+                            val convertedProduct = Product(
+                                productId = productResponse.productId,
+                                name = productResponse.name ?: "",
+                                protein = productResponse.protein ?: 0f,
+                                fats = productResponse.fats ?: 0f,
+                                carbs = productResponse.carbs ?: 0f,
+                                calories = productResponse.calories ?: 0f,
+                                barcode = productResponse.barcode,
+                                isDish = productResponse.isDish ?: false,
+                                createdBy = productResponse.createdBy
+                            )
+                            Log.d("api_test", "ConvertedProduct после создания: name=${convertedProduct.name}, protein=${convertedProduct.protein}")
+                            Result.success(convertedProduct)
+                        } else {
+                            Result.failure(Exception("Продукт не был создан"))
+                        }
+                    }
+                    else -> {
+                        val errorResponse = response.body<ApiResponse>()
+                        Result.failure(Exception(errorResponse?.error ?: "Ошибка добавления продукта"))
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("api_test", "Ошибка в addProduct: ${e.message}", e)
                 Result.failure(e)
             }
         }

@@ -11,7 +11,7 @@ data class Products(
     val protein: Float,
     val fat: Float,
     val carbs: Float,
-    val barcode: Long,
+    val barcode: String? = null,
     val isDish: Boolean,
     val createdBy: Int,
     val isSavedLocally: Boolean = false

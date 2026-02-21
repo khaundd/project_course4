@@ -61,7 +61,7 @@ fun ProductElement(
             )
             Row(){
                 Text(
-                    text = product.protein.toString(),
+                    text = String.format("%.1f", product.protein),
                     fontSize = 12.sp,
                     color = ProteinColor,
                 )
@@ -71,7 +71,7 @@ fun ProductElement(
                     modifier = Modifier.padding(start = 12.dp, end = 12.dp)
                 )
                 Text(
-                    text = product.fats.toString(),
+                    text = String.format("%.1f", product.fats),
                     fontSize = 12.sp,
                     color = FatColor,
                 )
@@ -81,7 +81,7 @@ fun ProductElement(
                     modifier = Modifier.padding(start = 12.dp, end = 12.dp)
                 )
                 Text(
-                    text = product.carbs.toString(),
+                    text = String.format("%.1f", product.carbs),
                     fontSize = 12.sp,
                     color = CarbColor,
                 )
@@ -94,7 +94,7 @@ fun ProductElement(
                 .padding(end = 5.dp)
         ) {
             Text(
-                text = product.calories.toString(),
+                text = String.format("%.1f", product.calories),
                 fontSize = 12.sp,
                 color = textColor,
             )
@@ -106,5 +106,5 @@ fun ProductElement(
 @Preview(showBackground = true)
 @Composable
 fun ProductElementPreview(){
-    ProductElement(Product(1,"Филе", 10f, 2f, 1f, 62f), false) {}
+    ProductElement(Product(1,"Филе", 10.56f, 2.34f, 1.78f, 62.5f), false) {}
 }

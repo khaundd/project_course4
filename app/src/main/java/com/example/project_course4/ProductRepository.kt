@@ -5,6 +5,7 @@ import com.example.project_course4.api.ClientAPI
 import com.example.project_course4.local_db.dao.MealDao
 import com.example.project_course4.local_db.dao.ProductsDao
 import com.example.project_course4.local_db.entities.MealEntity
+import com.example.project_course4.local_db.entities.Products
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.Instant
@@ -162,5 +163,53 @@ class ProductRepository(
             )
         }
         return meals to selectedProducts
+    }
+
+    suspend fun checkProductNameExists(name: String): Result<Boolean> {
+        return try {
+            val result = clientAPI.checkProductNameExists(name)
+            result.fold(
+                onSuccess = { exists -> Result.success(exists) },
+                onFailure = { error -> Result.failure(error) }
+            )
+        } catch (e: Exception) {
+            Log.e("ProductRepository", "Ошибка проверки названия продукта: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun addProductToServerAndLocal(product: Product): Result<Product> {
+        return try {
+            // Сначала добавляем на сервер
+            val createRequest = com.example.project_course4.api.ProductCreateRequest(
+                name = product.name,
+                protein = product.protein,
+                fats = product.fats,
+                carbs = product.carbs,
+                calories = product.calories,
+                barcode = product.barcode ?: ""
+            )
+            
+            val serverResult = clientAPI.addProduct(createRequest)
+            serverResult.fold(
+                onSuccess = { serverProduct ->
+                    Log.d("ProductRepository", "Продукт с сервера: name='${serverProduct.name}', protein=${serverProduct.protein}")
+                    // Сохраняем в локальную БД
+                    val currentUserId = sessionManager.fetchUserId()
+                    val entity = serverProduct.toEntity(isSavedLocally = true, currentUserId = currentUserId)
+                    Log.d("ProductRepository", "Entity для БД: productName='${entity.productName}', protein=${entity.protein}")
+                    productDao.insertProducts(entity)
+                    Log.d("ProductRepository", "Продукт успешно добавлен на сервер и в локальную БД")
+                    Result.success(serverProduct)
+                },
+                onFailure = { error ->
+                    Log.e("ProductRepository", "Ошибка добавления продукта на сервер: ${error.message}")
+                    Result.failure(error)
+                }
+            )
+        } catch (e: Exception) {
+            Log.e("ProductRepository", "Ошибка добавления продукта: ${e.message}", e)
+            Result.failure(e)
+        }
     }
 }

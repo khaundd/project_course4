@@ -48,6 +48,10 @@ class ProductViewModel(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
+    fun setLoading(isLoading: Boolean) {
+        _isLoading.value = isLoading
+    }
+
     // текущий временный выбор на экране выбора продуктов
     private var _currentSelection = MutableStateFlow<Set<Product>>(emptySet())
     var currentSelection: StateFlow<Set<Product>> = _currentSelection.asStateFlow()
@@ -168,7 +172,9 @@ class ProductViewModel(
     }
 
     fun updateProductCreationState(newState: ProductCreationState) {
+        Log.d("ProductViewModel", "Обновление состояния. Старый barcode: '${_productCreationState.value.barcode}', Новый barcode: '${newState.barcode}'")
         _productCreationState.value = newState
+        Log.d("ProductViewModel", "Состояние обновлено. Текущий barcode: '${_productCreationState.value.barcode}'")
     }
 
     fun resetProductCreationState() {
@@ -552,6 +558,31 @@ class ProductViewModel(
             } else {
                 selected
             }
+        }
+    }
+
+    suspend fun checkProductNameExists(name: String): Result<Boolean> {
+        return repository.checkProductNameExists(name)
+    }
+
+    suspend fun addNewProduct(product: Product): Result<Product> {
+        return try {
+            val result = repository.addProductToServerAndLocal(product)
+            result.fold(
+                onSuccess = { savedProduct ->
+                    Log.d("ProductViewModel", "Продукт успешно добавлен: ${savedProduct.name}")
+                    Result.success(savedProduct)
+                },
+                onFailure = { error ->
+                    Log.e("ProductViewModel", "Ошибка добавления продукта: ${error.message}")
+                    Result.failure(error)
+                }
+            )
+        } catch (e: Exception) {
+            Log.e("ProductViewModel", "Исключение при добавлении продукта: ${e.message}", e)
+            Result.failure(e)
+        } finally {
+            _isLoading.value = false
         }
     }
 }
