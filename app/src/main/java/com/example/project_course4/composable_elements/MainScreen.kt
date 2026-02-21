@@ -50,6 +50,17 @@ fun MainScreen(
             selectedLocalDate = date
         }
     }
+    
+    // Проверяем и загружаем продукты при старте, если они еще не загружены
+    LaunchedEffect(Unit) {
+        val products = viewModel.products.value
+        if (products.isEmpty()) {
+            Log.d("MainScreen", "Продукты не загружены, вызываем loadProductsAfterAuth")
+            viewModel.loadProductsAfterAuth()
+        } else {
+            Log.d("MainScreen", "Продукты уже загружены: ${products.size} шт.")
+        }
+    }
 
     val dateButtonText = remember(selectedLocalDate) {
         val today = LocalDate.now()

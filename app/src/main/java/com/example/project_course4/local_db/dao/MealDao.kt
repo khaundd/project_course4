@@ -1,5 +1,6 @@
 package com.example.project_course4.local_db.dao
 
+import android.util.Log
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
@@ -72,16 +73,22 @@ interface MealDao {
     suspend fun deleteProductLink(mId: Int, junctionId: Int)
 
     @Query("DELETE FROM meal")
-    suspend fun clearAllMeals()
+    suspend fun clearAllMeals() {
+        Log.d("MealDao", "Очистка таблицы meal")
+    }
 
     @Transaction
     suspend fun fullResetMeals() {
+        Log.d("MealDao", "Начало полного сброса приёмов пищи")
         clearAllMeals()
         resetMealCounter()
+        Log.d("MealDao", "Полный сброс приёмов пищи завершён")
     }
 
     @Query("DELETE FROM sqlite_sequence WHERE name = 'meal'")
-    suspend fun resetMealCounter()
+    suspend fun resetMealCounter() {
+        Log.d("MealDao", "Сброс счётчика таблицы meal")
+    }
 
     @Query("UPDATE meal_component SET weight = :newWeight WHERE mealMealComponentId = :junctionId")
     suspend fun updateWeight(junctionId: Int, newWeight: UShort)
@@ -99,6 +106,7 @@ interface MealDao {
         SELECT mmc.mealId AS mealId, mmc.id AS junctionId, mc.productId AS productId, mc.weight AS weight
         FROM meal_component mc
         INNER JOIN meal_meal_component mmc ON mc.mealMealComponentId = mmc.id
+        ORDER BY mmc.mealId
     """)
     suspend fun getAllMealComponentsWithJunction(): List<MealComponentWithJunction>
 }

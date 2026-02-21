@@ -1,6 +1,7 @@
 package com.example.project_course4.local_db
 
 import android.content.Context
+import android.util.Log
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -36,6 +37,7 @@ object DatabaseProvider {
 
     fun getDatabase(context: Context): AppDatabase {
         return INSTANCE ?: synchronized(this) {
+            Log.d("DatabaseProvider", "Создание или получение экземпляра базы данных")
             val instance = Room.databaseBuilder(
                 context.applicationContext,
                 AppDatabase::class.java,
@@ -43,6 +45,7 @@ object DatabaseProvider {
             )
                 .build()
             INSTANCE = instance
+            Log.d("DatabaseProvider", "Экземпляр базы данных создан/получен")
             instance
         }
     }

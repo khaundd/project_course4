@@ -71,6 +71,8 @@ class ProductRepository(
         Log.d("ProductRepository", "Загрузка приемов пищи для даты: $date, startOfDay=$startOfDay")
         val mealEntities = mealDao.getMealsByDate(startOfDay)
         val components = mealDao.getAllMealComponentsWithJunction()
+        Log.d("ProductRepository", "Найдено в БД: ${mealEntities.size} приемов пищи, ${components.size} компонентов ВСЕГО")
+        Log.d("ProductRepository", "Компоненты: ${components.map { "mealId=${it.mealId}, productId=${it.productId}, weight=${it.weight}" }}")
         
         if (mealEntities.isEmpty()) {
             Log.d("ProductRepository", "Приемы пищи не найдены для даты $date")
@@ -102,6 +104,7 @@ class ProductRepository(
                 junctionId = comp.junctionId
             )
         }
+        Log.d("ProductRepository", "Итого компонентов для возврата: ${selectedProducts.size}")
         return meals to selectedProducts
     }
 

@@ -98,41 +98,36 @@ class ProductViewModel(
 
     init {
         viewModelScope.launch {
-            repository.fetchInitialProducts()
+            Log.d("ProductViewModel", "Инициализация ProductViewModel")
+            
+            // Проверяем наличие токена перед загрузкой продуктов
+            val token = authViewModel.sessionManagerPublic.fetchAuthToken()
+            if (!token.isNullOrEmpty()) {
+                Log.d("ProductViewModel", "Токен найден, загружаем продукты")
+                repository.fetchInitialProducts()
+            } else {
+                Log.d("ProductViewModel", "Токен отсутствует, пропускаем загрузку продуктов")
+            }
+            
+            Log.d("ProductViewModel", "Загрузка приёмов пищи за текущую дату: ${_selectedDate.value}")
             loadMealsForDate(_selectedDate.value)
             
-            // Если пользователь уже авторизован, загружаем данные с сервера
-            if (authViewModel.sessionManagerPublic.fetchAuthToken() != null) {
-                Log.d("ProductViewModel", "Пользователь авторизован, загружаем данные с сервера")
-                
-                // Сначала очищаем локальную БД от старых данных
-                try {
-                    // Очищаем состояние приёмов пищи перед загрузкой новых данных
-                    _meals.value = emptyList()
-                    _finalSelection.value = emptyList()
-                    Log.d("ProductViewModel", "Локальное состояние очищено перед загрузкой с сервера")
-                } catch (e: Exception) {
-                    Log.e("ProductViewModel", "Ошибка очистки локального состояния: ${e.message}")
-                }
-                
-                val result = authViewModel.loadMealsFromServer()
-                result.fold(
-                    onSuccess = { message ->
-                        Log.d("ProductViewModel", "Данные с сервера загружены: $message")
-                        // Перезагружаем приёмы пищи за текущую дату после загрузки с сервера
-                        loadMealsForDate(_selectedDate.value)
-                    },
-                    onFailure = { error ->
-                        Log.e("ProductViewModel", "Ошибка загрузки данных с сервера: ${error.message}")
-                    }
-                )
-            }
+            // НЕ загружаем приёмы пищи с сервера автоматически
+            // Они должны синхронизироваться только при выходе из аккаунта
+            Log.d("ProductViewModel", "Автозагрузка с сервера отключена")
             
             // Подписываемся на события обновления данных от AuthViewModel
             authViewModel.dataUpdateEvent.collect {
-                Log.d("ProductViewModel", "Получено событие обновления данных, перезагружаем")
+                Log.d("ProductViewModel", "Получено событие обновления данных, перезагружаем за дату ${_selectedDate.value}")
                 loadMealsForDate(_selectedDate.value)
             }
+        }
+    }
+
+    fun loadProductsAfterAuth() {
+        viewModelScope.launch {
+            Log.d("ProductViewModel", "Загрузка продуктов после авторизации")
+            repository.fetchInitialProducts()
         }
     }
 
@@ -157,11 +152,15 @@ class ProductViewModel(
     fun loadMealsForDate(date: LocalDate) {
         viewModelScope.launch {
             try {
+                Log.d("ProductViewModel", "Загрузка приёмов пищи за дату: $date")
                 val (mealsFromDb, selectionFromDb) = repository.loadMealsByDate(date)
+                Log.d("ProductViewModel", "Загружено из БД: ${mealsFromDb.size} приёмов, ${selectionFromDb.size} компонентов")
                 if (mealsFromDb.isNotEmpty()) {
                     _meals.value = mealsFromDb.sortedBy { it.time }
                     _finalSelection.value = selectionFromDb
+                    Log.d("ProductViewModel", "Установлены приёмы пищи: ${mealsFromDb.map { "${it.id}:${it.name}" }}")
                 } else {
+                    Log.d("ProductViewModel", "Приёмы пищи за дату $date не найдены, инициализируем")
                     initializeMealsForDate(date)
                 }
             } catch (e: Exception) {
@@ -385,22 +384,29 @@ class ProductViewModel(
 
     fun initializeMeals() {
         if (_meals.value.isEmpty()) {
+            Log.d("ProductViewModel", "initializeMeals: создаются приёмы пищи по умолчанию")
             val defaultMeals = listOf(
                 Meal(id = tempMealIdCounter--, time = LocalTime.of(6, 0), name = "Завтрак"),
                 Meal(id = tempMealIdCounter--, time = LocalTime.of(11, 0), name = "Обед"),
                 Meal(id = tempMealIdCounter--, time = LocalTime.of(16, 0), name = "Ужин")
             ).sortedBy { it.time }
             _meals.value = defaultMeals
+            Log.d("ProductViewModel", "initializeMeals: создано ${defaultMeals.size} приёмов пищи")
+        } else {
+            Log.d("ProductViewModel", "initializeMeals: приёмы пищи уже существуют, пропускаем")
         }
     }
 
     fun initializeMealsForDate(date: LocalDate) {
+        Log.d("ProductViewModel", "initializeMealsForDate: создание приёмов пищи для даты $date")
+        Log.d("ProductViewModel", "initializeMealsForDate: ОЧИСТКА _finalSelection (было ${_finalSelection.value.size} компонентов)")
         _meals.value = listOf(
             Meal(id = tempMealIdCounter--, time = LocalTime.of(6, 0), name = "Завтрак"),
             Meal(id = tempMealIdCounter--, time = LocalTime.of(11, 0), name = "Обед"),
             Meal(id = tempMealIdCounter--, time = LocalTime.of(16, 0), name = "Ужин")
         ).sortedBy { it.time }
         _finalSelection.value = emptyList()
+        Log.d("ProductViewModel", "initializeMealsForDate: приёмы пищи созданы, компоненты очищены")
     }
 
     fun addMeal(name: String) {

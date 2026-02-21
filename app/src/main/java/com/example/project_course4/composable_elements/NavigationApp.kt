@@ -87,8 +87,10 @@ fun NavigationApp() {
                         val authVm = AuthViewModel(clientAPI, sessionManager, database)
                         ProductViewModel(productRepository, authVm) as T
                     }
-                    modelClass.isAssignableFrom(AuthViewModel::class.java) ->
+                    modelClass.isAssignableFrom(AuthViewModel::class.java) -> {
+                        // Создаем ProductViewModel без зависимостей, чтобы избежать циклической ссылки
                         AuthViewModel(clientAPI, sessionManager, database) as T
+                    }
                     else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
                 }
             }
@@ -107,7 +109,21 @@ fun NavigationApp() {
                 navController = navController,
                 viewModel = productViewModel,
                 onLogout = {
-                    authViewModel.logoutAndNavigate(navController)
+                    authViewModel.logout(
+                        onSuccess = { message ->
+                            Log.d("NavigationApp", "Выход успешен: $message")
+                            navController.navigate(Screen.Login.route) {
+                                popUpTo(Screen.Main.route) { inclusive = true }
+                            }
+                        },
+                        onError = { error ->
+                            Log.e("NavigationApp", "Ошибка при выходе: $error")
+                            // При ошибке все равно переходим на экран входа
+                            navController.navigate(Screen.Login.route) {
+                                popUpTo(Screen.Main.route) { inclusive = true }
+                            }
+                        }
+                    )
                 }
             )
         }
@@ -115,7 +131,23 @@ fun NavigationApp() {
         composable(Screen.Profile.route) { backStackEntry ->
             ProfileScreen(
                 navController = navController,
-                onLogout = { authViewModel.logoutAndNavigate(navController) }
+                onLogout = {
+                    authViewModel.logout(
+                        onSuccess = { message ->
+                            Log.d("NavigationApp", "Выход успешен: $message")
+                            navController.navigate(Screen.Login.route) {
+                                popUpTo(Screen.Main.route) { inclusive = true }
+                            }
+                        },
+                        onError = { error ->
+                            Log.e("NavigationApp", "Ошибка при выходе: $error")
+                            // При ошибке все равно переходим на экран входа
+                            navController.navigate(Screen.Login.route) {
+                                popUpTo(Screen.Main.route) { inclusive = true }
+                            }
+                        }
+                    )
+                }
             )
         }
         
