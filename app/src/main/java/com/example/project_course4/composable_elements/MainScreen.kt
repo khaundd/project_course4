@@ -152,75 +152,76 @@ fun MainScreen(
                 val totalFats = meals.sumOf { viewModel.getMealNutrition(it.id).fats.toDouble() }.toFloat()
                 val totalCarbs = meals.sumOf { viewModel.getMealNutrition(it.id).carbs.toDouble() }.toFloat()
 
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 8.dp)
                 ) {
-                    NutritionChart(
-                        protein = totalProtein,
-                        fats = totalFats,
-                        carbs = totalCarbs,
-                        totalCalories = totalCalories,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(220.dp)
-                            .padding(top = 8.dp, bottom = 8.dp)
-                    )
+                    // Диаграмма как первый элемент в LazyColumn
+                    item {
+                        NutritionChart(
+                            protein = totalProtein,
+                            fats = totalFats,
+                            carbs = totalCarbs,
+                            totalCalories = totalCalories,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(220.dp)
+                                .padding(top = 10.dp)
+                        )
+                    }
+                    items(meals) { meal ->
+                        val products = viewModel.getProductsForMeal(meal.id)
+                        val nutrition = viewModel.getMealNutrition(meal.id)
 
-                    LazyColumn(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = 8.dp)
-                    ) {
-                        items(meals) { meal ->
-                            val products = viewModel.getProductsForMeal(meal.id)
-                            val nutrition = viewModel.getMealNutrition(meal.id)
-
-                            MealItem(
-                                meal = meal,
-                                products = products,
-                                nutrition = nutrition,
-                                onTimeClick = { mealId, newTime -> viewModel.updateMealTime(mealId, newTime) },
-                                onAddProductClick = { m ->
-                                    if (shouldShowWeightInput){
-                                        viewModel.finalSelection.value.map { selected ->
-                                            selected.product.productId to selected.weight.toUShort()
-                                        }
-                                        scope.launch { viewModel.saveCurrentMeal(meal.id) }
+                        MealItem(
+                            meal = meal,
+                            products = products,
+                            nutrition = nutrition,
+                            onTimeClick = { mealId, newTime -> viewModel.updateMealTime(mealId, newTime) },
+                            onAddProductClick = { m ->
+                                if (shouldShowWeightInput){
+                                    viewModel.finalSelection.value.map { selected ->
+                                        selected.product.productId to selected.weight.toUShort()
                                     }
-                                    viewModel.setEditingMealId(m.id)
-                                    navController.navigate("selectProductWithMeal/${m.id}")
-                                },
-                                onEditProduct = { p, m -> viewModel.editProductWeightInMeal(p, m.id, products.find { it.product == p }?.weight ?: 0) },
-                                onDeleteProduct = { p, m ->
-                                    Log.d("DeleteProduct","Удаляемый продукт: $p, id приема пищи: ${m.id}")
-                                    viewModel.removeProductFromMeal(p, m.id) },
-                                onMealOptionsClick = { m -> viewModel.removeMeal(m.id) }
-                            )
+                                    scope.launch { viewModel.saveCurrentMeal(meal.id) }
+                                }
+                                viewModel.setEditingMealId(m.id)
+                                navController.navigate("selectProductWithMeal/${m.id}")
+                            },
+                            onEditProduct = { p, m -> viewModel.editProductWeightInMeal(p, m.id, products.find { it.product == p }?.weight ?: 0) },
+                            onDeleteProduct = { p, m ->
+                                Log.d("DeleteProduct","Удаляемый продукт: $p, id приема пищи: ${m.id}")
+                                viewModel.removeProductFromMeal(p, m.id) },
+                            onMealOptionsClick = { m -> viewModel.removeMeal(m.id) }
+                        )
+
+                        // Добавляем кнопку "Добавить приём пищи" после последнего приёма пищи
+                        if (meal == meals.last()) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = { viewModel.addMeal("...") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0E0E0))
+                            ) { Text("Добавить приём пищи", color = Color.Black) }
+                        } else {
                             Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
 
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = { viewModel.addMeal("...") },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0E0E0))
-                        ) { Text("Добавить приём пищи", color = Color.Black) }
-
-                        Button(
-                            onClick = { isLoading = true; onLogout() },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0E0E0)),
-                            enabled = !isLoading
-                        ) {
-                            if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                            else Text("Выйти из аккаунта", color = Color.Black)
+                    // Если нет приёмов пищи, добавляем кнопку сразу после диаграммы
+                    if (meals.isEmpty()) {
+                        item {
+                            Spacer(modifier = Modifier.height(32.dp))
+                            Button(
+                                onClick = { viewModel.addMeal("...") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0E0E0))
+                            ) { Text("Добавить приём пищи", color = Color.Black) }
                         }
                     }
                 }

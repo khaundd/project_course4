@@ -41,10 +41,10 @@ fun NutritionChart(
             .fillMaxWidth()
             .height(220.dp)
     ) {
-        val strokeWidthTarget = 60f  // толщина линии нормы
-        val strokeWidthProgress = 60f // толщина линии съеденного
+        val strokeWidthTarget = 80f  // толщина линии нормы
+        val strokeWidthProgress = 80f // толщина линии съеденного
         val centerX = size.width / 2
-        val centerY = size.height * 0.9f
+        val centerY = size.height * 0.7f
         val radius = size.width * 0.35f
 
         val startAngle = 180f
@@ -133,13 +133,13 @@ fun NutritionChart(
             textPaint.color = AndroidColor.BLACK
             textPaint.textSize = 64f
             textPaint.isFakeBoldText = true
-            drawText("${totalCalories.toInt()}", centerX, centerY - 80f, textPaint)
+            drawText("${totalCalories.toInt()}", centerX, centerY - 70f, textPaint)
 
             // норма
             textPaint.textSize = 32f
             textPaint.isFakeBoldText = false
             textPaint.color = AndroidColor.GRAY
-            drawText("${targetCalories.toInt()} кКал", centerX, centerY - 35f, textPaint)
+            drawText("${targetCalories.toInt()} кКал", centerX, centerY - 25f, textPaint)
         }
     }
 }
