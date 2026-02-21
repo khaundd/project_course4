@@ -48,6 +48,7 @@ fun NavigationApp() {
 
     val productRepository = remember {
         ProductRepository(
+            context = context,
             productDao = database.productsDao(),
             clientAPI = clientAPI,
             sessionManager = sessionManager,

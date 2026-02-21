@@ -15,12 +15,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.project_course4.Screen
+import com.example.project_course4.utils.NetworkUtils
 import kotlinx.coroutines.launch
 
 // Заглушки — в будущем будут браться из БД или настройки приложения
@@ -38,8 +40,10 @@ fun ProfileScreen(
     navController: NavController,
     onLogout: () -> Unit,
 ) {
+    val context = LocalContext.current
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    var showNetworkError by remember { mutableStateOf(false) }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -111,7 +115,14 @@ fun ProfileScreen(
                 )
 
                 TextButton(
-                    onClick = onLogout,
+                    onClick = {
+                        // Проверяем интернет-соединение перед выходом
+                        if (!NetworkUtils.isInternetAvailable(context)) {
+                            showNetworkError = true
+                        } else {
+                            onLogout()
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
@@ -187,6 +198,22 @@ fun ProfileScreen(
                     Text("Удалить учётную запись", color = Color.Red)
                 }
             }
+        }
+        
+        // AlertDialog для показа сообщения об отсутствии интернет-соединения
+        if (showNetworkError) {
+            AlertDialog(
+                onDismissRequest = { showNetworkError = false },
+                title = { Text("Ошибка сети") },
+                text = { Text("Отсутствует интернет-соединение") },
+                confirmButton = {
+                    TextButton(
+                        onClick = { showNetworkError = false }
+                    ) {
+                        Text("ОК")
+                    }
+                }
+            )
         }
     }
 }

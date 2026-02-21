@@ -7,6 +7,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.input.KeyboardType
@@ -14,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.project_course4.Screen
 import com.example.project_course4.utils.Validation
+import com.example.project_course4.utils.NetworkUtils
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.project_course4.AuthViewModel
@@ -22,8 +25,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 
 @Composable
 fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
+    val context = LocalContext.current
     val validation = remember { Validation() }
     var isLoading by remember { mutableStateOf(false) }
+    var showNetworkError by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -106,6 +111,14 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
             Button(
                 onClick = {
                     keyboardController?.hide()
+                    
+                    // Проверяем интернет-соединение перед входом
+                    if (!NetworkUtils.isInternetAvailable(context)) {
+                        showNetworkError = true
+                        return@Button
+                    }
+                    
+                    // Принудительно валидируем все поля перед проверкой
                     validation.validateEmail()
                     validation.validatePassword(isEmptyValid = false)
 
@@ -120,7 +133,11 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
                             },
                             onError = { error ->
                                 isLoading = false
-                                validation.toastMessage = error
+                                if (NetworkUtils.isNetworkError(Exception(error))) {
+                                    showNetworkError = true
+                                } else {
+                                    validation.toastMessage = error
+                                }
                             }
                         )
                     } else {
@@ -154,5 +171,21 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
                 )
             }
         }
+    }
+    
+    // AlertDialog для показа сообщения об отсутствии интернет-соединения
+    if (showNetworkError) {
+        AlertDialog(
+            onDismissRequest = { showNetworkError = false },
+            title = { Text("Ошибка сети") },
+            text = { Text("Отсутствует интернет-соединение") },
+            confirmButton = {
+                TextButton(
+                    onClick = { showNetworkError = false }
+                ) {
+                    Text("ОК")
+                }
+            }
+        )
     }
 }

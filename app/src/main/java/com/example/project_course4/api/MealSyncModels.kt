@@ -1,6 +1,5 @@
 package com.example.project_course4.api
 
-import com.example.project_course4.Product
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

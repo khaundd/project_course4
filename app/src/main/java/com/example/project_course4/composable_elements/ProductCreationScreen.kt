@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -21,6 +22,7 @@ import com.example.project_course4.Product
 import com.example.project_course4.ProductCreationValidator
 import com.example.project_course4.ValidationResult
 import com.example.project_course4.viewmodel.ProductViewModel
+import com.example.project_course4.utils.NetworkUtils
 import kotlinx.coroutines.launch
 
 @Composable
@@ -30,8 +32,10 @@ fun ProductCreationScreen(
     onBarcodeScan: (String) -> Unit,
     initialBarcode: String? = null
 ) {
+    val context = LocalContext.current
     val state by viewModel.productCreationState.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    var showNetworkError by remember { mutableStateOf(false) }
     Log.d("ProductCreation", "Текущее состояние barcode в UI: '${state.barcode}'")
     Log.d("ProductCreation", "initialBarcode: $initialBarcode")
 
@@ -41,6 +45,21 @@ fun ProductCreationScreen(
         initialBarcode?.takeIf { it.isNotBlank() }?.let { barcode ->
         Log.d("ProductCreation", "Обновляем состояние с barcode: $barcode")
             viewModel.updateProductCreationState(state.copy(barcode = barcode))
+        }
+    }
+    
+    // Очищаем ошибки при выходе с экрана
+    DisposableEffect(Unit) {
+        onDispose {
+            val clearedState = state.copy(
+                nameError = null,
+                proteinError = null,
+                fatsError = null,
+                carbsError = null,
+                macrosError = null,
+                barcodeError = null
+            )
+            viewModel.updateProductCreationState(clearedState)
         }
     }
     val validator = remember { ProductCreationValidator() }
@@ -290,6 +309,13 @@ fun ProductCreationScreen(
 
             Button(
                 onClick = {
+                    // Проверяем интернет-соединение перед сохранением
+                    if (!NetworkUtils.isInternetAvailable(context)) {
+                        viewModel.setLoading(false) // Сбрасываем загрузку
+                        showNetworkError = true
+                        return@Button
+                    }
+                    
                     // Устанавливаем состояние загрузки немедленно
                     viewModel.setLoading(true)
                     
@@ -353,10 +379,15 @@ fun ProductCreationScreen(
                                                     navController.popBackStack()
                                                 },
                                                 onFailure = { error ->
-                                                    val errorState = updatedState.copy(
-                                                        nameError = "Ошибка сохранения: ${error.message}"
-                                                    )
-                                                    viewModel.updateProductCreationState(errorState)
+                                                    if (NetworkUtils.isNetworkError(error)) {
+                                                        viewModel.setLoading(false) // Сбрасываем загрузку
+                                                        showNetworkError = true
+                                                    } else {
+                                                        val errorState = updatedState.copy(
+                                                            nameError = "Ошибка сохранения: ${error.message}"
+                                                        )
+                                                        viewModel.updateProductCreationState(errorState)
+                                                    }
                                                 }
                                             )
                                         }
@@ -364,19 +395,27 @@ fun ProductCreationScreen(
                                     onFailure = { error ->
                                         // Ошибка проверки названия - сбрасываем загрузку
                                         viewModel.setLoading(false)
-                                        val errorState = updatedState.copy(
-                                            nameError = "Ошибка проверки названия: ${error.message}"
-                                        )
-                                        viewModel.updateProductCreationState(errorState)
+                                        if (NetworkUtils.isNetworkError(error)) {
+                                            showNetworkError = true
+                                        } else {
+                                            val errorState = updatedState.copy(
+                                                nameError = "Ошибка проверки названия: ${error.message}"
+                                            )
+                                            viewModel.updateProductCreationState(errorState)
+                                        }
                                     }
                                 )
                             } catch (e: Exception) {
                                 // Исключение - сбрасываем загрузку
                                 viewModel.setLoading(false)
-                                val errorState = updatedState.copy(
-                                    nameError = "Ошибка: ${e.message}"
-                                )
-                                viewModel.updateProductCreationState(errorState)
+                                if (NetworkUtils.isNetworkError(e)) {
+                                    showNetworkError = true
+                                } else {
+                                    val errorState = updatedState.copy(
+                                        nameError = "Ошибка: ${e.message}"
+                                    )
+                                    viewModel.updateProductCreationState(errorState)
+                                }
                             }
                         }
                     } else {
@@ -402,5 +441,45 @@ fun ProductCreationScreen(
                 }
             }
         }
+    }
+    
+    // AlertDialog для показа сообщения об отсутствии интернет-соединения
+    if (showNetworkError) {
+        AlertDialog(
+            onDismissRequest = { 
+                showNetworkError = false
+                // Очищаем все состояния ошибок при закрытии диалога
+                val clearedState = state.copy(
+                    nameError = null,
+                    proteinError = null,
+                    fatsError = null,
+                    carbsError = null,
+                    macrosError = null,
+                    barcodeError = null
+                )
+                viewModel.updateProductCreationState(clearedState)
+            },
+            title = { Text("Ошибка сети") },
+            text = { Text("Отсутствует интернет-соединение") },
+            confirmButton = {
+                TextButton(
+                    onClick = { 
+                        showNetworkError = false
+                        // Очищаем все состояния ошибок при нажатии на ОК
+                        val clearedState = state.copy(
+                            nameError = null,
+                            proteinError = null,
+                            fatsError = null,
+                            carbsError = null,
+                            macrosError = null,
+                            barcodeError = null
+                        )
+                        viewModel.updateProductCreationState(clearedState)
+                    }
+                ) {
+                    Text("ОК")
+                }
+            }
+        )
     }
 }

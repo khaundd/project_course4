@@ -1,11 +1,13 @@
 package com.example.project_course4
 
+import android.content.Context
 import android.util.Log
 import com.example.project_course4.api.ClientAPI
 import com.example.project_course4.local_db.dao.MealDao
 import com.example.project_course4.local_db.dao.ProductsDao
 import com.example.project_course4.local_db.entities.MealEntity
 import com.example.project_course4.local_db.entities.Products
+import com.example.project_course4.utils.NetworkUtils
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.Instant
@@ -14,6 +16,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 
 class ProductRepository(
+    private val context: Context,
     private val productDao: ProductsDao,
     private val clientAPI: ClientAPI,
     private val sessionManager: SessionManager,
@@ -170,6 +173,11 @@ class ProductRepository(
 
     suspend fun checkProductNameExists(name: String): Result<Boolean> {
         return try {
+            // Проверяем интернет-соединение перед запросом к серверу
+            if (!NetworkUtils.isInternetAvailable(context)) {
+                return Result.failure(Exception("Отсутствует интернет-соединение"))
+            }
+            
             val result = clientAPI.checkProductNameExists(name)
             result.fold(
                 onSuccess = { exists -> Result.success(exists) },
@@ -183,6 +191,11 @@ class ProductRepository(
 
     suspend fun addProductToServerAndLocal(product: Product): Result<Product> {
         return try {
+            // Проверяем интернет-соединение перед отправкой на сервер
+            if (!NetworkUtils.isInternetAvailable(context)) {
+                return Result.failure(Exception("Отсутствует интернет-соединение"))
+            }
+            
             // Сначала добавляем на сервер
             val createRequest = com.example.project_course4.api.ProductCreateRequest(
                 name = product.name,
