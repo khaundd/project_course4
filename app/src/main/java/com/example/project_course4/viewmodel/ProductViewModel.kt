@@ -97,6 +97,33 @@ class ProductViewModel(
             repository.fetchInitialProducts()
             loadMealsForDate(_selectedDate.value)
             
+            // Если пользователь уже авторизован, загружаем данные с сервера
+            if (authViewModel.sessionManagerPublic.fetchAuthToken() != null) {
+                Log.d("ProductViewModel", "Пользователь авторизован, загружаем данные с сервера")
+                
+                // Сначала очищаем локальную БД от старых данных
+                try {
+                    // Очищаем состояние приёмов пищи перед загрузкой новых данных
+                    _meals.value = emptyList()
+                    _finalSelection.value = emptyList()
+                    Log.d("ProductViewModel", "Локальное состояние очищено перед загрузкой с сервера")
+                } catch (e: Exception) {
+                    Log.e("ProductViewModel", "Ошибка очистки локального состояния: ${e.message}")
+                }
+                
+                val result = authViewModel.loadMealsFromServer()
+                result.fold(
+                    onSuccess = { message ->
+                        Log.d("ProductViewModel", "Данные с сервера загружены: $message")
+                        // Перезагружаем приёмы пищи за текущую дату после загрузки с сервера
+                        loadMealsForDate(_selectedDate.value)
+                    },
+                    onFailure = { error ->
+                        Log.e("ProductViewModel", "Ошибка загрузки данных с сервера: ${error.message}")
+                    }
+                )
+            }
+            
             // Подписываемся на события обновления данных от AuthViewModel
             authViewModel.dataUpdateEvent.collect {
                 Log.d("ProductViewModel", "Получено событие обновления данных, перезагружаем")

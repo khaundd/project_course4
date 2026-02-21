@@ -20,6 +20,9 @@ class AuthViewModel(
     private val database: AppDatabase
 ) : AndroidViewModel() {
     
+    // Публичный доступ к sessionManager для других ViewModel
+    val sessionManagerPublic: SessionManager = sessionManager
+    
     // SharedFlow для уведомления об обновлении данных
     private val _dataUpdateEvent = MutableSharedFlow<Unit>()
     val dataUpdateEvent: SharedFlow<Unit> = _dataUpdateEvent
@@ -99,6 +102,25 @@ class AuthViewModel(
         }
     }
 
+    private suspend fun clearMealsFromServer(): Result<String> {
+        return try {
+            val result = clientAPI.clearMealsFromServer()
+            result.fold(
+                onSuccess = { message ->
+                    Log.d("ViewModel", "Данные на сервере успешно очищены: $message")
+                    Result.success(message)
+                },
+                onFailure = { error -> 
+                    Log.e("ViewModel", "Ошибка очистки данных с сервера: ${error.message}")
+                    Result.failure(error)
+                }
+            )
+        } catch (e: Exception) {
+            Log.e("ViewModel", "Исключение при очистке данных с сервера: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
     private suspend fun syncMealsToServer(): Result<String> {
         return try {
             val meals = database.mealDao().getAllMeals()
@@ -123,23 +145,31 @@ class AuthViewModel(
         }
     }
 
-    private suspend fun loadMealsFromServer(): Result<String> {
+    suspend fun loadMealsFromServer(): Result<String> {
         return try {
+            // Сначала очищаем локальную БД перед загрузкой новых данных
+            database.mealDao().fullResetMeals()
+            Log.d("ViewModel", "Локальная БД очищена перед загрузкой данных с сервера")
+            
+            // Очищаем UI состояние, отправляя событие об обновлении
+            _dataUpdateEvent.emit(Unit)
+            Log.d("ViewModel", "Отправлено событие очистки UI состояния")
+            
             val result = clientAPI.loadMealsFromServer()
             result.fold(
                 onSuccess = { mealsData ->
-                    // Очищаем локальную БД перед загрузкой новых данных
-                    database.mealDao().fullResetMeals()
-                    Log.d("ViewModel", "Локальная БД очищена перед загрузкой данных с сервера")
-                    
                     mealsData.forEach { mealData ->
-                        // Конвертируем строку DATETIME в миллисекунды
-                        val fullDateTime = DateUtils.parseDateTime(mealData.mealTime)
+                        Log.d("AuthViewModel", "Получен прием пищи с сервера: ${mealData.name}, время: ${mealData.mealTime}")
+                        
+                        // Конвертируем строку DATETIME из UTC в миллисекунды локального времени
+                        val fullDateTime = DateUtils.parseDateTimeFromServer(mealData.mealTime)
                         val (mealTime, mealDate) = DateUtils.splitDateTime(fullDateTime)
+                        
+                        Log.d("AuthViewModel", "После конвертации: fullDateTime=$fullDateTime, mealTime=$mealTime, mealDate=$mealDate")
                         
                         val mealEntity = MealEntity(
                             name = mealData.name,
-                            mealTime = mealTime,
+                            mealTime = mealTime,  // Возвращаем смещение от начала дня
                             mealDate = mealDate
                         )
                         
@@ -169,22 +199,52 @@ class AuthViewModel(
     ) {
         viewModelScope.launch {
             try {
-                // Сначала синхронизируем данные на сервер
-                val syncResult = syncMealsToServer()
-                syncResult.fold(
-                    onSuccess = { syncMessage ->
-                        Log.d("ViewModel", "Синхронизация успешна: $syncMessage")
+                // 1. Сначала очищаем данные на сервере
+                val clearResult = clearMealsFromServer()
+                clearResult.fold(
+                    onSuccess = { clearMessage ->
+                        Log.d("ViewModel", "Очистка на сервере успешна: $clearMessage")
+                        
+                        // 2. Затем синхронизируем локальные данные на сервер
+                        val syncResult = syncMealsToServer()
+                        syncResult.fold(
+                            onSuccess = { syncMessage ->
+                                Log.d("ViewModel", "Синхронизация успешна: $syncMessage")
+                                
+                                // 3. Очищаем локальную БД
+                                database.mealDao().fullResetMeals()
+                                Log.d("ViewModel", "Локальная БД очищена после синхронизации")
+                            },
+                            onFailure = { error ->
+                                Log.e("ViewModel", "Ошибка синхронизации: ${error.message}")
+                                // При ошибке синхронизации все равно очищаем локальные данные
+                                database.mealDao().fullResetMeals()
+                                Log.d("ViewModel", "Локальная БД очищена из-за ошибки синхронизации")
+                            }
+                        )
                     },
                     onFailure = { error ->
-                        Log.e("ViewModel", "Ошибка синхронизации: ${error.message}")
-                        // При ошибке синхронизации все равно очищаем локальные данные,
-                        // чтобы избежать дублирования при следующих входах/выходах
-                        database.mealDao().fullResetMeals()
-                        Log.d("ViewModel", "Локальная БД очищена из-за ошибки синхронизации")
+                        Log.e("ViewModel", "Ошибка очистки сервера: ${error.message}")
+                        // Даже если очистка сервера не удалась, продолжаем с синхронизацией
+                        val syncResult = syncMealsToServer()
+                        syncResult.fold(
+                            onSuccess = { syncMessage ->
+                                Log.d("ViewModel", "Синхронизация успешна: $syncMessage")
+                                database.mealDao().fullResetMeals()
+                            },
+                            onFailure = { syncError ->
+                                Log.e("ViewModel", "Ошибка синхронизации: ${syncError.message}")
+                                database.mealDao().fullResetMeals()
+                            }
+                        )
                     }
                 )
                 
-                // Затем выполняем обычный выход
+                // 4. Очищаем UI состояние перед выходом
+                _dataUpdateEvent.emit(Unit)
+                Log.d("ViewModel", "Отправлено событие очистки UI состояния при выходе")
+                
+                // 5. Выполняем обычный выход
                 val result = clientAPI.logout()
                 result.fold(
                     onSuccess = { message ->

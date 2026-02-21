@@ -1,31 +1,97 @@
 package com.example.project_course4.utils
 
+import android.util.Log
 import java.text.SimpleDateFormat
 import java.util.*
 
 object DateUtils {
-    private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+    private val serverDateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).apply {
+        timeZone = TimeZone.getTimeZone("UTC")
+    }
+    
+    private val localDateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).apply {
+        timeZone = TimeZone.getDefault()
+    }
 
     /**
-     * Конвертирует mealTime (Long) и mealDate (Long) в строку формата "YYYY-MM-DD hh:mm:ss"
-     * mealDate - это начало дня в миллисекундах
-     * mealTime - это время дня в миллисекундах от начала дня
+     * Конвертирует mealTime (Long) и mealDate (Long) в строку формата "YYYY-MM-DD hh:mm:ss" для отправки на сервер
+     * Конвертирует локальное время в UTC
      */
-    fun combineDateTime(mealTime: Long, mealDate: Long): String {
+    fun combineDateTimeForServer(mealTime: Long, mealDate: Long): String {
         // mealDate - начало дня, mealTime - смещение от начала дня
-        val fullDateTime = mealDate + mealTime
-        val result = dateFormat.format(Date(fullDateTime))
-        println("DateUtils.combineDateTime: mealTime=$mealTime, mealDate=$mealDate, fullDateTime=$fullDateTime, result=$result")
+        val fullLocalDateTime = mealDate + mealTime
+        
+        // Конвертируем локальное время в UTC
+        val localCalendar = Calendar.getInstance()
+        localCalendar.timeInMillis = fullLocalDateTime
+        
+        val utcCalendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+        utcCalendar.set(
+            localCalendar.get(Calendar.YEAR),
+            localCalendar.get(Calendar.MONTH),
+            localCalendar.get(Calendar.DAY_OF_MONTH),
+            localCalendar.get(Calendar.HOUR_OF_DAY),
+            localCalendar.get(Calendar.MINUTE),
+            localCalendar.get(Calendar.SECOND)
+        )
+        utcCalendar.set(Calendar.MILLISECOND, localCalendar.get(Calendar.MILLISECOND))
+        
+        val utcTime = utcCalendar.timeInMillis
+        val result = serverDateFormat.format(Date(utcTime))
+        
+        Log.d("DateUtils","DateUtils.combineDateTimeForServer: local=$fullLocalDateTime, UTC=$utcTime, result=$result")
         return result
     }
 
     /**
-     * Конвертирует строку формата "YYYY-MM-DD hh:mm:ss" в Long (миллисекунды)
+     * Конвертирует mealTime (Long) и mealDate (Long) в строку формата "YYYY-MM-DD hh:mm:ss" для локального использования
      */
-    fun parseDateTime(dateTimeString: String): Long {
+    fun combineDateTimeLocal(mealTime: Long, mealDate: Long): String {
+        val fullDateTime = mealDate + mealTime
+        val result = localDateFormat.format(Date(fullDateTime))
+        Log.d("DateUtils","DateUtils.combineDateTimeLocal: mealTime=$mealTime, mealDate=$mealDate, fullDateTime=$fullDateTime, result=$result")
+        return result
+    }
+
+    /**
+     * Конвертирует строку формата "YYYY-MM-DD hh:mm:ss" из UTC в Long (миллисекунды) локального времени
+     */
+    fun parseDateTimeFromServer(dateTimeString: String): Long {
         return try {
-            dateFormat.parse(dateTimeString)?.time ?: 0L
+            // Сначала парсим как UTC
+            val utcTime = serverDateFormat.parse(dateTimeString)?.time ?: 0L
+            // Затем конвертируем в локальное время
+            val utcCalendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+            utcCalendar.timeInMillis = utcTime
+            
+            val localCalendar = Calendar.getInstance()
+            localCalendar.set(
+                utcCalendar.get(Calendar.YEAR),
+                utcCalendar.get(Calendar.MONTH),
+                utcCalendar.get(Calendar.DAY_OF_MONTH),
+                utcCalendar.get(Calendar.HOUR_OF_DAY),
+                utcCalendar.get(Calendar.MINUTE),
+                utcCalendar.get(Calendar.SECOND)
+            )
+            localCalendar.set(Calendar.MILLISECOND, utcCalendar.get(Calendar.MILLISECOND))
+            
+            val localTime = localCalendar.timeInMillis
+            Log.d("DateUtils", "DateUtils.parseDateTimeFromServer: UTC=$dateTimeString, UTC ms=$utcTime, Local ms=$localTime")
+            localTime
         } catch (e: Exception) {
+            Log.d("DateUtils", "DateUtils.parseDateTimeFromServer: Ошибка парсинга даты '$dateTimeString': ${e.message}")
+            0L
+        }
+    }
+
+    /**
+     * Конвертирует строку формата "YYYY-MM-DD hh:mm:ss" локального времени в Long (миллисекунды)
+     */
+    fun parseLocalDateTime(dateTimeString: String): Long {
+        return try {
+            localDateFormat.parse(dateTimeString)?.time ?: 0L
+        } catch (e: Exception) {
+            Log.d("DateUtils", "DateUtils.parseLocalDateTime: Ошибка парсинга даты '$dateTimeString': ${e.message}")
             0L
         }
     }
@@ -50,15 +116,22 @@ object DateUtils {
         val mealDate = startOfDayCalendar.timeInMillis
         val mealTime = fullDateTime - mealDate
         
-        println("DateUtils.splitDateTime: fullDateTime=$fullDateTime, mealDate=$mealDate, mealTime=$mealTime")
+        Log.d("DateUtils", "DateUtils.splitDateTime: fullDateTime=$fullDateTime, mealDate=$mealDate, mealTime=$mealTime")
         
         return Pair(mealTime, mealDate)
     }
 
     /**
-     * Получает текущую дату и время в нужном формате
+     * Получает текущую дату и время в UTC для сервера
      */
-    fun getCurrentDateTimeString(): String {
-        return dateFormat.format(Date())
+    fun getCurrentServerDateTimeString(): String {
+        return serverDateFormat.format(Date())
+    }
+
+    /**
+     * Получает текущую дату и время в локальном часовом поясе
+     */
+    fun getCurrentLocalDateTimeString(): String {
+        return localDateFormat.format(Date())
     }
 }

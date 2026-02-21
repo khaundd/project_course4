@@ -28,7 +28,6 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
@@ -130,9 +129,7 @@ fun MainScreen(
                     .padding(paddingValues)
                     .background(Color.White)
             ) {
-                // Инициализация приёмов пищи
-                LaunchedEffect(Unit) { viewModel.initializeMeals() }
-
+                // Приёмы пищи уже инициализируются в ProductViewModel.init()
                 var isLoading by remember { mutableStateOf(false) }
                 val meals by viewModel.meals.collectAsState()
                 val currentProductForWeight by viewModel.currentProductForWeight.collectAsState()

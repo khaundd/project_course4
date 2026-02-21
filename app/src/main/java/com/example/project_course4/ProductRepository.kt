@@ -60,27 +60,33 @@ class ProductRepository(
     }
 
     suspend fun updateMealTime(mealId: Int, newTime: LocalTime) {
-        val timeInMillis = newTime.atDate(LocalDate.now())
-            .atZone(ZoneId.systemDefault())
-            .toInstant().toEpochMilli()
+        // newTime - это LocalTime, нужно конвертировать в смещение от начала дня в миллисекундах
+        val timeInMillis = newTime.toNanoOfDay() / 1_000_000
         mealDao.updateMealTime(mealId, timeInMillis)
     }
 
     suspend fun loadMealsByDate(date: LocalDate): Pair<List<Meal>, List<SelectedProduct>> {
         val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        Log.d("ProductRepository", "Загрузка приемов пищи для даты: $date, startOfDay=$startOfDay")
         val mealEntities = mealDao.getMealsByDate(startOfDay)
         val components = mealDao.getAllMealComponentsWithJunction()
         
         if (mealEntities.isEmpty()) {
+            Log.d("ProductRepository", "Приемы пищи не найдены для даты $date")
             return emptyList<Meal>() to emptyList()
         }
+        
+        Log.d("ProductRepository", "Найдено ${mealEntities.size} приемов пищи для даты $date")
         
         val productIds = components.map { it.productId }.distinct()
         val productsMap = if (productIds.isEmpty()) emptyMap()
         else productDao.getProductsByIds(productIds).associateBy { it.productId }
 
         val meals = mealEntities.map { entity ->
-            val time = Instant.ofEpochMilli(entity.mealTime)
+            // entity.mealTime - это смещение от начала дня в миллисекундах
+            // entity.mealDate - это начало дня в миллисекундах
+            val fullDateTime = entity.mealDate + entity.mealTime
+            val time = Instant.ofEpochMilli(fullDateTime)
                 .atZone(ZoneId.systemDefault())
                 .toLocalTime()
             Meal(id = entity.mealId, time = time, name = entity.name)
@@ -137,7 +143,10 @@ class ProductRepository(
         else productDao.getProductsByIds(productIds).associateBy { it.productId }
 
         val meals = mealEntities.map { entity ->
-            val time = Instant.ofEpochMilli(entity.mealTime)
+            // entity.mealTime - это смещение от начала дня в миллисекундах
+            // entity.mealDate - это начало дня в миллисекундах
+            val fullDateTime = entity.mealDate + entity.mealTime
+            val time = Instant.ofEpochMilli(fullDateTime)
                 .atZone(ZoneId.systemDefault())
                 .toLocalTime()
             Meal(id = entity.mealId, time = time, name = entity.name)

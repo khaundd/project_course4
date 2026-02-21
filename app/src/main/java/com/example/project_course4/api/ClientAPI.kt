@@ -8,6 +8,7 @@ import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -202,7 +203,7 @@ class ClientAPI (private val sessionManager: SessionManager){
                     
                     MealData(
                         name = meal.name,
-                        mealTime = DateUtils.combineDateTime(meal.mealTime, meal.mealDate),
+                        mealTime = DateUtils.combineDateTimeForServer(meal.mealTime, meal.mealDate),
                         components = components
                     )
                 }
@@ -236,6 +237,35 @@ class ClientAPI (private val sessionManager: SessionManager){
                 }
             } catch (e: Exception) {
                 Log.e("api_test", "Ошибка в syncMealsToServer: ${e.message}", e)
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun clearMealsFromServer(): Result<String> {
+        val url = "$BASE_URL/meals/clear"
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("api_test", "Очистка данных на сервере...")
+                
+                val response = client.delete(url)
+                
+                Log.d("api_test", "Статус ответа при очистке: ${response.status.value}")
+                
+                when (response.status.value) {
+                    in 200..299 -> {
+                        val responseBody = response.body<ApiResponse>()
+                        Log.d("api_test", "Ответ сервера при очистке: $responseBody")
+                        Result.success(responseBody.message ?: "Данные успешно очищены")
+                    }
+                    else -> {
+                        val errorResponse = response.body<ApiResponse>()
+                        Log.e("api_test", "Ошибка сервера при очистке: ${response.status.value}, ответ: $errorResponse")
+                        Result.failure(Exception(errorResponse?.error ?: "Ошибка сервера при очистке"))
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("api_test", "Ошибка в clearMealsFromServer: ${e.message}", e)
                 Result.failure(e)
             }
         }
