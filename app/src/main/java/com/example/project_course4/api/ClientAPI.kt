@@ -130,7 +130,7 @@ class ClientAPI (private val sessionManager: SessionManager){
                 }
             } catch (e: Exception) {
                 Log.e("api_test", "Ошибка в login: ${e.message}", e)
-                Result.failure(e)
+                Result.failure(Exception("Сервер недоступен, повторите попытку позднее"))
             }
         }
     }

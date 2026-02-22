@@ -105,7 +105,7 @@ fun SelectProductScreen(
             }
         } else {
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
                 modifier = Modifier.padding(paddingValues)
             ) {
                 items(products) { product ->
