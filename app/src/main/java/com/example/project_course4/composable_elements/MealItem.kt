@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -31,6 +32,8 @@ import com.example.project_course4.Meal
 import com.example.project_course4.Product
 import com.example.project_course4.SelectedProduct
 import com.example.project_course4.MealNutrition
+import com.example.project_course4.R
+import com.example.project_course4.composable_elements.auth.TextButtonRedirect
 import java.time.format.DateTimeFormatter
 import com.example.project_course4.composable_elements.dialogs.TimePickerDialog
 import java.time.LocalTime
@@ -119,14 +122,15 @@ fun MealItem(
                         .fillMaxWidth()
                         .padding(bottom = 4.dp)
                 ) {
-                    Text(
-                        text = "Добавить",
-                        color = Color(0xFF2196F3),
-                        fontWeight = FontWeight.Bold,
+                    TextButtonRedirect(
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
-                            .padding(end = 16.dp, bottom = 4.dp)
-                            .clickable { onAddProductClick(meal) }
+                            .padding(end = 16.dp),
+                        text = "Добавить",
+                        normalColor = colorResource(id = R.color.textButtonRedirectColor),
+                        pressedColor = colorResource(id = R.color.buttonColor),
+                        onClick = { onAddProductClick(meal) },
+                        textDecoration = null
                     )
                 }
             } else {
@@ -154,14 +158,14 @@ fun MealItem(
                     Box(
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(
-                            text = "Добавить",
-                            color = Color(0xFF2196F3),
-                            fontWeight = FontWeight.Bold,
+                        TextButtonRedirect(
                             modifier = Modifier
                                 .align(Alignment.CenterEnd)
-                                .padding(end = 16.dp)
-                                .clickable { onAddProductClick(meal) }
+                                .padding(end = 16.dp),
+                            text = "Добавить",
+                            normalColor = colorResource(id = R.color.textButtonRedirectColor),
+                            pressedColor = colorResource(id = R.color.buttonColor),
+                            onClick = { onAddProductClick(meal) }
                         )
                     }
                 }

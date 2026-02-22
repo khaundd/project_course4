@@ -22,8 +22,10 @@ import com.example.project_course4.utils.NetworkUtils
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.text.style.TextDecoration
 import com.example.project_course4.AuthViewModel
 import com.example.project_course4.R
+import com.example.project_course4.composable_elements.CustomButton
 
 
 @Composable
@@ -247,7 +249,7 @@ fun RegistrationScreen(navController: NavController, viewModel: AuthViewModel?) 
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            CustomAuthButton(
+            CustomButton(
                 text = "Зарегистрироваться",
                 isLoading = isLoading,
                 onClick = {
@@ -256,7 +258,7 @@ fun RegistrationScreen(navController: NavController, viewModel: AuthViewModel?) 
                     // Проверяем интернет-соединение перед регистрацией
                     if (!NetworkUtils.isInternetAvailable(context)) {
                         showNetworkError = true
-                        return@CustomAuthButton
+                        return@CustomButton
                     }
 
                     // Принудительно валидируем все поля перед проверкой
@@ -314,7 +316,8 @@ fun RegistrationScreen(navController: NavController, viewModel: AuthViewModel?) 
                     text = "Войти",
                     normalColor = colorResource(id = R.color.textButtonRedirectColor),
                     pressedColor = colorResource(id = R.color.buttonColor),
-                    onClick = { navController.navigate(Screen.Login.route) }
+                    onClick = { navController.navigate(Screen.Login.route) },
+                    textDecoration = TextDecoration.Underline
                 )
             }
         }

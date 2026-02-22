@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -28,6 +29,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import com.example.project_course4.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
@@ -210,13 +212,16 @@ fun MainScreen(
                         // Добавляем кнопку "Добавить приём пищи" после последнего приёма пищи
                         if (meal == meals.last()) {
                             Spacer(modifier = Modifier.height(16.dp))
-                            Button(
+                            CustomButton(
                                 onClick = { viewModel.addMeal("...") },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0E0E0))
-                            ) { Text("Добавить приём пищи", color = Color.Black) }
+                                backgroundColor = colorResource(id = R.color.buttonColor),
+                                textColor = Color.White,
+                                text = "Добавить приём пищи",
+                                cornerRadius = 32.dp
+                            )
                         } else {
                             Spacer(modifier = Modifier.height(8.dp))
                         }

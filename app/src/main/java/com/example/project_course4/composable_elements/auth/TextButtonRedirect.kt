@@ -13,7 +13,9 @@ import androidx.compose.ui.text.style.TextDecoration
 
 @Composable
 fun TextButtonRedirect(
+    modifier: Modifier = Modifier,
     text: String,
+    textDecoration: TextDecoration? = null,
     normalColor: Color,
     pressedColor: Color,
     onClick: () -> Unit
@@ -24,8 +26,9 @@ fun TextButtonRedirect(
         text = text,
         color = if (isPressed) pressedColor else normalColor,
         fontWeight = FontWeight.Bold,
-        textDecoration = TextDecoration.Underline,
-        modifier = Modifier.pointerInput(Unit) {
+        textDecoration = textDecoration,
+        modifier = modifier.then(
+            Modifier.pointerInput(Unit) {
             detectTapGestures(
                 onPress = {
                     isPressed = true
@@ -37,8 +40,8 @@ fun TextButtonRedirect(
                     }
                     isPressed = false
                     onClick()
-                }
-            )
-        }
+                })
+            }
+        )
     )
 }

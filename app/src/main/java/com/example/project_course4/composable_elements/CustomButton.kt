@@ -1,4 +1,4 @@
-package com.example.project_course4.composable_elements.auth
+package com.example.project_course4.composable_elements
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -10,23 +10,28 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlin.math.sqrt
 
 // Функция для рисования анимации заполнения от центра
 private fun DrawScope.drawFillAnimation(
     progress: Float,
     fillColor: Color,
     size: Size,
-    borderColor: Color
+    borderColor: Color,
+    cornerRadius: androidx.compose.ui.unit.Dp
 ) {
     if (progress > 0f) {
-        val maxRadius = kotlin.math.sqrt(size.width * size.width + size.height * size.height) / 2f
+        val maxRadius = sqrt(size.width * size.width + size.height * size.height) / 2f
         val currentRadius = maxRadius * progress
         val center = Offset(size.width / 2f, size.height / 2f)
         
@@ -44,8 +49,8 @@ private fun DrawScope.drawFillAnimation(
                 color = borderColor.copy(alpha = borderAlpha),
                 size = size,
                 topLeft = Offset.Zero,
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(8.dp.toPx()),
-                style = androidx.compose.ui.graphics.drawscope.Stroke(
+                cornerRadius = CornerRadius(cornerRadius.toPx()),
+                style = Stroke(
                     width = 2.dp.toPx()
                 )
             )
@@ -54,13 +59,14 @@ private fun DrawScope.drawFillAnimation(
 }
 
 @Composable
-fun CustomAuthButton(
+fun CustomButton(
     modifier: Modifier = Modifier,
     text: String,
     isLoading: Boolean = false,
     enabled: Boolean = true,
     backgroundColor: Color,
     textColor: Color,
+    cornerRadius: Dp = 8.dp,
     onClick: () -> Unit,
 ) {
     var isPressed by remember { mutableStateOf(false) }
@@ -74,7 +80,7 @@ fun CustomAuthButton(
         modifier = modifier
             .fillMaxWidth()
             .height(48.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(cornerRadius))
             .drawBehind {
                 // Рисуем фон кнопки
                 val fillColor = when {
@@ -93,8 +99,8 @@ fun CustomAuthButton(
                         color = backgroundColor,
                         size = size,
                         topLeft = Offset.Zero,
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(8.dp.toPx()),
-                        style = androidx.compose.ui.graphics.drawscope.Stroke(
+                        cornerRadius = CornerRadius(cornerRadius.toPx()),
+                        style = Stroke(
                             width = 2.dp.toPx()
                         )
                     )
@@ -105,7 +111,8 @@ fun CustomAuthButton(
                         progress = buttonAnimationProgress,
                         fillColor = textColor,
                         size = size,
-                        borderColor = backgroundColor
+                        borderColor = backgroundColor,
+                        cornerRadius = cornerRadius
                     )
                 }
             }

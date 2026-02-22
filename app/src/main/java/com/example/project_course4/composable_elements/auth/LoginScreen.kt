@@ -19,7 +19,9 @@ import com.example.project_course4.AuthViewModel
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextDecoration
 import com.example.project_course4.R
+import com.example.project_course4.composable_elements.CustomButton
 
 @Composable
 fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
@@ -106,7 +108,7 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            CustomAuthButton(
+            CustomButton(
                 text = "Войти",
                 isLoading = isLoading,
                 onClick = {
@@ -115,7 +117,7 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
                     // Проверяем интернет-соединение перед входом
                     if (!NetworkUtils.isInternetAvailable(context)) {
                         showNetworkError = true
-                        return@CustomAuthButton
+                        return@CustomButton
                     }
 
                     // Принудительно валидируем все поля перед проверкой
@@ -157,6 +159,7 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
                     normalColor = colorResource(id = R.color.textButtonRedirectColor),
                     pressedColor = colorResource(id = R.color.buttonColor),
                     onClick = { navController.navigate(Screen.Registration.route) },
+                    textDecoration = TextDecoration.Underline
                 )
             }
         }
