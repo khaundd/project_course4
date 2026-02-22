@@ -9,6 +9,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 
 @Composable
@@ -17,6 +18,7 @@ fun TextButtonRedirect(
     text: String,
     textDecoration: TextDecoration? = null,
     normalColor: Color,
+    textAlign: TextAlign? = null,
     pressedColor: Color,
     onClick: () -> Unit
 ) {
@@ -27,6 +29,7 @@ fun TextButtonRedirect(
         color = if (isPressed) pressedColor else normalColor,
         fontWeight = FontWeight.Bold,
         textDecoration = textDecoration,
+        textAlign = textAlign,
         modifier = modifier.then(
             Modifier.pointerInput(Unit) {
             detectTapGestures(

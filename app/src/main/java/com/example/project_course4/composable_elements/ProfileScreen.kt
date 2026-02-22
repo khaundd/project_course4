@@ -16,14 +16,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.project_course4.Screen
+import com.example.project_course4.composable_elements.auth.TextButtonRedirect
 import com.example.project_course4.utils.NetworkUtils
 import kotlinx.coroutines.launch
+import com.example.project_course4.R
 
 // Заглушки — в будущем будут браться из БД или настройки приложения
 private const val PLACEHOLDER_EMAIL = "admin@admin.com"
@@ -113,8 +116,11 @@ fun ProfileScreen(
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = TextAlign.Center
                 )
-
-                TextButton(
+                TextButtonRedirect(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    text = "Выйти",
                     onClick = {
                         // Проверяем интернет-соединение перед выходом
                         if (!NetworkUtils.isInternetAvailable(context)) {
@@ -123,12 +129,10 @@ fun ProfileScreen(
                             onLogout()
                         }
                     },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp)
-                ) {
-                    Text("Выйти", color = Color(0xFF2196F3))
-                }
+                    normalColor = colorResource(id = R.color.textButtonRedirectColor),
+                    pressedColor = colorResource(id = R.color.buttonColor),
+                    textAlign = TextAlign.Center
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
