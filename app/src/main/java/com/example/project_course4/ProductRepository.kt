@@ -45,6 +45,10 @@ class ProductRepository(
         return mealDao.insertFullMeal(mealEntity, components)
     }
 
+    suspend fun saveMealOnly(mealEntity: MealEntity): Int {
+        return mealDao.insertMealOnly(mealEntity)
+    }
+
     suspend fun deleteMealFromDb(mealId: Int) {
         Log.d("Repositorys", "Удаление приема пищи из БД по ID: $mealId")
         mealDao.deleteMealById(mealId)

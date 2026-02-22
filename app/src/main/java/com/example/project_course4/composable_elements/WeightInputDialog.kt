@@ -42,7 +42,11 @@ fun WeightInputDialog(
             weightInput = "0"
         } else {
             // в режиме редактирования показываем текущий вес продукта
-            val existingProduct = viewModel.finalSelection.value.find { it.product == product }
+            // Ищем продукт с таким же productId И mealId
+            val currentMealId = viewModel.editingMealId.value
+            val existingProduct = viewModel.finalSelection.value.find { 
+                it.product.productId == product.productId && it.mealId == currentMealId 
+            }
             if (existingProduct != null) {
                 weightInput = existingProduct.weight.toString()
             } else {

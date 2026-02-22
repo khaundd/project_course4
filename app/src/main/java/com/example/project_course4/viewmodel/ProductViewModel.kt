@@ -212,7 +212,7 @@ class ProductViewModel(
             // Фильтруем продукты, которых еще нет в приёме пищи
             val productsToAdd = selected.filter { product ->
                 _finalSelection.value.none { 
-                    it.product == product && it.mealId == mealId 
+                    it.product.productId == product.productId && it.mealId == mealId 
                 }
             }
             
@@ -238,7 +238,7 @@ class ProductViewModel(
         // фильтруем продукты, которых еще нет в приёме пищи
         val productsToAdd = selected.filter { product ->
             _finalSelection.value.none { 
-                it.product == product && it.mealId == mealId 
+                it.product.productId == product.productId && it.mealId == mealId 
             }
         }
         
@@ -264,7 +264,7 @@ class ProductViewModel(
             
             // проверяем, есть ли продукт с таким же product и mealId
             val existingProductIndex = updatedSelection.indexOfFirst { 
-                it.product == currentProduct && it.mealId == mealId 
+                it.product.productId == currentProduct.productId && it.mealId == mealId 
             }
             
             if (existingProductIndex != -1) {
@@ -307,15 +307,13 @@ class ProductViewModel(
     }
 
     private fun saveMealToDb(mealId: Int) {
-        val mealInfo = _meals.value.find { it.id == mealId } ?: return
         val productsInMeal = getProductsForMeal(mealId)
 
         if (productsInMeal.isNotEmpty()) {
-            productsInMeal.map {
-                it.product.productId to it.weight.toUShort()
-            }
             viewModelScope.launch {
-                saveCurrentMeal(mealInfo.id)
+                saveCurrentMeal(mealId)
+                // После сохранения перезагружаем данные из БД для синхронизации UI
+                loadMealsForDate(_selectedDate.value)
             }
         }
     }
@@ -358,18 +356,21 @@ class ProductViewModel(
             it.product.productId == product.productId && it.mealId == mealId
         }
 
+        // Сначала обновляем UI для мгновенного отклика
+        _finalSelection.value = _finalSelection.value.filter { it != selectedToRemove }
+        Log.d("DeleteProduct", "Продукт удален из UI, теперь удаляем из БД")
+
+        // Потом удаляем из БД в фоне
         viewModelScope.launch {
             try {
-                // удаление из БД
                 selectedToRemove?.junctionId?.let { jId ->
                     repository.deleteProductFromMeal(jId)
                 }
-                _finalSelection.value = _finalSelection.value.filter { it != selectedToRemove }
-
-                Log.d("DeleteProduct", "Продукт удален, список обновлен")
-
+                Log.d("DeleteProduct", "Продукт удален из БД")
             } catch (e: Exception) {
-                Log.e("DeleteProduct", "Ошибка удаления: ${e.message}")
+                Log.e("DeleteProduct", "Ошибка удаления из БД: ${e.message}")
+                // В случае ошибки восстанавливаем состояние
+                loadMealsForDate(_selectedDate.value)
             }
         }
     }
@@ -399,14 +400,19 @@ class ProductViewModel(
 
     fun initializeMealsForDate(date: LocalDate) {
         Log.d("ProductViewModel", "initializeMealsForDate: создание приёмов пищи для даты $date")
-        Log.d("ProductViewModel", "initializeMealsForDate: ОЧИСТКА _finalSelection (было ${_finalSelection.value.size} компонентов)")
+        // Очищаем _finalSelection только если он пустой, чтобы не удалять загруженные с сервера данные
+        if (_finalSelection.value.isEmpty()) {
+            Log.d("ProductViewModel", "initializeMealsForDate: ОЧИСТКА _finalSelection (было ${_finalSelection.value.size} компонентов)")
+            _finalSelection.value = emptyList()
+        } else {
+            Log.d("ProductViewModel", "initializeMealsForDate: _finalSelection не очищаем, уже есть ${_finalSelection.value.size} компонентов")
+        }
         _meals.value = listOf(
             Meal(id = tempMealIdCounter--, time = LocalTime.of(6, 0), name = "Завтрак"),
             Meal(id = tempMealIdCounter--, time = LocalTime.of(11, 0), name = "Обед"),
             Meal(id = tempMealIdCounter--, time = LocalTime.of(16, 0), name = "Ужин")
         ).sortedBy { it.time }
-        _finalSelection.value = emptyList()
-        Log.d("ProductViewModel", "initializeMealsForDate: приёмы пищи созданы, компоненты очищены")
+        Log.d("ProductViewModel", "initializeMealsForDate: приёмы пищи созданы")
     }
 
     fun addMeal(name: String) {
@@ -416,6 +422,37 @@ class ProductViewModel(
             name = name
         )
         _meals.value += newMeal
+        
+        // Сразу сохраняем приём пищи в БД
+        viewModelScope.launch {
+            try {
+                val currentDate = _selectedDate.value
+                val currentTime = LocalTime.now()
+                val fullDateTime = currentTime.atDate(currentDate)
+                    .atZone(ZoneId.systemDefault())
+                    .toInstant().toEpochMilli()
+                
+                val startOfDay = currentDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                val timeOnly = fullDateTime - startOfDay
+                
+                val newMealEntity = MealEntity(
+                    name = name,
+                    mealTime = timeOnly, // Только время от начала дня
+                    mealDate = startOfDay // Начало дня
+                )
+                
+                val generatedMealId = repository.saveMealOnly(newMealEntity)
+                
+                // Обновляем временный ID на реальный
+                _meals.value = _meals.value.map {
+                    if (it.id == newMeal.id) it.copy(id = generatedMealId) else it
+                }
+                
+                Log.d("AddMeal", "Приём пищи сохранён в БД с ID: $generatedMealId")
+            } catch (e: Exception) {
+                Log.e("AddMeal", "Ошибка сохранения приёма пищи: ${e.message}")
+            }
+        }
     }
 
     fun removeMeal(mealId: Int) {
@@ -428,10 +465,11 @@ class ProductViewModel(
                     Log.d("MealDelete", "Удаление из локальной БД по ID: $mealId")
                     repository.deleteMealFromDb(mealId)
                 }
-                _meals.value = _meals.value.filter { it.id != mealId }
-                _finalSelection.value = _finalSelection.value.filter { it.mealId != mealId }
 
-                Log.i("MealDelete", "Приём пищи успешно удален из UI")
+                Log.d("MealDelete", "Приём пищи удален из БД, перезагружаем данные")
+                // После удаления перезагружаем данные из БД для синхронизации UI
+                loadMealsForDate(_selectedDate.value)
+
             } catch (e: Exception) {
                 Log.e("MealDelete", "Ошибка при удалении приёма пищи: ${e.message}")
             }
@@ -493,7 +531,7 @@ class ProductViewModel(
 
     suspend fun saveCurrentMeal(mealIdInUi: Int) {
         try {
-            val mealToSave = _meals.value.find { it.id == mealIdInUi } ?: return
+            val mealToSave = _meals.value.find { it.id == mealIdInUi } ?: Meal(id = mealIdInUi, time = LocalTime.of(12, 0), name = "Приём пищи")
 
             val productsInThisMeal = _finalSelection.value.filter { it.mealId == mealIdInUi }
 

@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.project_course4.Screen
+import com.example.project_course4.MealNutrition
+import com.example.project_course4.SelectedProduct
 import com.example.project_course4.composable_elements.charts.NutritionChart
 import com.example.project_course4.dialogs.CustomCalendarDialog
 import com.example.project_course4.viewmodel.ProductViewModel
@@ -45,12 +47,16 @@ fun MainScreen(
 
     var showCustomCalendar by remember { mutableStateOf(false) }
     var selectedLocalDate by remember { mutableStateOf(LocalDate.now()) }
-
+            
     // Следим за изменением даты в ViewModel
     LaunchedEffect(Unit) {
         viewModel.selectedDate.collect { date ->
             selectedLocalDate = date
         }
+    }
+    // Загружаем приёмы пищи при изменении выбранной даты
+    LaunchedEffect(selectedLocalDate) {
+        viewModel.loadMealsForDate(selectedLocalDate)
     }
     
     // Проверяем и загружаем продукты при старте, если они еще не загружены
@@ -145,6 +151,7 @@ fun MainScreen(
                 // Приёмы пищи уже инициализируются в ProductViewModel.init()
                 var isLoading by remember { mutableStateOf(false) }
                 val meals by viewModel.meals.collectAsState()
+                val finalSelection by viewModel.finalSelection.collectAsState()
                 val currentProductForWeight by viewModel.currentProductForWeight.collectAsState()
                 val shouldShowWeightInput by viewModel.shouldShowWeightInput.collectAsState()
 
@@ -158,6 +165,27 @@ fun MainScreen(
                         viewModel = viewModel,
                         onDismiss = { viewModel.clearWeightInput() }
                     )
+                }
+
+                // Вспомогательная функция для расчета нутриентов приёма пищи
+                fun getMealNutrition(mealId: Int, products: List<SelectedProduct>): MealNutrition {
+                    val totalCalories = products.sumOf {
+                        (it.product.calories.toDouble() * it.weight / 100)
+                    }.toFloat()
+
+                    val totalProtein = products.sumOf {
+                        (it.product.protein.toDouble() * it.weight / 100)
+                    }.toFloat()
+
+                    val totalFats = products.sumOf {
+                        (it.product.fats.toDouble() * it.weight / 100)
+                    }.toFloat()
+
+                    val totalCarbs = products.sumOf {
+                        (it.product.carbs.toDouble() * it.weight / 100)
+                    }.toFloat()
+                    
+                    return MealNutrition(totalProtein, totalFats, totalCarbs, totalCalories)
                 }
 
                 val totalCalories = meals.sumOf { viewModel.getMealNutrition(it.id).calories.toDouble() }.toFloat()
@@ -184,8 +212,8 @@ fun MainScreen(
                         )
                     }
                     items(meals) { meal ->
-                        val products = viewModel.getProductsForMeal(meal.id)
-                        val nutrition = viewModel.getMealNutrition(meal.id)
+                        val products = finalSelection.filter { it.mealId == meal.id }
+                        val nutrition = getMealNutrition(meal.id, products)
 
                         MealItem(
                             meal = meal,
@@ -194,9 +222,6 @@ fun MainScreen(
                             onTimeClick = { mealId, newTime -> viewModel.updateMealTime(mealId, newTime) },
                             onAddProductClick = { m ->
                                 if (shouldShowWeightInput){
-                                    viewModel.finalSelection.value.map { selected ->
-                                        selected.product.productId to selected.weight.toUShort()
-                                    }
                                     scope.launch { viewModel.saveCurrentMeal(meal.id) }
                                 }
                                 viewModel.setEditingMealId(m.id)
@@ -231,13 +256,16 @@ fun MainScreen(
                     if (meals.isEmpty()) {
                         item {
                             Spacer(modifier = Modifier.height(32.dp))
-                            Button(
+                            CustomButton(
                                 onClick = { viewModel.addMeal("...") },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0E0E0))
-                            ) { Text("Добавить приём пищи", color = Color.Black) }
+                                backgroundColor = colorResource(id = R.color.buttonColor),
+                                textColor = Color.White,
+                                text = "Добавить приём пищи",
+                                cornerRadius = 32.dp
+                            )
                         }
                     }
                 }

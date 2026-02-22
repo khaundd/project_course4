@@ -306,11 +306,20 @@ class AuthViewModel(
                     Log.d("AuthViewModel", "Вход успешен, сохранение токена")
                     sessionManager.saveAuthToken(token)
                     
-                    // НЕ загружаем данные с сервера автоматически при входе
-                    // Данные должны оставаться локальными и синхронизироваться только при выходе
-                    Log.d("AuthViewModel", "Вход выполнен без загрузки данных с сервера")
-                    
-                    onSuccess("Вход выполнен")
+                    // Загружаем данные с сервера после успешного входа
+                    Log.d("AuthViewModel", "Начало загрузки данных с сервера после входа")
+                    val loadResult = loadMealsFromServer()
+                    loadResult.fold(
+                        onSuccess = { message ->
+                            Log.d("AuthViewModel", "Данные успешно загружены после входа: $message")
+                            onSuccess("Вход выполнен и данные загружены")
+                        },
+                        onFailure = { error ->
+                            Log.e("AuthViewModel", "Ошибка загрузки данных после входа: ${error.message}")
+                            // Даже если загрузка данных не удалась, вход считается успешным
+                            onSuccess("Вход выполнен (ошибка загрузки данных: ${error.message})")
+                        }
+                    )
                 },
                 onFailure = { error -> 
                     Log.e("AuthViewModel", "Ошибка входа: ${error.message}")

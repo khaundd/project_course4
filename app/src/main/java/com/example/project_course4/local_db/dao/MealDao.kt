@@ -16,6 +16,11 @@ interface MealDao {
     @Insert
     suspend fun insertMeal(mealEntity: MealEntity): Long
 
+    @Transaction
+    suspend fun insertMealOnly(mealEntity: MealEntity): Int {
+        return insertMeal(mealEntity).toInt()
+    }
+
     @Insert
     suspend fun insertComponents(component: List<MealComponent>): List<Long>
 
@@ -73,9 +78,7 @@ interface MealDao {
     suspend fun deleteProductLink(mId: Int, junctionId: Int)
 
     @Query("DELETE FROM meal")
-    suspend fun clearAllMeals() {
-        Log.d("MealDao", "Очистка таблицы meal")
-    }
+    suspend fun clearAllMeals()
 
     @Transaction
     suspend fun fullResetMeals() {
@@ -86,9 +89,7 @@ interface MealDao {
     }
 
     @Query("DELETE FROM sqlite_sequence WHERE name = 'meal'")
-    suspend fun resetMealCounter() {
-        Log.d("MealDao", "Сброс счётчика таблицы meal")
-    }
+    suspend fun resetMealCounter()
 
     @Query("UPDATE meal_component SET weight = :newWeight WHERE mealMealComponentId = :junctionId")
     suspend fun updateWeight(junctionId: Int, newWeight: UShort)
