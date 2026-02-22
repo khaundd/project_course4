@@ -1,16 +1,12 @@
 package com.example.project_course4.composable_elements.auth
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -18,10 +14,12 @@ import com.example.project_course4.Screen
 import com.example.project_course4.utils.Validation
 import com.example.project_course4.utils.NetworkUtils
 import androidx.compose.runtime.LaunchedEffect
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.graphics.Color
 import com.example.project_course4.AuthViewModel
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import com.example.project_course4.R
 
 @Composable
 fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
@@ -108,16 +106,18 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Button(
+            CustomAuthButton(
+                text = "Войти",
+                isLoading = isLoading,
                 onClick = {
                     keyboardController?.hide()
-                    
+
                     // Проверяем интернет-соединение перед входом
                     if (!NetworkUtils.isInternetAvailable(context)) {
                         showNetworkError = true
-                        return@Button
+                        return@CustomAuthButton
                     }
-                    
+
                     // Принудительно валидируем все поля перед проверкой
                     validation.validateEmail()
                     validation.validatePassword(isEmptyValid = false)
@@ -144,30 +144,19 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
                         validation.toastMessage = "Пожалуйста, исправьте ошибки в форме"
                     }
                 },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !isLoading
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                } else {
-                    Text("Войти")
-                }
-            }
+                backgroundColor = colorResource(id = R.color.buttonColor),
+                textColor = Color.White
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Нет аккаунта? ")
-                Text(
+                TextButtonRedirect(
                     text = "Зарегистрироваться",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
-                    textDecoration = TextDecoration.Underline,
-                    modifier = Modifier.clickable { navController.navigate(Screen.Registration.route) }
+                    normalColor = colorResource(id = R.color.textButtonRedirectColor),
+                    pressedColor = colorResource(id = R.color.buttonColor),
+                    onClick = { navController.navigate(Screen.Registration.route) },
                 )
             }
         }

@@ -6,7 +6,7 @@ import androidx.compose.runtime.setValue
 import android.util.Patterns
 
 class Validation {
-    var login by mutableStateOf("")
+    var username by mutableStateOf("")
     var password by mutableStateOf("")
     var passwordConfirmation by mutableStateOf("")
     var email by mutableStateOf("")
@@ -15,7 +15,7 @@ class Validation {
     var age by mutableStateOf("")
     var code by mutableStateOf("")
 
-    var loginError by mutableStateOf("")
+    var usernameError by mutableStateOf("")
     var passwordError by mutableStateOf("")
     var passwordConfirmationError by mutableStateOf("")
     var emailError by mutableStateOf("")
@@ -34,17 +34,17 @@ class Validation {
     private val loginRegex = Regex("^[a-zA-Zа-яА-Я0-9_.-]*$")
 
     fun validateLogin() {
-        if (login.isEmpty()) {
-            loginError = "Логин не может быть пустым"
+        if (username.isEmpty()) {
+            usernameError = "Логин не может быть пустым"
         }
-        else if (login.length > 32) {
-            loginError = "Логин не должен превышать 32 символа"
+        else if (username.length > 32) {
+            usernameError = "Логин не должен превышать 32 символа"
         }
-        else if (!login.matches(loginRegex)) {
-            loginError = "Логин содержит недопустимые символы"
+        else if (!username.matches(loginRegex)) {
+            usernameError = "Логин содержит недопустимые символы"
         }
         else {
-                loginError = ""
+                usernameError = ""
         }
     }
 
@@ -173,7 +173,7 @@ class Validation {
 
     fun isValidForRegistration(): Boolean {
         
-        return loginError.isEmpty() && 
+        return usernameError.isEmpty() &&
                passwordError.isEmpty() && 
                passwordConfirmationError.isEmpty() && 
                emailError.isEmpty() && 
