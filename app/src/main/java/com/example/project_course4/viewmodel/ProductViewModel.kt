@@ -93,7 +93,9 @@ class ProductViewModel(
 
     fun setSelectedDate(date: LocalDate) {
         _selectedDate.value = date
-        loadMealsForDate(date)
+        // Сбрасываем счетчик временных ID при смене даты
+        tempMealIdCounter = -1
+        loadMealsForDate(date, createDefaultsIfEmpty = true)
     }
 
     init {
@@ -110,7 +112,7 @@ class ProductViewModel(
             }
             
             Log.d("ProductViewModel", "Загрузка приёмов пищи за текущую дату: ${_selectedDate.value}")
-            loadMealsForDate(_selectedDate.value)
+            loadMealsForDate(_selectedDate.value, createDefaultsIfEmpty = true)
             
             // НЕ загружаем приёмы пищи с сервера автоматически
             // Они должны синхронизироваться только при выходе из аккаунта
@@ -119,7 +121,7 @@ class ProductViewModel(
             // Подписываемся на события обновления данных от AuthViewModel
             authViewModel.dataUpdateEvent.collect {
                 Log.d("ProductViewModel", "Получено событие обновления данных, перезагружаем за дату ${_selectedDate.value}")
-                loadMealsForDate(_selectedDate.value)
+                loadMealsForDate(_selectedDate.value, createDefaultsIfEmpty = true)
             }
         }
     }
@@ -149,10 +151,10 @@ class ProductViewModel(
         }
     }
 
-    fun loadMealsForDate(date: LocalDate) {
+    fun loadMealsForDate(date: LocalDate, createDefaultsIfEmpty: Boolean = false) {
         viewModelScope.launch {
             try {
-                Log.d("ProductViewModel", "Загрузка приёмов пищи за дату: $date")
+                Log.d("ProductViewModel", "Загрузка приёмов пищи за дату: $date, createDefaultsIfEmpty: $createDefaultsIfEmpty")
                 val (mealsFromDb, selectionFromDb) = repository.loadMealsByDate(date)
                 Log.d("ProductViewModel", "Загружено из БД: ${mealsFromDb.size} приёмов, ${selectionFromDb.size} компонентов")
                 if (mealsFromDb.isNotEmpty()) {
@@ -160,12 +162,24 @@ class ProductViewModel(
                     _finalSelection.value = selectionFromDb
                     Log.d("ProductViewModel", "Установлены приёмы пищи: ${mealsFromDb.map { "${it.id}:${it.name}" }}")
                 } else {
-                    Log.d("ProductViewModel", "Приёмы пищи за дату $date не найдены, инициализируем")
-                    initializeMealsForDate(date)
+                    Log.d("ProductViewModel", "Приёмы пищи за дату $date не найдены")
+                    if (createDefaultsIfEmpty) {
+                        Log.d("ProductViewModel", "Создаем стандартные приёмы пищи для выбранной даты")
+                        createDefaultMealsForDate(date)
+                    } else {
+                        Log.d("ProductViewModel", "Оставляем список пустым")
+                        _meals.value = emptyList()
+                        _finalSelection.value = emptyList()
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("ProductViewModel", "Ошибка загрузки приёмов за дату $date: ${e.message}", e)
-                initializeMealsForDate(date)
+                if (createDefaultsIfEmpty) {
+                    createDefaultMealsForDate(date)
+                } else {
+                    _meals.value = emptyList()
+                    _finalSelection.value = emptyList()
+                }
             }
         }
     }
@@ -206,7 +220,7 @@ class ProductViewModel(
     
     fun saveCurrentSelection() {
         val selected = _currentSelection.value.toList()
-        val mealId = _editingMealId.value ?: "default"
+        val mealId: Int = _editingMealId.value ?: -1
         
         if (selected.isNotEmpty()) {
             // Фильтруем продукты, которых еще нет в приёме пищи
@@ -234,7 +248,7 @@ class ProductViewModel(
         val selected = _currentSelection.value.toList()
         if (selected.isEmpty()) return
         
-        val mealId = _editingMealId.value ?: "default"
+        val mealId: Int = _editingMealId.value ?: -1
         // фильтруем продукты, которых еще нет в приёме пищи
         val productsToAdd = selected.filter { product ->
             _finalSelection.value.none { 
@@ -386,6 +400,8 @@ class ProductViewModel(
     fun initializeMeals() {
         if (_meals.value.isEmpty()) {
             Log.d("ProductViewModel", "initializeMeals: создаются приёмы пищи по умолчанию")
+            // Сбрасываем счетчик для консистентности
+            tempMealIdCounter = -1
             val defaultMeals = listOf(
                 Meal(id = tempMealIdCounter--, time = LocalTime.of(6, 0), name = "Завтрак"),
                 Meal(id = tempMealIdCounter--, time = LocalTime.of(11, 0), name = "Обед"),
@@ -407,12 +423,28 @@ class ProductViewModel(
         } else {
             Log.d("ProductViewModel", "initializeMealsForDate: _finalSelection не очищаем, уже есть ${_finalSelection.value.size} компонентов")
         }
+        // Сбрасываем счетчик для консистентности
+        tempMealIdCounter = -1
         _meals.value = listOf(
             Meal(id = tempMealIdCounter--, time = LocalTime.of(6, 0), name = "Завтрак"),
             Meal(id = tempMealIdCounter--, time = LocalTime.of(11, 0), name = "Обед"),
             Meal(id = tempMealIdCounter--, time = LocalTime.of(16, 0), name = "Ужин")
         ).sortedBy { it.time }
         Log.d("ProductViewModel", "initializeMealsForDate: приёмы пищи созданы")
+    }
+
+    private fun createDefaultMealsForDate(date: LocalDate) {
+        Log.d("ProductViewModel", "Создание стандартных приёмов пищи для даты $date")
+        // Сбрасываем счетчик для консистентности
+        tempMealIdCounter = -1
+        val defaultMeals = listOf(
+            Meal(id = tempMealIdCounter--, time = LocalTime.of(6, 0), name = "Завтрак"),
+            Meal(id = tempMealIdCounter--, time = LocalTime.of(11, 0), name = "Обед"),
+            Meal(id = tempMealIdCounter--, time = LocalTime.of(16, 0), name = "Ужин")
+        ).sortedBy { it.time }
+        _meals.value = defaultMeals
+        _finalSelection.value = emptyList()
+        Log.d("ProductViewModel", "Создано ${defaultMeals.size} стандартных приёмов пищи")
     }
 
     fun addMeal(name: String) {
@@ -460,18 +492,24 @@ class ProductViewModel(
 
         viewModelScope.launch {
             try {
+                // Удаляем приём пищи из UI независимо от ID
+                _meals.value = _meals.value.filter { it.id != mealId }
+                
+                // Удаляем связанные продукты из finalSelection
+                _finalSelection.value = _finalSelection.value.filter { it.mealId != mealId }
+                
                 // если ID > 0, значит приём пищи уже есть в БД
                 if (mealId > 0) {
                     Log.d("MealDelete", "Удаление из локальной БД по ID: $mealId")
                     repository.deleteMealFromDb(mealId)
                 }
 
-                Log.d("MealDelete", "Приём пищи удален из БД, перезагружаем данные")
-                // После удаления перезагружаем данные из БД для синхронизации UI
-                loadMealsForDate(_selectedDate.value)
+                Log.d("MealDelete", "Приём пищи удален, текущее количество: ${_meals.value.size}")
 
             } catch (e: Exception) {
                 Log.e("MealDelete", "Ошибка при удалении приёма пищи: ${e.message}")
+                // В случае ошибки перезагружаем данные
+                loadMealsForDate(_selectedDate.value)
             }
         }
     }
@@ -531,9 +569,34 @@ class ProductViewModel(
 
     suspend fun saveCurrentMeal(mealIdInUi: Int) {
         try {
-            val mealToSave = _meals.value.find { it.id == mealIdInUi } ?: Meal(id = mealIdInUi, time = LocalTime.of(12, 0), name = "Приём пищи")
-
             val productsInThisMeal = _finalSelection.value.filter { it.mealId == mealIdInUi }
+            
+            // Если продуктов нет, ничего не сохраняем
+            if (productsInThisMeal.isEmpty()) {
+                Log.d("SaveMeal", "Нет продуктов для сохранения в приёме пищи $mealIdInUi")
+                return
+            }
+
+            val mealToSave = _meals.value.find { it.id == mealIdInUi } ?: run {
+                // Если приём пищи не найден, создаем временный с текущим временем
+                // Это может произойти для стандартных приёмов пищи после перезагрузки
+                Log.w("SaveMeal", "Приём пищи с ID $mealIdInUi не найден, создаем временный")
+                // Используем время из последнего измененного приёма или текущее время
+                val mealTime = try {
+                    Log.d("SaveMeal", mealIdInUi.toString())
+                    // Ищем стандартный приём пищи с таким ID в createDefaultMealsForDate
+                    when (mealIdInUi) {
+                        -1 -> LocalTime.of(6, 0)  // Завтрак
+                        -2 -> LocalTime.of(11, 0) // Обед
+                        -3 -> LocalTime.of(16, 0) // Ужин
+                        else -> LocalTime.now() // Для других случаев
+                    }
+                } catch (e: Exception) {
+                    Log.w("SaveMeal", "Не удалось определить время, используем текущее: ${e.message}")
+                    LocalTime.now()
+                }
+                Meal(id = mealIdInUi, time = mealTime, name = "Приём пищи")
+            }
 
             val toUpdate = productsInThisMeal.filter { it.junctionId != null }
             val toInsert = productsInThisMeal.filter { it.junctionId == null }

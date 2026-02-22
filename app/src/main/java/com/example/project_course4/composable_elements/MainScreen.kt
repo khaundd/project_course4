@@ -56,7 +56,7 @@ fun MainScreen(
     }
     // Загружаем приёмы пищи при изменении выбранной даты
     LaunchedEffect(selectedLocalDate) {
-        viewModel.loadMealsForDate(selectedLocalDate)
+        viewModel.loadMealsForDate(selectedLocalDate, createDefaultsIfEmpty = true)
     }
     
     // Проверяем и загружаем продукты при старте, если они еще не загружены
