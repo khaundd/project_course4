@@ -1,19 +1,30 @@
 package com.example.project_course4.composable_elements
 
 import android.util.Log
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import com.example.project_course4.R.drawable.barcode_scanner_24px
+import com.example.project_course4.R.drawable.ic_close_24px
+import com.example.project_course4.R.drawable.ic_check_24px
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
@@ -25,6 +36,7 @@ import com.example.project_course4.viewmodel.ProductViewModel
 import com.example.project_course4.utils.NetworkUtils
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductCreationScreen(
     navController: NavController,
@@ -43,11 +55,11 @@ fun ProductCreationScreen(
     LaunchedEffect(initialBarcode) {
         Log.d("ProductCreation", "LaunchedEffect сработал с initialBarcode: $initialBarcode")
         initialBarcode?.takeIf { it.isNotBlank() }?.let { barcode ->
-        Log.d("ProductCreation", "Обновляем состояние с barcode: $barcode")
+            Log.d("ProductCreation", "Обновляем состояние с barcode: $barcode")
             viewModel.updateProductCreationState(state.copy(barcode = barcode))
         }
     }
-    
+
     // Очищаем ошибки при выходе с экрана
     DisposableEffect(Unit) {
         onDispose {
@@ -71,183 +83,261 @@ fun ProductCreationScreen(
         val fats = state.fats.toFloatOrNull() ?: 0f
         val carbs = state.carbs.toFloatOrNull() ?: 0f
         calories = validator.calculateCalories(protein, fats, carbs)
-        
+
         // Валидация суммы БЖУ
         val macrosValidation = validator.validateMacros(state.protein, state.fats, state.carbs)
-        val macrosError = if (macrosValidation is ValidationResult.Invalid) macrosValidation.errorMessage else null
+        val macrosError =
+            if (macrosValidation is ValidationResult.Invalid) macrosValidation.errorMessage else null
         // Обновляем только macrosError, если он изменился
         if (state.macrosError != macrosError) {
             viewModel.updateProductCreationState(state.copy(macrosError = macrosError))
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .safeDrawingPadding()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Text(
-            text = "Добавление нового продукта",
-            fontSize = 20.sp,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-        
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = if (state.name.isNotBlank()) state.name else "Новый продукт",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                },
+                navigationIcon = {
+                    IconButton(
+                        onClick = { navController.popBackStack() }
+                    ) {
+                        Icon(
+                            imageVector = ImageVector.vectorResource(ic_close_24px),
+                            contentDescription = "Закрыть"
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = {
+                            // Проверяем интернет-соединение перед сохранением
+                            if (!NetworkUtils.isInternetAvailable(context)) {
+                                viewModel.setLoading(false)
+                                showNetworkError = true
+                                return@IconButton
+                            }
+
+                            // Устанавливаем состояние загрузки немедленно
+                            viewModel.setLoading(true)
+
+                            val nameValidation = validator.validateName(state.name)
+                            val proteinValidation =
+                                validator.validateFloatValue(state.protein, "Белки")
+                            val fatsValidation = validator.validateFloatValue(state.fats, "Жиры")
+                            val carbsValidation =
+                                validator.validateFloatValue(state.carbs, "Углеводы")
+                            val macrosValidation =
+                                validator.validateMacros(state.protein, state.fats, state.carbs)
+
+                            val updatedState = state.copy(
+                                nameError = if (nameValidation is ValidationResult.Invalid) nameValidation.errorMessage else null,
+                                proteinError = if (proteinValidation is ValidationResult.Invalid) proteinValidation.errorMessage else null,
+                                fatsError = if (fatsValidation is ValidationResult.Invalid) fatsValidation.errorMessage else null,
+                                carbsError = if (carbsValidation is ValidationResult.Invalid) carbsValidation.errorMessage else null,
+                                macrosError = if (macrosValidation is ValidationResult.Invalid) macrosValidation.errorMessage else null,
+                                barcodeError = null
+                            )
+
+                            viewModel.updateProductCreationState(updatedState)
+
+                            if (updatedState.nameError == null &&
+                                updatedState.proteinError == null &&
+                                updatedState.fatsError == null &&
+                                updatedState.carbsError == null &&
+                                updatedState.macrosError == null
+                            ) {
+
+                                // Проверяем уникальность названия и сохраняем продукт
+                                viewModel.viewModelScope.launch {
+                                    try {
+                                        val checkResult =
+                                            viewModel.checkProductNameExists(state.name)
+                                        checkResult.fold(
+                                            onSuccess = { exists ->
+                                                if (exists) {
+                                                    viewModel.setLoading(false)
+                                                    val nameExistsState = updatedState.copy(
+                                                        nameError = "Продукт с таким названием уже существует"
+                                                    )
+                                                    viewModel.updateProductCreationState(
+                                                        nameExistsState
+                                                    )
+                                                } else {
+                                                    val protein =
+                                                        state.protein.toFloatOrNull() ?: 0f
+                                                    val fats = state.fats.toFloatOrNull() ?: 0f
+                                                    val carbs = state.carbs.toFloatOrNull() ?: 0f
+
+                                                    val newProduct = Product(
+                                                        productId = 0,
+                                                        name = state.name,
+                                                        protein = protein,
+                                                        fats = fats,
+                                                        carbs = carbs,
+                                                        calories = calories,
+                                                        barcode = state.barcode.takeIf { it.isNotBlank() }
+                                                    )
+
+                                                    val saveResult =
+                                                        viewModel.addNewProduct(newProduct)
+                                                    saveResult.fold(
+                                                        onSuccess = { savedProduct ->
+                                                            Log.d(
+                                                                "ProductCreation",
+                                                                "Продукт успешно сохранен: ${savedProduct.name}"
+                                                            )
+                                                            viewModel.hideProductCreationScreen()
+                                                            navController.popBackStack()
+                                                        },
+                                                        onFailure = { error ->
+                                                            if (NetworkUtils.isNetworkError(error)) {
+                                                                viewModel.setLoading(false)
+                                                                showNetworkError = true
+                                                            } else {
+                                                                val errorState = updatedState.copy(
+                                                                    nameError = "Ошибка сохранения: ${error.message}"
+                                                                )
+                                                                viewModel.updateProductCreationState(
+                                                                    errorState
+                                                                )
+                                                            }
+                                                        }
+                                                    )
+                                                }
+                                            },
+                                            onFailure = { error ->
+                                                viewModel.setLoading(false)
+                                                if (NetworkUtils.isNetworkError(error)) {
+                                                    showNetworkError = true
+                                                } else {
+                                                    val errorState = updatedState.copy(
+                                                        nameError = "Ошибка проверки названия: ${error.message}"
+                                                    )
+                                                    viewModel.updateProductCreationState(errorState)
+                                                }
+                                            }
+                                        )
+                                    } catch (e: Exception) {
+                                        viewModel.setLoading(false)
+                                        if (NetworkUtils.isNetworkError(e)) {
+                                            showNetworkError = true
+                                        } else {
+                                            val errorState = updatedState.copy(
+                                                nameError = "Ошибка: ${e.message}"
+                                            )
+                                            viewModel.updateProductCreationState(errorState)
+                                        }
+                                    }
+                                }
+                            } else {
+                                viewModel.setLoading(false)
+                            }
+                        },
+                        enabled = !isLoading
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                imageVector = ImageVector.vectorResource(ic_check_24px),
+                                contentDescription = "Сохранить"
+                            )
+                        }
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "Название",
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 8.dp)
-                )
-                TextField(
-                    value = state.name,
-                    onValueChange = { name ->
-                        val newState = state.copy(name = name)
-                        val validationResult = validator.validateName(name)
-                        val nameError = if (validationResult is ValidationResult.Invalid) validationResult.errorMessage else null
-                        viewModel.updateProductCreationState(newState.copy(nameError = nameError))
-                    },
-                    isError = state.nameError != null,
-                    supportingText = {
-                        if (state.nameError != null) {
-                            Text(
-                                text = state.nameError!!,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    },
-                    singleLine = true,
-                    modifier = Modifier.weight(2f)
-                )
-            }
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "Белки (г)",
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 8.dp)
-                )
-                TextField(
-                    value = state.protein,
-                    onValueChange = { protein ->
-                        val newState = state.copy(protein = protein)
-                        val validationResult = validator.validateFloatValue(protein, "Белки")
-                        val proteinError = if (validationResult is ValidationResult.Invalid) validationResult.errorMessage else null
-                        viewModel.updateProductCreationState(newState.copy(proteinError = proteinError))
-                    },
-                    isError = state.proteinError != null,
-                    supportingText = {
-                        if (state.proteinError != null) {
-                            Text(
-                                text = state.proteinError!!,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.weight(2f)
-                )
-            }
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "Жиры (г)",
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 8.dp)
-                )
-                TextField(
-                    value = state.fats,
-                    onValueChange = { fats ->
-                        val newState = state.copy(fats = fats)
-                        val validationResult = validator.validateFloatValue(fats, "Жиры")
-                        val fatsError = if (validationResult is ValidationResult.Invalid) validationResult.errorMessage else null
-                        viewModel.updateProductCreationState(newState.copy(fatsError = fatsError))
-                    },
-                    isError = state.fatsError != null,
-                    supportingText = {
-                        if (state.fatsError != null) {
-                            Text(
-                                text = state.fatsError!!,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.weight(2f)
-                )
-            }
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "Углеводы (г)",
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 8.dp)
-                )
-                TextField(
-                    value = state.carbs,
-                    onValueChange = { carbs ->
-                        val newState = state.copy(carbs = carbs)
-                        val validationResult = validator.validateFloatValue(carbs, "Углеводы")
-                        val carbsError = if (validationResult is ValidationResult.Invalid) validationResult.errorMessage else null
-                        viewModel.updateProductCreationState(newState.copy(carbsError = carbsError))
-                    },
-                    isError = state.carbsError != null,
-                    supportingText = {
-                        if (state.carbsError != null) {
-                            Text(
-                                text = state.carbsError!!,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.weight(2f)
-                )
-            }
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "Калорийность",
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 8.dp)
-                )
-                TextField(
-                    value = "${"%.2f".format(calories)} ккал",
-                    onValueChange = {},
-                    enabled = false,
-                    singleLine = true,
-                    modifier = Modifier.weight(2f)
-                )
-            }
-            
+            // Поле для названия продукта по центру
+            TransparentTextField(
+                value = state.name,
+                onValueChange = { name ->
+                    val newState = state.copy(name = name)
+                    val validationResult = validator.validateName(name)
+                    val nameError =
+                        if (validationResult is ValidationResult.Invalid) validationResult.errorMessage else null
+                    viewModel.updateProductCreationState(newState.copy(nameError = nameError))
+                },
+                placeholder = "Название",
+                isError = state.nameError != null,
+                errorMessage = state.nameError,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            // Остальные поля ввода
+            LabeledTransparentTextField(
+                label = "Белки",
+                unit = "на 100 г.",
+                value = state.protein,
+                onValueChange = { protein ->
+                    val newState = state.copy(protein = protein)
+                    val validationResult = validator.validateFloatValue(protein, "Белки")
+                    val proteinError =
+                        if (validationResult is ValidationResult.Invalid) validationResult.errorMessage else null
+                    viewModel.updateProductCreationState(newState.copy(proteinError = proteinError))
+                },
+                isError = state.proteinError != null,
+                errorMessage = state.proteinError,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+
+            LabeledTransparentTextField(
+                label = "Жиры",
+                unit = "на 100 г.",
+                value = state.fats,
+                onValueChange = { fats ->
+                    val newState = state.copy(fats = fats)
+                    val validationResult = validator.validateFloatValue(fats, "Жиры")
+                    val fatsError =
+                        if (validationResult is ValidationResult.Invalid) validationResult.errorMessage else null
+                    viewModel.updateProductCreationState(newState.copy(fatsError = fatsError))
+                },
+                isError = state.fatsError != null,
+                errorMessage = state.fatsError,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+
+            LabeledTransparentTextField(
+                label = "Углеводы",
+                unit = "на 100 г.",
+                value = state.carbs,
+                onValueChange = { carbs ->
+                    val newState = state.copy(carbs = carbs)
+                    val validationResult = validator.validateFloatValue(carbs, "Углеводы")
+                    val carbsError =
+                        if (validationResult is ValidationResult.Invalid) validationResult.errorMessage else null
+                    viewModel.updateProductCreationState(newState.copy(carbsError = carbsError))
+                },
+                isError = state.carbsError != null,
+                errorMessage = state.carbsError,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+
+            LabeledTransparentTextField(
+                label = "Калории кКал",
+                unit = "на 100 г.",
+                value = "${"%.2f".format(calories)}",
+                onValueChange = {},
+                enabled = false
+            )
+
             // Отображение ошибки БЖУ
             if (state.macrosError != null) {
                 Text(
@@ -256,230 +346,186 @@ fun ProductCreationScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
-            
+
+            // Поле для штрих-кода с кнопкой сканера
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    "Штрих-код",
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 8.dp)
+                LabeledTransparentTextField(
+                    label = "Штрих-код",
+                    unit = "",
+                    value = state.barcode,
+                    onValueChange = { barcode ->
+                        Log.d("ProductCreation", "TextField изменен, новое значение: $barcode")
+                        val newState = state.copy(barcode = barcode)
+                        viewModel.updateProductCreationState(newState)
+                    },
+                    modifier = Modifier.weight(1f)
                 )
-                Row(
-                    modifier = Modifier.weight(2f),
-                    verticalAlignment = Alignment.CenterVertically
+
+                IconButton(
+                    onClick = { onBarcodeScan("OPEN_SCANNER") },
+                    modifier = Modifier.padding(start = 8.dp)
                 ) {
-                    TextField(
-                        value = state.barcode,
-                        onValueChange = { barcode ->
-                            Log.d("ProductCreation", "TextField изменен, новое значение: $barcode")
-                            val newState = state.copy(barcode = barcode)
-                            viewModel.updateProductCreationState(newState)
-                        },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
+                    Icon(
+                        imageVector = ImageVector.vectorResource(barcode_scanner_24px),
+                        contentDescription = "Сканировать штрих-код"
                     )
-                    IconButton(
-                        onClick = { onBarcodeScan("OPEN_SCANNER") },
-                        modifier = Modifier.padding(start = 8.dp)
-                    ) {
-                        Icon(
-                            imageVector = ImageVector.vectorResource(barcode_scanner_24px),
-                            contentDescription = "Сканировать штрих-код"
-                        )
-                    }
                 }
             }
         }
-        
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
-                onClick = { navController.popBackStack() },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Отмена")
-            }
 
-            Button(
-                onClick = {
-                    // Проверяем интернет-соединение перед сохранением
-                    if (!NetworkUtils.isInternetAvailable(context)) {
-                        viewModel.setLoading(false) // Сбрасываем загрузку
-                        showNetworkError = true
-                        return@Button
-                    }
-                    
-                    // Устанавливаем состояние загрузки немедленно
-                    viewModel.setLoading(true)
-                    
-                    val nameValidation = validator.validateName(state.name)
-                    val proteinValidation = validator.validateFloatValue(state.protein, "Белки")
-                    val fatsValidation = validator.validateFloatValue(state.fats, "Жиры")
-                    val carbsValidation = validator.validateFloatValue(state.carbs, "Углеводы")
-                    val macrosValidation = validator.validateMacros(state.protein, state.fats, state.carbs)
-
-                    val updatedState = state.copy(
-                        nameError = if (nameValidation is ValidationResult.Invalid) nameValidation.errorMessage else null,
-                        proteinError = if (proteinValidation is ValidationResult.Invalid) proteinValidation.errorMessage else null,
-                        fatsError = if (fatsValidation is ValidationResult.Invalid) fatsValidation.errorMessage else null,
-                        carbsError = if (carbsValidation is ValidationResult.Invalid) carbsValidation.errorMessage else null,
-                        macrosError = if (macrosValidation is ValidationResult.Invalid) macrosValidation.errorMessage else null,
-                        barcodeError = null // cбрасываем ошибку штрих-кода при валидации
+        // AlertDialog для показа сообщения об отсутствии интернет-соединения
+        if (showNetworkError) {
+            AlertDialog(
+                onDismissRequest = {
+                    showNetworkError = false
+                    // Очищаем все состояния ошибок при закрытии диалога
+                    val clearedState = state.copy(
+                        nameError = null,
+                        proteinError = null,
+                        fatsError = null,
+                        carbsError = null,
+                        macrosError = null,
+                        barcodeError = null
                     )
-
-                    viewModel.updateProductCreationState(updatedState)
-
-                    if (updatedState.nameError == null &&
-                        updatedState.proteinError == null && 
-                        updatedState.fatsError == null && 
-                        updatedState.carbsError == null &&
-                        updatedState.macrosError == null) {
-                        
-                        // Проверяем уникальность названия и сохраняем продукт
-                        viewModel.viewModelScope.launch {
-                            try {
-                                val checkResult = viewModel.checkProductNameExists(state.name)
-                                checkResult.fold(
-                                    onSuccess = { exists ->
-                                        if (exists) {
-                                            // Название уже существует - сбрасываем загрузку
-                                            viewModel.setLoading(false)
-                                            val nameExistsState = updatedState.copy(
-                                                nameError = "Продукт с таким названием уже существует"
-                                            )
-                                            viewModel.updateProductCreationState(nameExistsState)
-                                        } else {
-                                            // Создаем и сохраняем продукт
-                                            val protein = state.protein.toFloatOrNull() ?: 0f
-                                            val fats = state.fats.toFloatOrNull() ?: 0f
-                                            val carbs = state.carbs.toFloatOrNull() ?: 0f
-                                            
-                                            val newProduct = Product(
-                                                productId = 0, // Временный ID, сервер присвоит свой
-                                                name = state.name,
-                                                protein = protein,
-                                                fats = fats,
-                                                carbs = carbs,
-                                                calories = calories,
-                                                barcode = state.barcode.takeIf { it.isNotBlank() }
-                                            )
-                                            
-                                            val saveResult = viewModel.addNewProduct(newProduct)
-                                            saveResult.fold(
-                                                onSuccess = { savedProduct ->
-                                                    Log.d("ProductCreation", "Продукт успешно сохранен: ${savedProduct.name}")
-                                                    viewModel.hideProductCreationScreen()
-                                                    navController.popBackStack()
-                                                },
-                                                onFailure = { error ->
-                                                    if (NetworkUtils.isNetworkError(error)) {
-                                                        viewModel.setLoading(false) // Сбрасываем загрузку
-                                                        showNetworkError = true
-                                                    } else {
-                                                        val errorState = updatedState.copy(
-                                                            nameError = "Ошибка сохранения: ${error.message}"
-                                                        )
-                                                        viewModel.updateProductCreationState(errorState)
-                                                    }
-                                                }
-                                            )
-                                        }
-                                    },
-                                    onFailure = { error ->
-                                        // Ошибка проверки названия - сбрасываем загрузку
-                                        viewModel.setLoading(false)
-                                        if (NetworkUtils.isNetworkError(error)) {
-                                            showNetworkError = true
-                                        } else {
-                                            val errorState = updatedState.copy(
-                                                nameError = "Ошибка проверки названия: ${error.message}"
-                                            )
-                                            viewModel.updateProductCreationState(errorState)
-                                        }
-                                    }
-                                )
-                            } catch (e: Exception) {
-                                // Исключение - сбрасываем загрузку
-                                viewModel.setLoading(false)
-                                if (NetworkUtils.isNetworkError(e)) {
-                                    showNetworkError = true
-                                } else {
-                                    val errorState = updatedState.copy(
-                                        nameError = "Ошибка: ${e.message}"
-                                    )
-                                    viewModel.updateProductCreationState(errorState)
-                                }
-                            }
-                        }
-                    } else {
-                        // Ошибка валидации - сбрасываем загрузку
-                        viewModel.setLoading(false)
-                    }
+                    viewModel.updateProductCreationState(clearedState)
                 },
-                modifier = Modifier.weight(1f),
-                enabled = !isLoading,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF4CAF50),
-                    contentColor = Color.White
-                )
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Text("Сохранить")
-                }
-            }
-        }
-    }
-    
-    // AlertDialog для показа сообщения об отсутствии интернет-соединения
-    if (showNetworkError) {
-        AlertDialog(
-            onDismissRequest = { 
-                showNetworkError = false
-                // Очищаем все состояния ошибок при закрытии диалога
-                val clearedState = state.copy(
-                    nameError = null,
-                    proteinError = null,
-                    fatsError = null,
-                    carbsError = null,
-                    macrosError = null,
-                    barcodeError = null
-                )
-                viewModel.updateProductCreationState(clearedState)
-            },
-            title = { Text("Ошибка сети") },
-            text = { Text("Отсутствует интернет-соединение") },
-            confirmButton = {
-                TextButton(
-                    onClick = { 
-                        showNetworkError = false
-                        // Очищаем все состояния ошибок при нажатии на ОК
-                        val clearedState = state.copy(
-                            nameError = null,
-                            proteinError = null,
-                            fatsError = null,
-                            carbsError = null,
-                            macrosError = null,
-                            barcodeError = null
-                        )
-                        viewModel.updateProductCreationState(clearedState)
+                title = { Text("Ошибка сети") },
+                text = { Text("Отсутствует интернет-соединение") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showNetworkError = false
+                            // Очищаем все состояния ошибок при нажатии на ОК
+                            val clearedState = state.copy(
+                                nameError = null,
+                                proteinError = null,
+                                fatsError = null,
+                                carbsError = null,
+                                macrosError = null,
+                                barcodeError = null
+                            )
+                            viewModel.updateProductCreationState(clearedState)
+                        }
+                    ) {
+                        Text("ОК")
                     }
-                ) {
-                    Text("ОК")
                 }
-            }
-        )
+            )
+        }
     }
 }
+
+@Composable
+private fun TransparentTextField(
+        value: String,
+        onValueChange: (String) -> Unit,
+        placeholder: String,
+        modifier: Modifier = Modifier,
+        isError: Boolean = false,
+        errorMessage: String? = null,
+        enabled: Boolean = true,
+        keyboardOptions: KeyboardOptions = KeyboardOptions.Default
+    ) {
+        Column(modifier = modifier) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.Transparent)
+                    .clickable(enabled) { }
+                    .padding(vertical = 16.dp, horizontal = 12.dp)
+            ) {
+                if (value.isEmpty()) {
+                    Text(
+                        text = placeholder,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                BasicTextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    enabled = enabled,
+                    keyboardOptions = keyboardOptions,
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            if (isError && errorMessage != null) {
+                Text(
+                    text = errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(start = 12.dp, top = 4.dp)
+                )
+            }
+        }
+    }
+
+@Composable
+private fun LabeledTransparentTextField(
+        label: String,
+        unit: String,
+        value: String,
+        onValueChange: (String) -> Unit,
+        modifier: Modifier = Modifier,
+        isError: Boolean = false,
+        errorMessage: String? = null,
+        enabled: Boolean = true,
+        keyboardOptions: KeyboardOptions = KeyboardOptions.Default
+    ) {
+        Column(modifier = modifier) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.Transparent)
+                    .clickable(enabled) { }
+                    .padding(vertical = 16.dp, horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+
+                if (unit.isNotEmpty()) {
+                    Text(
+                        text = unit,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                }
+
+                BasicTextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    enabled = enabled,
+                    keyboardOptions = keyboardOptions,
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.End
+                    ),
+                    modifier = Modifier.width(120.dp)
+                )
+            }
+
+            if (isError && errorMessage != null) {
+                Text(
+                    text = errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(start = 12.dp, top = 4.dp)
+                )
+            }
+        }
+    }
