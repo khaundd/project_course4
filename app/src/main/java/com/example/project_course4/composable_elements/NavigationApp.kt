@@ -130,21 +130,7 @@ fun NavigationApp() {
         composable(Screen.Profile.route) { backStackEntry ->
             ProfileScreen(
                 navController = navController,
-                onLogout = {
-                    authViewModel.logout(
-                        onSuccess = { message ->
-                            Log.d("NavigationApp", "Выход успешен: $message")
-                            navController.navigate(Screen.Login.route) {
-                                popUpTo(Screen.Main.route) { inclusive = true }
-                            }
-                        },
-                        onError = { error ->
-                            Log.e("NavigationApp", "Ошибка при выходе: $error")
-                            // Показываем сообщение об ошибке и не переходим на экран входа
-                            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
-                        }
-                    )
-                }
+                authViewModel = authViewModel
             )
         }
         

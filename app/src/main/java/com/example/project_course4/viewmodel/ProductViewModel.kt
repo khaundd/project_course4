@@ -371,7 +371,9 @@ class ProductViewModel(
         }
 
         // Сначала обновляем UI для мгновенного отклика
-        _finalSelection.value = _finalSelection.value.filter { it != selectedToRemove }
+        val updatedSelection = _finalSelection.value.toMutableList()
+        updatedSelection.removeAll { it == selectedToRemove }
+        _finalSelection.value = updatedSelection
         Log.d("DeleteProduct", "Продукт удален из UI, теперь удаляем из БД")
 
         // Потом удаляем из БД в фоне

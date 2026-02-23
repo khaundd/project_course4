@@ -188,10 +188,23 @@ fun MainScreen(
                     return MealNutrition(totalProtein, totalFats, totalCarbs, totalCalories)
                 }
 
-                val totalCalories = meals.sumOf { viewModel.getMealNutrition(it.id).calories.toDouble() }.toFloat()
-                val totalProtein = meals.sumOf { viewModel.getMealNutrition(it.id).protein.toDouble() }.toFloat()
-                val totalFats = meals.sumOf { viewModel.getMealNutrition(it.id).fats.toDouble() }.toFloat()
-                val totalCarbs = meals.sumOf { viewModel.getMealNutrition(it.id).carbs.toDouble() }.toFloat()
+                // Расчет totals с использованием finalSelection для правильного отслеживания изменений
+                // Фильтруем только продукты из приёмов пищи текущего дня
+                val currentMealIds = meals.map { it.id }
+                val currentDayProducts = finalSelection.filter { it.mealId in currentMealIds }
+                
+                val totalCalories = currentDayProducts.sumOf {
+                    (it.product.calories.toDouble() * it.weight / 100)
+                }.toFloat()
+                val totalProtein = currentDayProducts.sumOf {
+                    (it.product.protein.toDouble() * it.weight / 100)
+                }.toFloat()
+                val totalFats = currentDayProducts.sumOf {
+                    (it.product.fats.toDouble() * it.weight / 100)
+                }.toFloat()
+                val totalCarbs = currentDayProducts.sumOf {
+                    (it.product.carbs.toDouble() * it.weight / 100)
+                }.toFloat()
 
                 LazyColumn(
                     modifier = Modifier

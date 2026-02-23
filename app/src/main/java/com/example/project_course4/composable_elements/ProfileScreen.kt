@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.example.project_course4.AuthViewModel
 import com.example.project_course4.Screen
 import com.example.project_course4.composable_elements.auth.TextButtonRedirect
 import com.example.project_course4.utils.NetworkUtils
@@ -42,7 +43,7 @@ private const val PLACEHOLDER_CALORIES = "2945 кКал"
 @Composable
 fun ProfileScreen(
     navController: NavController,
-    onLogout: () -> Unit,
+    authViewModel: AuthViewModel,
 ) {
     val context = LocalContext.current
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -139,7 +140,16 @@ fun ProfileScreen(
                         if (!NetworkUtils.isInternetAvailable(context)) {
                             validation.toastMessage = "Отсутствует интернет-соединение"
                         } else {
-                            onLogout()
+                            authViewModel.logout(
+                                onSuccess = { message ->
+                                    navController.navigate(Screen.Login.route) {
+                                        popUpTo(Screen.Main.route) { inclusive = true }
+                                    }
+                                },
+                                onError = { error ->
+                                    validation.toastMessage = error
+                                }
+                            )
                         }
                     },
                     normalColor = colorResource(id = R.color.textButtonRedirectColor),

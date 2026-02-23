@@ -1,6 +1,5 @@
 package com.example.project_course4.composable_elements
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
@@ -27,7 +26,7 @@ import com.example.project_course4.dialogs.ProductOptionsDialog
 import com.example.project_course4.ui.theme.CarbColor
 import com.example.project_course4.ui.theme.FatColor
 import com.example.project_course4.ui.theme.ProteinColor
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.tooling.preview.Preview
 
 
 @Composable
@@ -44,15 +43,11 @@ fun DishItem(
     var showOptions by remember { mutableStateOf(false) }
     
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier
-            .padding(bottom = 10.dp)
+            .padding(bottom = 4.dp)
             .clickable(
                 onClick = { showOptions = true },
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() }
-            )
-            .background(
-                color = Color.LightGray.copy(alpha = 0.2f),
-                shape = RoundedCornerShape(32.dp)
             )) {
         Column(
             modifier = Modifier.weight(1f)
@@ -109,4 +104,10 @@ fun DishItem(
             onDelete = onDelete
         )
     }
+}
+
+@Composable
+@Preview(showBackground = true)
+fun DishItemPreview() {
+    DishItem("Борщ", 10f, 5f, 15f, 100f, 100, {}, {})
 }
