@@ -78,11 +78,15 @@ class Validation {
             }
             
             val h = height.toFloatOrNull()
-            if (h == null || h <= 0) {
+            if (h == null || h <= 0 ) {
                 heightError = "Некорректный рост"
             } else if (h > 300) {
                 heightError = "Рост не может быть больше 300 см"
-            } else {
+            }
+            else if (h < 80) {
+                heightError = "Рост не может быть меньше 80 см"
+            }
+            else {
                 heightError = ""
             }
         }
@@ -110,7 +114,11 @@ class Validation {
                 weightError = "Некорректный вес"
             } else if (w > 635) {
                 weightError = "Вес не может быть больше 635 кг"
-            } else {
+            }
+            else if (w < 25) {
+                weightError = "Вес не может быть меньше 25 кг"
+            }
+            else {
                 weightError = ""
             }
         }
@@ -121,8 +129,8 @@ class Validation {
             ageError = "Укажите возраст"
         } else {
             val a = age.toIntOrNull()
-            if (a == null || a <= 0 || a > 150) {
-                ageError = "Возраст от 1 до 150"
+            if (a == null || a <= 15 || a > 150) {
+                ageError = "Возраст от 16 до 150"
             } else {
                 ageError = ""
             }
