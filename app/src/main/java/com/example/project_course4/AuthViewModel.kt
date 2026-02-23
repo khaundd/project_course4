@@ -10,6 +10,8 @@ import com.example.project_course4.local_db.MealComponentWithJunction
 import com.example.project_course4.local_db.entities.MealEntity
 import com.example.project_course4.api.MealData
 import com.example.project_course4.utils.DateUtils
+import com.example.project_course4.api.ProfileData
+import com.example.project_course4.SessionManager
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
@@ -63,8 +65,18 @@ class AuthViewModel(
                 val result = clientAPI.register(username, password, email, height, bodyweight, age)
                 result.fold(
                     onSuccess = { message ->
-                        // Сохраняем email при успешной регистрации
+                        // Сохраняем email и данные профиля при успешной регистрации
                         sessionManager.saveEmail(email)
+                        sessionManager.saveProfileData(
+                            weight = bodyweight,
+                            height = height,
+                            age = age,
+                            goal = "MAINTAIN",  // Значение по умолчанию
+                            gender = "MALE"     // Значение по умолчанию
+                        )
+                        // Проверяем, сохранился ли токен после регистрации
+                        val token = sessionManager.fetchAuthToken()
+                        Log.d("ViewModel", "Токен после регистрации: ${if (token.isNullOrEmpty()) "NULL" else "SAVED"}")
                         onSuccess(message)
                     },
                     onFailure = { error ->
@@ -90,7 +102,18 @@ class AuthViewModel(
                 result.fold(
                     onSuccess = { message ->
                         Log.d("ViewModel", "Подтверждение email успешно: $message")
-                        onSuccess(message)
+                        
+                        // Проверяем, сохранился ли токен после верификации
+                        val token = sessionManager.fetchAuthToken()
+                        Log.d("ViewModel", "Токен после верификации: ${if (token.isNullOrEmpty()) "NULL" else "SAVED"}")
+                        
+                        if (token.isNullOrEmpty()) {
+                            // Если токен не сохранен, сообщаем что нужно войти
+                            Log.d("ViewModel", "Токен отсутствует, требуется вход")
+                            onSuccess("$message. Теперь войдите в систему с вашими данными.")
+                        } else {
+                            onSuccess(message)
+                        }
                     },
                     onFailure = { error ->
                         Log.d("ViewModel", "Ошибка подтверждения email: ${'$'}{error.message}")
@@ -114,8 +137,16 @@ class AuthViewModel(
                     Result.success(message)
                 },
                 onFailure = { error -> 
-                    Log.e("AuthViewModel", "Ошибка очистки данных с сервера: ${error.message}")
-                    Result.failure(error)
+                    // Если 401 (Unauthorized), это значит что аккаунт пустой или токен невалидный
+                    // Это не критичная ошибка для выхода - продолжаем процесс
+                    if (error.message?.contains("401") == true || 
+                        error.message?.contains("Unauthorized") == true) {
+                        Log.w("AuthViewModel", "Аккаунт пустой или токен невалидный, пропускаем очистку сервера")
+                        Result.success("Пропуск очистки - аккаунт пустой")
+                    } else {
+                        Log.e("AuthViewModel", "Ошибка очистки данных с сервера: ${error.message}")
+                        Result.failure(error)
+                    }
                 }
             )
         } catch (e: Exception) {
@@ -145,11 +176,54 @@ class AuthViewModel(
                         database.mealDao().fullResetMeals()
                         Result.success(message)
                     },
-                    onFailure = { error -> Result.failure(error) }
+                    onFailure = { error -> 
+                        // Если 401 (Unauthorized), это значит что токен невалидный
+                        // Это не критичная ошибка для выхода - продолжаем процесс
+                        if (error.message?.contains("401") == true || 
+                            error.message?.contains("Unauthorized") == true) {
+                            Log.w("AuthViewModel", "Токен невалидный, пропускаем синхронизацию")
+                            Result.success("Пропуск синхронизации - токен невалидный")
+                        } else {
+                            Result.failure(error)
+                        }
+                    }
                 )
             }
         } catch (e: Exception) {
             Log.e("AuthViewModel", "Ошибка при синхронизации данных на сервер: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun loadProfileDataFromServer(): Result<String> {
+        return try {
+            Log.d("AuthViewModel", "Начало загрузки данных профиля с сервера")
+            val result = clientAPI.getProfileData()
+            result.fold(
+                onSuccess = { profileData ->
+                    Log.d("AuthViewModel", "Данные профиля успешно получены: height=${profileData.height}, weight=${profileData.bodyweight}, age=${profileData.age}")
+                    
+                    // Сохраняем данные профиля в локальное хранилище
+                    sessionManager.saveProfileData(
+                        weight = profileData.bodyweight,
+                        height = profileData.height,
+                        age = profileData.age,
+                        goal = profileData.goal ?: "MAINTAIN",
+                        gender = profileData.gender ?: "MALE"
+                    )
+                    
+                    // Уведомляем об обновлении данных профиля
+                    _dataUpdateEvent.emit(Unit)
+                    Log.d("AuthViewModel", "Данные профиля сохранены локально")
+                    Result.success("Данные профиля успешно загружены")
+                },
+                onFailure = { error ->
+                    Log.e("AuthViewModel", "Ошибка загрузки данных профиля: ${error.message}")
+                    Result.failure(error)
+                }
+            )
+        } catch (e: Exception) {
+            Log.e("AuthViewModel", "Исключение при загрузке данных профиля: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -244,6 +318,7 @@ class AuthViewModel(
                                     onSuccess = { message ->
                                         sessionManager.clearData()
                                         sessionManager.clearEmail() // Очищаем email при выходе
+                                        sessionManager.clearProfileData() // Очищаем данные профиля при выходе
                                         Log.d("AuthViewModel", "Выход выполнен успешно: $message")
                                         onSuccess(message)
                                     },
@@ -290,6 +365,19 @@ class AuthViewModel(
                     sessionManager.saveAuthToken(token)
                     // Сохраняем email при успешном входе
                     sessionManager.saveEmail(email)
+                    
+                    // Загружаем данные профиля с сервера после успешного входа
+                    Log.d("AuthViewModel", "Начало загрузки данных профиля с сервера после входа")
+                    val profileResult = loadProfileDataFromServer()
+                    profileResult.fold(
+                        onSuccess = { profileMessage ->
+                            Log.d("AuthViewModel", "Данные профиля успешно загружены после входа: $profileMessage")
+                        },
+                        onFailure = { error ->
+                            Log.e("AuthViewModel", "Ошибка загрузки данных профиля после входа: ${error.message}")
+                            // Продолжаем вход даже если профиль не загрузился
+                        }
+                    )
                     
                     // Загружаем данные с сервера после успешного входа
                     Log.d("AuthViewModel", "Начало загрузки данных с сервера после входа")

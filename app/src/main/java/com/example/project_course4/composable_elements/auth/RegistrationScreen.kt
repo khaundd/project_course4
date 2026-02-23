@@ -297,7 +297,7 @@ fun RegistrationScreen(navController: NavController, viewModel: AuthViewModel?) 
                             }
                         ) ?: run {
                             isLoading = false
-                            validation.toastMessage = "ViewModel not available in preview"
+                            validation.toastMessage = "ViewModel не доступен в preview"
                         }
                     } else {
                         validation.toastMessage = "Пожалуйста, исправьте ошибки в форме"

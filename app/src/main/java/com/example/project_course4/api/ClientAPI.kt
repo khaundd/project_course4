@@ -6,6 +6,9 @@ import com.example.project_course4.SessionManager
 import com.example.project_course4.api.ProductCreateRequest
 import com.example.project_course4.api.ProductCreateResponse
 import com.example.project_course4.api.ProductResponse
+import com.example.project_course4.api.ProfileData
+import com.example.project_course4.api.ProfileResponse
+import com.example.project_course4.api.ProfileUpdateRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
@@ -46,6 +49,9 @@ class ClientAPI (private val sessionManager: SessionManager){
             val token = sessionManager.fetchAuthToken()
             if (!token.isNullOrEmpty()) {
                 headers.append("Authorization", "Bearer $token")
+                Log.d("api_test", "Добавлен заголовок Authorization: Bearer [TOKEN]")
+            } else {
+                Log.w("api_test", "Токен отсутствует, заголовок Authorization не добавлен")
             }
         }
     }
@@ -53,9 +59,25 @@ class ClientAPI (private val sessionManager: SessionManager){
         val url = if (limit != null) "$BASE_URL/products?limit=$limit" else "$BASE_URL/products"
         return withContext(Dispatchers.IO) {
             try {
+                Log.d("api_test", "Запрос продуктов: $url")
                 val response = client.get(url)
-                val products = response.body<List<Product>>()
-                products
+                Log.d("api_test", "Статус ответа: ${response.status.value}")
+                
+                if (response.status.value in 200..299) {
+                    val products = response.body<List<Product>>()
+                    Log.d("api_test", "Получено ${products.size} продуктов")
+                    products
+                } else {
+                    // Для ошибок пытаемся прочитать как ApiResponse
+                    try {
+                        val errorResponse = response.body<ApiResponse>()
+                        Log.e("api_test", "Ошибка сервера: ${errorResponse?.message}")
+                        emptyList()
+                    } catch (e: Exception) {
+                        Log.e("api_test", "Ошибка при обработке ответа сервера: ${response.bodyAsText()}")
+                        emptyList()
+                    }
+                }
             } catch (e: Exception) {
                 Log.e("api_test", "Ошибка в getProducts: ${e.message}", e)
                 emptyList()
@@ -90,6 +112,22 @@ class ClientAPI (private val sessionManager: SessionManager){
                 when (response.status.value) {
                     in 200..299 -> {
                         val responseBody = response.body<ApiResponse>()
+                        Log.d("api_test", "Полный ответ сервера при регистрации: $responseBody")
+                        Log.d("api_test", "Токен в ответе: ${responseBody.token}")
+                        Log.d("api_test", "UserId в ответе: ${responseBody.userId}")
+                        
+                        // Если сервер вернул токен при регистрации, сохраняем его
+                        if (responseBody.token != null) {
+                            val userId = responseBody.userId ?: -1
+                            if (userId != -1) {
+                                sessionManager.saveUserId(userId)
+                            }
+                            sessionManager.saveAuthToken(responseBody.token)
+                            Log.d("api_test", "Токен сохранен после успешной регистрации: ${responseBody.token}")
+                        } else {
+                            Log.w("api_test", "Сервер не вернул токен при регистрации")
+                        }
+                        
                         Result.success(responseBody.message ?: "Регистрация почти завершена. Проверьте email для подтверждения.")
                     }
                     else -> {
@@ -174,7 +212,22 @@ class ClientAPI (private val sessionManager: SessionManager){
                 when (response.status.value) {
                     in 200..299 -> {
                         val responseBody = response.body<ApiResponse>()
-                        Log.d("api_test", "Успешное подтверждение email: ${'$'}{responseBody.message}")
+                        Log.d("api_test", "Полный ответ сервера при верификации: $responseBody")
+                        Log.d("api_test", "Токен в ответе: ${responseBody.token}")
+                        Log.d("api_test", "UserId в ответе: ${responseBody.userId}")
+                        
+                        // Если сервер вернул токен после подтверждения email, сохраняем его
+                        if (responseBody.token != null) {
+                            val userId = responseBody.userId ?: -1
+                            if (userId != -1) {
+                                sessionManager.saveUserId(userId)
+                            }
+                            sessionManager.saveAuthToken(responseBody.token)
+                            Log.d("api_test", "Токен сохранен после подтверждения email: ${responseBody.token}")
+                        } else {
+                            Log.w("api_test", "Сервер не вернул токен при верификации email")
+                        }
+                        
                         Result.success(responseBody.message ?: "Email успешно подтвержден. Регистрация завершена.")
                     }
                     else -> {
@@ -373,6 +426,126 @@ class ClientAPI (private val sessionManager: SessionManager){
                 }
             } catch (e: Exception) {
                 Log.e("api_test", "Ошибка в addProduct: ${e.message}", e)
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun getProfileData(): Result<ProfileData> {
+        val url = "$BASE_URL/profile"
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("api_test", "=== ЗАПРОС ПРОФИЛЯ НАЧАЛО ===")
+                Log.d("api_test", "URL запроса: $url")
+                
+                val token = sessionManager.fetchAuthToken()
+                Log.d("api_test", "Токен авторизации: ${if (token.isNullOrEmpty()) "ОТСУТСТВУЕТ" else "ПРИСУТСТВУЕТ (длина: ${token.length})"}")
+                
+                val response = client.get(url)
+                
+                Log.d("api_test", "Статус ответа: ${response.status.value} ${response.status.description}")
+                
+                // Получаем сырой ответ для отладки
+                val rawResponse = response.bodyAsText()
+                Log.d("api_test", "СЫРОЙ ОТВЕТ СЕРВЕРА: $rawResponse")
+                
+                when (response.status.value) {
+                    in 200..299 -> {
+                        try {
+                            val responseBody = response.body<ProfileResponse>()
+                            Log.d("api_test", "ОБРАБОТАННЫЙ ОТВЕТ: $responseBody")
+                            Log.d("api_test", "Success: ${responseBody.success}")
+                            Log.d("api_test", "Message: ${responseBody.message}")
+                            Log.d("api_test", "Profile: ${responseBody.profile}")
+                            
+                            if (responseBody.profile != null) {
+                                val profile = responseBody.profile
+                                Log.d("api_test", "ДЕТАЛЬНЫЕ ДАННЫЕ ПРОФИЛЯ:")
+                                Log.d("api_test", "  - Height: ${profile.height}")
+                                Log.d("api_test", "  - Bodyweight: ${profile.bodyweight}")
+                                Log.d("api_test", "  - Age: ${profile.age}")
+                                Log.d("api_test", "  - Goal: ${profile.goal}")
+                                Log.d("api_test", "  - Gender: ${profile.gender}")
+                            }
+                            
+                            if (responseBody.success && responseBody.profile != null) {
+                                Log.d("api_test", "=== ЗАПРОС ПРОФИЛЯ УСПЕШНО ЗАВЕРШЕН ===")
+                                Result.success(responseBody.profile)
+                            } else {
+                                Log.e("api_test", "=== ЗАПРОС ПРОФИЛЯ ЗАВЕРШЕН С ОШИБКОЙ ===")
+                                Log.e("api_test", "Причина: ${responseBody.message ?: "Неизвестная ошибка"}")
+                                Result.failure(Exception(responseBody.message ?: "Ошибка загрузки данных профиля"))
+                            }
+                        } catch (parseException: Exception) {
+                            Log.e("api_test", "ОШИБКА ПАРСИНГА ОТВЕТА: ${parseException.message}", parseException)
+                            Log.e("api_test", "Сырой ответ, который не удалось распарсить: $rawResponse")
+                            Result.failure(Exception("Ошибка парсинга ответа сервера: ${parseException.message}"))
+                        }
+                    }
+                    else -> {
+                        try {
+                            val errorResponse = response.body<ProfileResponse>()
+                            Log.e("api_test", "ОШИБКА СЕРВЕРА:")
+                            Log.e("api_test", "  - Статус: ${response.status.value}")
+                            Log.e("api_test", "  - Success: ${errorResponse.success}")
+                            Log.e("api_test", "  - Message: ${errorResponse.message}")
+                            Log.e("api_test", "  - Profile: ${errorResponse.profile}")
+                            Result.failure(Exception(errorResponse?.message ?: "Ошибка сервера при загрузке профиля"))
+                        } catch (parseException: Exception) {
+                            Log.e("api_test", "ОШИБКА ПАРСИНГА ОШИБКИ: ${parseException.message}", parseException)
+                            Log.e("api_test", "Сырой ответ ошибки: $rawResponse")
+                            Result.failure(Exception("Ошибка сервера: ${response.status.value}"))
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("api_test", "КРИТИЧЕСКАЯ ОШИБКА В getProfileData: ${e.message}", e)
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun updateProfileData(
+        height: Float,
+        bodyweight: Float,
+        age: Int
+    ): Result<String> {
+        val url = "$BASE_URL/profile"
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("api_test", "Обновление данных профиля на сервере...")
+                
+                val profileRequest = ProfileUpdateRequest(
+                    height = height,
+                    bodyweight = bodyweight,
+                    age = age
+                )
+                
+                val response = client.post(url) {
+                    contentType(ContentType.Application.Json)
+                    setBody(profileRequest)
+                }
+                
+                Log.d("api_test", "Статус ответа при обновлении профиля: ${response.status.value}")
+                
+                when (response.status.value) {
+                    in 200..299 -> {
+                        val responseBody = response.body<ProfileResponse>()
+                        Log.d("api_test", "Ответ сервера при обновлении профиля: $responseBody")
+                        if (responseBody.success) {
+                            Result.success(responseBody.message ?: "Данные профиля успешно обновлены")
+                        } else {
+                            Result.failure(Exception(responseBody.message ?: "Ошибка обновления данных профиля"))
+                        }
+                    }
+                    else -> {
+                        val errorResponse = response.body<ProfileResponse>()
+                        Log.e("api_test", "Ошибка сервера при обновлении профиля: ${response.status.value}, ответ: $errorResponse")
+                        Result.failure(Exception(errorResponse?.message ?: "Ошибка сервера при обновлении профиля"))
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("api_test", "Ошибка в updateProfileData: ${e.message}", e)
                 Result.failure(e)
             }
         }

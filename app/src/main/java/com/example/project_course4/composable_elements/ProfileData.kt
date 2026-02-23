@@ -1,9 +1,9 @@
 package com.example.project_course4.composable_elements
 
 data class ProfileData(
-    val weight: Float = 71f,
-    val height: Float = 178f,
-    val age: Int = 20,
+    val weight: Float = 0f,
+    val height: Float = 0f,
+    val age: Int = 0,
     val goal: NutritionGoal = NutritionGoal.MAINTAIN,
     val gender: Gender = Gender.MALE
 )

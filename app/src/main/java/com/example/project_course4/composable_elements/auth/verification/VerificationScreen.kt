@@ -96,10 +96,19 @@ fun VerificationScreen(navController: NavController, email: String, viewModel: A
                     viewModel.verifyEmail(
                         email = email,
                         code = validation.code,
-                        onSuccess = { _ ->
+                        onSuccess = { message ->
                             isLoading = false
-                            navController.navigate(Screen.Main.route) {
-                                popUpTo(Screen.Registration.route) { inclusive = true }
+                            // Проверяем, нужно ли перенаправлять на вход
+                            if (message.contains("Теперь войдите в систему")) {
+                                // Перенаправляем на экран входа
+                                navController.navigate(Screen.Login.route) {
+                                    popUpTo(Screen.Registration.route) { inclusive = true }
+                                }
+                            } else {
+                                // Токен получен, переходим на главный экран
+                                navController.navigate(Screen.Main.route) {
+                                    popUpTo(Screen.Registration.route) { inclusive = true }
+                                }
                             }
                         },
                         onError = { errorMessage ->

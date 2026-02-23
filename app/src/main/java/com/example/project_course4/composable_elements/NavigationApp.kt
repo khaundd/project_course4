@@ -90,7 +90,7 @@ fun NavigationApp() {
                         ProductViewModel(productRepository, authVm) as T
                     }
                     modelClass.isAssignableFrom(ProfileViewModel::class.java) -> {
-                        ProfileViewModel(sessionManager) as T
+                        ProfileViewModel(sessionManager, clientAPI) as T
                     }
                     modelClass.isAssignableFrom(AuthViewModel::class.java) -> {
                         // Создаем ProductViewModel без зависимостей, чтобы избежать циклической ссылки
@@ -102,9 +102,21 @@ fun NavigationApp() {
         }
     }
 
+    // Сначала создаем AuthViewModel, чтобы получить доступ к dataUpdateEvent
     val authViewModel: AuthViewModel = viewModel(factory = factory)
     val productViewModel: ProductViewModel = viewModel(factory = factory)
-    val profileViewModel: ProfileViewModel = viewModel(factory = factory)
+    val profileViewModel: ProfileViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return when {
+                    modelClass.isAssignableFrom(ProfileViewModel::class.java) -> {
+                        ProfileViewModel(sessionManager, clientAPI, authViewModel.dataUpdateEvent) as T
+                    }
+                    else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
+                }
+            }
+        }
+    )
 
     NavHost(
         navController = navController,
