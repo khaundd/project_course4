@@ -119,10 +119,8 @@ fun NavigationApp() {
                         },
                         onError = { error ->
                             Log.e("NavigationApp", "Ошибка при выходе: $error")
-                            // При ошибке все равно переходим на экран входа
-                            navController.navigate(Screen.Login.route) {
-                                popUpTo(Screen.Main.route) { inclusive = true }
-                            }
+                            // Показываем сообщение об ошибке и не переходим на экран входа
+                            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
                         }
                     )
                 }
@@ -142,10 +140,8 @@ fun NavigationApp() {
                         },
                         onError = { error ->
                             Log.e("NavigationApp", "Ошибка при выходе: $error")
-                            // При ошибке все равно переходим на экран входа
-                            navController.navigate(Screen.Login.route) {
-                                popUpTo(Screen.Main.route) { inclusive = true }
-                            }
+                            // Показываем сообщение об ошибке и не переходим на экран входа
+                            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
                         }
                     )
                 }
