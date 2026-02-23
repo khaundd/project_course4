@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">RegularApp</string>
-    <string name="title_activity_main">MainActivity</string>
+    <string name="app_name">NutriTrack</string>
+    <string name="title_activity_main">NutriTrack</string>
     <string name="title_activity_select_product">SelectProductActivity</string>
 </resources>

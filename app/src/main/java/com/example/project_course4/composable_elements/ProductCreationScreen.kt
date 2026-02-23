@@ -3,6 +3,7 @@ package com.example.project_course4.composable_elements
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -24,7 +25,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
@@ -192,8 +193,9 @@ fun ProductCreationScreen(
                                                                 "ProductCreation",
                                                                 "Продукт успешно сохранен: ${savedProduct.name}"
                                                             )
-                                                            viewModel.hideProductCreationScreen()
+                                                            // Сначала выполняем навигацию, затем очищаем состояние
                                                             navController.popBackStack()
+                                                            viewModel.hideProductCreationScreen()
                                                         },
                                                         onFailure = { error ->
                                                             if (NetworkUtils.isNetworkError(error)) {
@@ -271,68 +273,69 @@ fun ProductCreationScreen(
                 onValueChange = { name ->
                     val newState = state.copy(name = name)
                     val validationResult = validator.validateName(name)
-                    val nameError =
-                        if (validationResult is ValidationResult.Invalid) validationResult.errorMessage else null
+                    val nameError = if (validationResult is ValidationResult.Invalid) validationResult.errorMessage else null
                     viewModel.updateProductCreationState(newState.copy(nameError = nameError))
                 },
                 placeholder = "Название",
                 isError = state.nameError != null,
                 errorMessage = state.nameError,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                fontSize = 20.sp,
+                hintColor = Color.Red
             )
 
             // Остальные поля ввода
             LabeledTransparentTextField(
-                label = "Белки",
-                unit = "на 100 г.",
+                label = "Белки, на 100 г.",
+                unit = "г.",
                 value = state.protein,
                 onValueChange = { protein ->
                     val newState = state.copy(protein = protein)
                     val validationResult = validator.validateFloatValue(protein, "Белки")
-                    val proteinError =
-                        if (validationResult is ValidationResult.Invalid) validationResult.errorMessage else null
+                    val proteinError = if (validationResult is ValidationResult.Invalid) validationResult.errorMessage else null
                     viewModel.updateProductCreationState(newState.copy(proteinError = proteinError))
                 },
                 isError = state.proteinError != null,
                 errorMessage = state.proteinError,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                placeholder = "0"
             )
 
             LabeledTransparentTextField(
-                label = "Жиры",
-                unit = "на 100 г.",
+                label = "Жиры, на 100 г.",
+                unit = "г.",
                 value = state.fats,
                 onValueChange = { fats ->
                     val newState = state.copy(fats = fats)
                     val validationResult = validator.validateFloatValue(fats, "Жиры")
-                    val fatsError =
-                        if (validationResult is ValidationResult.Invalid) validationResult.errorMessage else null
+                    val fatsError = if (validationResult is ValidationResult.Invalid) validationResult.errorMessage else null
                     viewModel.updateProductCreationState(newState.copy(fatsError = fatsError))
                 },
                 isError = state.fatsError != null,
                 errorMessage = state.fatsError,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                placeholder = "0"
             )
 
             LabeledTransparentTextField(
-                label = "Углеводы",
-                unit = "на 100 г.",
+                label = "Углеводы, на 100 г.",
+                unit = "г.",
                 value = state.carbs,
                 onValueChange = { carbs ->
                     val newState = state.copy(carbs = carbs)
                     val validationResult = validator.validateFloatValue(carbs, "Углеводы")
-                    val carbsError =
-                        if (validationResult is ValidationResult.Invalid) validationResult.errorMessage else null
+                    val carbsError = if (validationResult is ValidationResult.Invalid) validationResult.errorMessage else null
                     viewModel.updateProductCreationState(newState.copy(carbsError = carbsError))
                 },
                 isError = state.carbsError != null,
                 errorMessage = state.carbsError,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                placeholder = "0"
             )
 
             LabeledTransparentTextField(
-                label = "Калории кКал",
-                unit = "на 100 г.",
+                label = "Калории кКал, на 100 г.",
+                unit = "",
                 value = "${"%.2f".format(calories)}",
                 onValueChange = {},
                 enabled = false
@@ -417,115 +420,3 @@ fun ProductCreationScreen(
         }
     }
 }
-
-@Composable
-private fun TransparentTextField(
-        value: String,
-        onValueChange: (String) -> Unit,
-        placeholder: String,
-        modifier: Modifier = Modifier,
-        isError: Boolean = false,
-        errorMessage: String? = null,
-        enabled: Boolean = true,
-        keyboardOptions: KeyboardOptions = KeyboardOptions.Default
-    ) {
-        Column(modifier = modifier) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color.Transparent)
-                    .clickable(enabled) { }
-                    .padding(vertical = 16.dp, horizontal = 12.dp)
-            ) {
-                if (value.isEmpty()) {
-                    Text(
-                        text = placeholder,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                BasicTextField(
-                    value = value,
-                    onValueChange = onValueChange,
-                    enabled = enabled,
-                    keyboardOptions = keyboardOptions,
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(
-                        color = MaterialTheme.colorScheme.onSurface
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            if (isError && errorMessage != null) {
-                Text(
-                    text = errorMessage,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(start = 12.dp, top = 4.dp)
-                )
-            }
-        }
-    }
-
-@Composable
-private fun LabeledTransparentTextField(
-        label: String,
-        unit: String,
-        value: String,
-        onValueChange: (String) -> Unit,
-        modifier: Modifier = Modifier,
-        isError: Boolean = false,
-        errorMessage: String? = null,
-        enabled: Boolean = true,
-        keyboardOptions: KeyboardOptions = KeyboardOptions.Default
-    ) {
-        Column(modifier = modifier) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color.Transparent)
-                    .clickable(enabled) { }
-                    .padding(vertical = 16.dp, horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f)
-                )
-
-                if (unit.isNotEmpty()) {
-                    Text(
-                        text = unit,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
-                }
-
-                BasicTextField(
-                    value = value,
-                    onValueChange = onValueChange,
-                    enabled = enabled,
-                    keyboardOptions = keyboardOptions,
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(
-                        color = MaterialTheme.colorScheme.onSurface,
-                        textAlign = TextAlign.End
-                    ),
-                    modifier = Modifier.width(120.dp)
-                )
-            }
-
-            if (isError && errorMessage != null) {
-                Text(
-                    text = errorMessage,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(start = 12.dp, top = 4.dp)
-                )
-            }
-        }
-    }

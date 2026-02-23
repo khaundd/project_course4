@@ -196,7 +196,11 @@ class ProductViewModel(
 
     fun hideProductCreationScreen() {
         _shouldShowProductCreation.value = false
-        resetProductCreationState()
+        // Не сбрасываем состояние немедленно, даем время на навигацию
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(100) // Небольшая задержка для завершения навигации
+            resetProductCreationState()
+        }
     }
 
     fun navigateToProductCreation(navController: NavController) {
