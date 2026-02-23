@@ -33,4 +33,14 @@ class SessionManager(context: Context) {
     }
 
     fun fetchUserId(): Int = sharedPreferences.getInt("user_id", -1)
+
+    fun saveEmail(email: String) {
+        sharedPreferences.edit { putString("user_email", email) }
+    }
+
+    fun fetchEmail(): String? = sharedPreferences.getString("user_email", null)
+
+    fun clearEmail() {
+        sharedPreferences.edit { remove("user_email") }
+    }
 }

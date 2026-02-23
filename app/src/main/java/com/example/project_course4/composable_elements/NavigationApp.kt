@@ -29,6 +29,7 @@ import com.example.project_course4.composable_elements.auth.verification.Verific
 import com.example.project_course4.composable_elements.scanner.BarcodeScannerManager
 import com.example.project_course4.local_db.AppDatabase
 import com.example.project_course4.viewmodel.ProductViewModel
+import com.example.project_course4.viewmodel.ProfileViewModel
 
 @Composable
 fun NavigationApp() {
@@ -88,6 +89,9 @@ fun NavigationApp() {
                         val authVm = AuthViewModel(clientAPI, sessionManager, database)
                         ProductViewModel(productRepository, authVm) as T
                     }
+                    modelClass.isAssignableFrom(ProfileViewModel::class.java) -> {
+                        ProfileViewModel(sessionManager) as T
+                    }
                     modelClass.isAssignableFrom(AuthViewModel::class.java) -> {
                         // Создаем ProductViewModel без зависимостей, чтобы избежать циклической ссылки
                         AuthViewModel(clientAPI, sessionManager, database) as T
@@ -100,6 +104,7 @@ fun NavigationApp() {
 
     val authViewModel: AuthViewModel = viewModel(factory = factory)
     val productViewModel: ProductViewModel = viewModel(factory = factory)
+    val profileViewModel: ProfileViewModel = viewModel(factory = factory)
 
     NavHost(
         navController = navController,
@@ -109,6 +114,7 @@ fun NavigationApp() {
             MainScreen(
                 navController = navController,
                 viewModel = productViewModel,
+                profileViewModel = profileViewModel,
                 onLogout = {
                     authViewModel.logout(
                         onSuccess = { message ->
@@ -130,7 +136,8 @@ fun NavigationApp() {
         composable(Screen.Profile.route) { backStackEntry ->
             ProfileScreen(
                 navController = navController,
-                authViewModel = authViewModel
+                authViewModel = authViewModel,
+                profileViewModel = profileViewModel
             )
         }
         

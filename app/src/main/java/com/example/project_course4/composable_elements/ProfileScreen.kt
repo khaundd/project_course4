@@ -1,13 +1,16 @@
 package com.example.project_course4.composable_elements
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.*
@@ -18,38 +21,49 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.project_course4.AuthViewModel
 import com.example.project_course4.Screen
+import com.example.project_course4.SessionManager
 import com.example.project_course4.composable_elements.auth.TextButtonRedirect
 import com.example.project_course4.utils.NetworkUtils
 import com.example.project_course4.utils.Validation
+import com.example.project_course4.viewmodel.ProfileViewModel
 import kotlinx.coroutines.launch
 import com.example.project_course4.R
 
-// Заглушки — в будущем будут браться из БД или настройки приложения
-private const val PLACEHOLDER_EMAIL = "admin@admin.com"
-private const val PLACEHOLDER_WEIGHT = "71 кг"
-private const val PLACEHOLDER_HEIGHT = "178 см"
-private const val PLACEHOLDER_AGE = "20 лет"
-private const val PLACEHOLDER_GOAL = "Набрать"
-private const val PLACEHOLDER_GENDER = "Мужчина"
-private const val PLACEHOLDER_CALORIES = "2945 кКал"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     navController: NavController,
     authViewModel: AuthViewModel,
+    profileViewModel: ProfileViewModel,
 ) {
     val context = LocalContext.current
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val validation = remember { Validation() }
     val snackbarHostState = remember { SnackbarHostState() }
+    
+    val profileData by profileViewModel.profileData.collectAsState()
+    val dailyCalories by profileViewModel.dailyCalories.collectAsState()
+    val userEmail = profileViewModel.getUserEmail() ?: "Email не найден"
+    
+    var showInfoDialog by remember { mutableStateOf(false) }
+    
+    // Состояния для редактирования
+    var isEditingWeight by remember { mutableStateOf(false) }
+    var isEditingHeight by remember { mutableStateOf(false) }
+    var tempWeight by remember { mutableStateOf(profileData.weight.toString()) }
+    var tempHeight by remember { mutableStateOf(profileData.height.toString()) }
+    
+    var expandedGoal by remember { mutableStateOf(false) }
+    var expandedGender by remember { mutableStateOf(false) }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -124,50 +138,84 @@ fun ProfileScreen(
                     .padding(horizontal = 24.dp, vertical = 16.dp)
             ) {
                 Text(
-                    text = PLACEHOLDER_EMAIL,
+                    text = userEmail,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = TextAlign.Center
                 )
-                TextButtonRedirect(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    text = "Выйти",
-                    onClick = {
-                        // Проверяем интернет-соединение перед выходом
-                        if (!NetworkUtils.isInternetAvailable(context)) {
-                            validation.toastMessage = "Отсутствует интернет-соединение"
-                        } else {
-                            authViewModel.logout(
-                                onSuccess = { message ->
-                                    navController.navigate(Screen.Login.route) {
-                                        popUpTo(Screen.Main.route) { inclusive = true }
-                                    }
-                                },
-                                onError = { error ->
-                                    validation.toastMessage = error
-                                }
-                            )
-                        }
-                    },
-                    normalColor = colorResource(id = R.color.textButtonRedirectColor),
-                    pressedColor = colorResource(id = R.color.buttonColor),
-                    textAlign = TextAlign.Center
-                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                ProfileDataRow(label = "Вес", value = PLACEHOLDER_WEIGHT)
+                EditableProfileDataRow(
+                    label = "Вес",
+                    value = "${profileData.weight.toInt()} кг",
+                    isEditing = isEditingWeight,
+                    tempValue = tempWeight,
+                    onEditClick = { 
+                        isEditingWeight = true
+                        tempWeight = profileData.weight.toString()
+                    },
+                    onValueChange = { tempWeight = it },
+                    onSave = { 
+                        tempWeight.toFloatOrNull()?.let { weight ->
+                            profileViewModel.updateWeight(weight)
+                        }
+                        isEditingWeight = false 
+                    },
+                    onCancel = { isEditingWeight = false }
+                )
                 HorizontalDivider()
-                ProfileDataRow(label = "Рост", value = PLACEHOLDER_HEIGHT)
+                
+                EditableProfileDataRow(
+                    label = "Рост",
+                    value = "${profileData.height.toInt()} см",
+                    isEditing = isEditingHeight,
+                    tempValue = tempHeight,
+                    onEditClick = { 
+                        isEditingHeight = true
+                        tempHeight = profileData.height.toString()
+                    },
+                    onValueChange = { tempHeight = it },
+                    onSave = { 
+                        tempHeight.toFloatOrNull()?.let { height ->
+                            profileViewModel.updateHeight(height)
+                        }
+                        isEditingHeight = false 
+                    },
+                    onCancel = { isEditingHeight = false }
+                )
                 HorizontalDivider()
-                ProfileDataRow(label = "Возраст", value = PLACEHOLDER_AGE)
+                
+                ProfileDataRow(label = "Возраст", value = "${profileData.age} лет")
                 HorizontalDivider()
-                ProfileDataRow(label = "Цель", value = PLACEHOLDER_GOAL)
+                
+                DropdownProfileDataRow(
+                    label = "Цель",
+                    value = profileData.goal.displayName,
+                    expanded = expandedGoal,
+                    onExpandedChange = { expandedGoal = it },
+                    options = NutritionGoal.values(),
+                    onOptionSelected = { goal ->
+                        profileViewModel.updateGoal(goal)
+                        expandedGoal = false
+                    },
+                    displayText = { it.displayName }
+                )
                 HorizontalDivider()
-                ProfileDataRow(label = "Пол", value = PLACEHOLDER_GENDER)
+                
+                DropdownProfileDataRow(
+                    label = "Пол",
+                    value = profileData.gender.displayName,
+                    expanded = expandedGender,
+                    onExpandedChange = { expandedGender = it },
+                    options = Gender.values(),
+                    onOptionSelected = { gender ->
+                        profileViewModel.updateGender(gender)
+                        expandedGender = false
+                    },
+                    displayText = { it.displayName }
+                )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -177,12 +225,12 @@ fun ProfileScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = PLACEHOLDER_CALORIES,
+                        text = "${dailyCalories.toInt()} кКал",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold
                     )
                     IconButton(
-                        onClick = { /* TODO: показать подсказку */ },
+                        onClick = { showInfoDialog = true },
                         modifier = Modifier.size(24.dp)
                     ) {
                         Icon(
@@ -210,6 +258,42 @@ fun ProfileScreen(
                 )
 
                 Spacer(modifier = Modifier.height(32.dp))
+                
+                // Кнопка выхода
+                TextButton(
+                    onClick = {
+                        // Проверяем интернет-соединение перед выходом
+                        if (!NetworkUtils.isInternetAvailable(context)) {
+                            validation.toastMessage = "Отсутствует интернет-соединение"
+                        } else {
+                            authViewModel.logout(
+                                onSuccess = { message ->
+                                    navController.navigate(Screen.Login.route) {
+                                        popUpTo(Screen.Main.route) { inclusive = true }
+                                    }
+                                },
+                                onError = { error ->
+                                    validation.toastMessage = error
+                                }
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        Icons.Default.Logout,
+                        contentDescription = null,
+                        tint = colorResource(id = R.color.textButtonRedirectColor),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "Выйти", 
+                        color = colorResource(id = R.color.textButtonRedirectColor)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
 
                 TextButton(
                     onClick = { /* TODO: удаление учётной записи */ },
@@ -227,6 +311,26 @@ fun ProfileScreen(
             }
         }
     }
+    
+    // Диалог с информацией о расчете калорий
+    if (showInfoDialog) {
+        AlertDialog(
+            onDismissRequest = { showInfoDialog = false },
+            title = {
+                Text("Информация")
+            },
+            text = {
+                Text("Рекомендуемая норма вычислена по формуле Миффлина-Сан Жеора")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { showInfoDialog = false }
+                ) {
+                    Text("ОК")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -239,5 +343,111 @@ private fun ProfileDataRow(label: String, value: String) {
     ) {
         Text(text = label, style = MaterialTheme.typography.bodyLarge)
         Text(text = value, style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+@Composable
+private fun EditableProfileDataRow(
+    label: String,
+    value: String,
+    isEditing: Boolean,
+    tempValue: String,
+    onEditClick: () -> Unit,
+    onValueChange: (String) -> Unit,
+    onSave: () -> Unit,
+    onCancel: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = label, style = MaterialTheme.typography.bodyLarge)
+        
+        if (isEditing) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextField(
+                    value = tempValue,
+                    onValueChange = onValueChange,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.width(100.dp),
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface
+                    )
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                TextButton(onClick = onSave) {
+                    Text("Сохранить")
+                }
+                TextButton(onClick = onCancel) {
+                    Text("Отмена")
+                }
+            }
+        } else {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.clickable { onEditClick() }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun <T> DropdownProfileDataRow(
+    label: String,
+    value: String,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    options: Array<T>,
+    onOptionSelected: (T) -> Unit,
+    displayText: (T) -> String = { it.toString() }
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = label, style = MaterialTheme.typography.bodyLarge)
+        
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = onExpandedChange
+        ) {
+            OutlinedTextField(
+                value = value,
+                onValueChange = { },
+                readOnly = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                modifier = Modifier
+                    .menuAnchor()
+                    .width(200.dp),
+                colors = TextFieldDefaults.colors(
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedContainerColor = MaterialTheme.colorScheme.surface
+                )
+            )
+            
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { onExpandedChange(false) }
+            ) {
+                options.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(displayText(option)) },
+                        onClick = {
+                            onOptionSelected(option)
+                        }
+                    )
+                }
+            }
+        }
     }
 }

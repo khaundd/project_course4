@@ -27,13 +27,12 @@ fun NutritionChart(
     fats: Float,
     carbs: Float,
     totalCalories: Float,
+    targetProtein: Float = 100f,
+    targetFats: Float = 70f,
+    targetCarbs: Float = 230f,
+    targetCalories: Float = 1950f,
     modifier: Modifier = Modifier
 ) {
-    val targetProtein = 100f
-    val targetFats = 70f
-    val targetCarbs = 230f
-    val targetCalories = targetProtein * 4 + targetFats * 9 + targetCarbs * 4
-
     val totalTargetWeight = targetProtein + targetFats + targetCarbs
 
     Canvas(

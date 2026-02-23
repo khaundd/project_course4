@@ -63,6 +63,8 @@ class AuthViewModel(
                 val result = clientAPI.register(username, password, email, height, bodyweight, age)
                 result.fold(
                     onSuccess = { message ->
+                        // Сохраняем email при успешной регистрации
+                        sessionManager.saveEmail(email)
                         onSuccess(message)
                     },
                     onFailure = { error ->
@@ -241,6 +243,7 @@ class AuthViewModel(
                                 logoutResult.fold(
                                     onSuccess = { message ->
                                         sessionManager.clearData()
+                                        sessionManager.clearEmail() // Очищаем email при выходе
                                         Log.d("AuthViewModel", "Выход выполнен успешно: $message")
                                         onSuccess(message)
                                     },
@@ -285,6 +288,8 @@ class AuthViewModel(
                 onSuccess = { token ->
                     Log.d("AuthViewModel", "Вход успешен, сохранение токена")
                     sessionManager.saveAuthToken(token)
+                    // Сохраняем email при успешном входе
+                    sessionManager.saveEmail(email)
                     
                     // Загружаем данные с сервера после успешного входа
                     Log.d("AuthViewModel", "Начало загрузки данных с сервера после входа")

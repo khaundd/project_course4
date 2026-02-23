@@ -27,6 +27,7 @@ import com.example.project_course4.SelectedProduct
 import com.example.project_course4.composable_elements.charts.NutritionChart
 import com.example.project_course4.dialogs.CustomCalendarDialog
 import com.example.project_course4.viewmodel.ProductViewModel
+import com.example.project_course4.viewmodel.ProfileViewModel
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -37,10 +38,14 @@ import com.example.project_course4.R
 fun MainScreen(
     navController: NavController,
     viewModel: ProductViewModel,
+    profileViewModel: ProfileViewModel,
     onLogout: () -> Unit,
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+
+    val macroNutrients by profileViewModel.macroNutrients.collectAsState()
+    val dailyCalories by profileViewModel.dailyCalories.collectAsState()
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -218,6 +223,10 @@ fun MainScreen(
                             fats = totalFats,
                             carbs = totalCarbs,
                             totalCalories = totalCalories,
+                            targetProtein = macroNutrients.protein,
+                            targetFats = macroNutrients.fats,
+                            targetCarbs = macroNutrients.carbs,
+                            targetCalories = dailyCalories,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(220.dp)
