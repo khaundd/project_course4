@@ -25,6 +25,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.project_course4.Screen
 import com.example.project_course4.composable_elements.auth.TextButtonRedirect
 import com.example.project_course4.utils.NetworkUtils
+import com.example.project_course4.utils.Validation
 import kotlinx.coroutines.launch
 import com.example.project_course4.R
 
@@ -46,10 +47,21 @@ fun ProfileScreen(
     val context = LocalContext.current
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    var showNetworkError by remember { mutableStateOf(false) }
+    val validation = remember { Validation() }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+
+    LaunchedEffect(validation.toastMessage) {
+        validation.toastMessage?.let { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Short
+            )
+            validation.clearToastMessage()
+        }
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -100,7 +112,8 @@ fun ProfileScreen(
                         }
                     }
                 )
-            }
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) }
         ) { paddingValues ->
             Column(
                 modifier = Modifier
@@ -124,7 +137,7 @@ fun ProfileScreen(
                     onClick = {
                         // Проверяем интернет-соединение перед выходом
                         if (!NetworkUtils.isInternetAvailable(context)) {
-                            showNetworkError = true
+                            validation.toastMessage = "Отсутствует интернет-соединение"
                         } else {
                             onLogout()
                         }
@@ -202,22 +215,6 @@ fun ProfileScreen(
                     Text("Удалить учётную запись", color = Color.Red)
                 }
             }
-        }
-        
-        // AlertDialog для показа сообщения об отсутствии интернет-соединения
-        if (showNetworkError) {
-            AlertDialog(
-                onDismissRequest = { showNetworkError = false },
-                title = { Text("Ошибка сети") },
-                text = { Text("Отсутствует интернет-соединение") },
-                confirmButton = {
-                    TextButton(
-                        onClick = { showNetworkError = false }
-                    ) {
-                        Text("ОК")
-                    }
-                }
-            )
         }
     }
 }
