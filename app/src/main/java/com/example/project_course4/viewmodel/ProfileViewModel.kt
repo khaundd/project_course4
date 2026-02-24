@@ -213,14 +213,16 @@ class ProfileViewModel(
             gender = profile.gender.name
         )
         
-        // Также синхронизируем данные с сервером, если API доступен (без goal и gender)
+        // Также синхронизируем данные с сервером, если API доступен (включая goal и gender)
         clientAPI?.let { api ->
             viewModelScope.launch {
                 try {
                     val result = api.updateProfileData(
                         height = profile.height,
                         bodyweight = profile.weight,
-                        age = profile.age
+                        age = profile.age,
+                        goal = profile.goal.name,
+                        gender = profile.gender.name
                     )
                     result.fold(
                         onSuccess = { message ->

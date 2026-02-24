@@ -155,6 +155,7 @@ fun NavigationApp() {
         
         composable("selectProductWithMeal/{mealId}") { backStackEntry ->
             val mealId = backStackEntry.arguments?.getString("mealId")
+            Log.d("NavigationApp", "Создан SelectProductScreen с mealId: $mealId")
             SelectProductScreen(
                 navController = navController,
                 viewModel = productViewModel,
@@ -165,6 +166,7 @@ fun NavigationApp() {
             )
         }
         composable(Screen.SelectProduct.route) {backStackEntry ->
+            Log.d("NavigationApp", "Создан SelectProductScreen")
             SelectProductScreen(
                 navController = navController,
                 viewModel = productViewModel

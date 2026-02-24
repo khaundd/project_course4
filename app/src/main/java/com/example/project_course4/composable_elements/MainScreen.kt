@@ -44,14 +44,39 @@ fun MainScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    val macroNutrients by profileViewModel.macroNutrients.collectAsState()
-    val dailyCalories by profileViewModel.dailyCalories.collectAsState()
+    // Гарантируем, что drawer закрыт при возвращении на MainScreen
+    LaunchedEffect(Unit) {
+        Log.d("MainScreen", "MainScreen создан, текущее состояние drawer: ${drawerState.currentValue}")
+        if (drawerState.currentValue != DrawerValue.Closed) {
+            scope.launch {
+                drawerState.close()
+                Log.d("MainScreen", "Drawer принудительно закрыт")
+            }
+        }
+    }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    // Отслеживаем получение фокуса экраном
+    LaunchedEffect(currentRoute) {
+        Log.d("MainScreen", "MainScreen получил фокус, currentRoute: $currentRoute")
+        if (currentRoute == Screen.Main.route) {
+            scope.launch {
+                if (drawerState.currentValue != DrawerValue.Closed) {
+                    drawerState.close()
+                    Log.d("MainScreen", "Drawer закрыт при получении фокуса")
+                }
+            }
+        }
+    }
+
+    val macroNutrients by profileViewModel.macroNutrients.collectAsState()
+    val dailyCalories by profileViewModel.dailyCalories.collectAsState()
+
     var showCustomCalendar by remember { mutableStateOf(false) }
     var selectedLocalDate by remember { mutableStateOf(LocalDate.now()) }
+    var isNavigatingToAddProduct by remember { mutableStateOf(false) }
             
     // Следим за изменением даты в ViewModel
     LaunchedEffect(Unit) {
@@ -98,7 +123,10 @@ fun MainScreen(
                     icon = { Icon(Icons.Default.Restaurant, contentDescription = null) },
                     label = { Text("Дневник питания") },
                     selected = currentRoute == Screen.Main.route,
-                    onClick = { scope.launch { drawerState.close() } },
+                    onClick = { 
+                        Log.d("MainScreen", "Нажат пункт 'Дневник питания'")
+                        scope.launch { drawerState.close() } 
+                    },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
 
@@ -107,6 +135,7 @@ fun MainScreen(
                     label = { Text("Создать продукт") },
                     selected = currentRoute?.startsWith(Screen.ProductCreation.route) == true,
                     onClick = {
+                        Log.d("MainScreen", "Нажат пункт 'Создать продукт'")
                         scope.launch { drawerState.close() }
                         navController.navigate("productCreation?barcode=")
                     },
@@ -118,6 +147,7 @@ fun MainScreen(
                     label = { Text("Профиль") },
                     selected = currentRoute == Screen.Profile.route,
                     onClick = {
+                        Log.d("MainScreen", "Нажат пункт 'Профиль'")
                         scope.launch { drawerState.close() }
                         navController.navigate(Screen.Profile.route)
                     },
@@ -140,7 +170,17 @@ fun MainScreen(
                         }
                     },
                     navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                        IconButton(onClick = { 
+                            Log.d("MainScreen", "Нажата кнопка меню, текущее состояние drawer: ${drawerState.currentValue}")
+                            scope.launch { 
+                                try {
+                                    drawerState.open()
+                                    Log.d("MainScreen", "Drawer успешно открыт")
+                                } catch (e: Exception) {
+                                    Log.e("MainScreen", "Ошибка при открытии drawer: ${e.message}", e)
+                                }
+                            } 
+                        }) {
                             Icon(Icons.Default.Menu, contentDescription = null)
                         }
                     }
@@ -243,11 +283,24 @@ fun MainScreen(
                             nutrition = nutrition,
                             onTimeClick = { mealId, newTime -> viewModel.updateMealTime(mealId, newTime) },
                             onAddProductClick = { m ->
-                                if (shouldShowWeightInput){
-                                    scope.launch { viewModel.saveCurrentMeal(meal.id) }
+                                if (!isNavigatingToAddProduct) {
+                                    isNavigatingToAddProduct = true
+                                    Log.d("MainScreen", "Начинаем навигацию на SelectProductScreen для mealId: ${m.id}")
+                                    if (shouldShowWeightInput){
+                                        scope.launch { viewModel.saveCurrentMeal(meal.id) }
+                                    }
+                                    viewModel.setEditingMealId(m.id)
+                                    navController.navigate("selectProductWithMeal/${m.id}")
+                                    
+                                    // Сбрасываем флаг через 500мс, чтобы предотвратить множественные нажатия
+                                    scope.launch {
+                                        kotlinx.coroutines.delay(500)
+                                        isNavigatingToAddProduct = false
+                                        Log.d("MainScreen", "Флаг навигации сброшен")
+                                    }
+                                } else {
+                                    Log.d("MainScreen", "Навигация уже выполняется, игнорируем нажатие")
                                 }
-                                viewModel.setEditingMealId(m.id)
-                                navController.navigate("selectProductWithMeal/${m.id}")
                             },
                             onEditProduct = { p, m -> viewModel.editProductWeightInMeal(p, m.id, products.find { it.product == p }?.weight ?: 0) },
                             onDeleteProduct = { p, m ->

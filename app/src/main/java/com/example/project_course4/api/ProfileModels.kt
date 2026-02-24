@@ -15,7 +15,9 @@ data class ProfileData(
 data class ProfileUpdateRequest(
     val height: Float,
     val bodyweight: Float,
-    val age: Int
+    val age: Int,
+    val goal: String? = null,
+    val gender: String? = null
 )
 
 @Serializable

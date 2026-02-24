@@ -1,5 +1,6 @@
 package com.example.project_course4.composable_elements
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -82,6 +83,7 @@ fun SelectProductScreen(
     val shouldShowProductCreation by viewModel.shouldShowProductCreation.collectAsState()
 
     var isFabMenuExpanded by remember { mutableStateOf(false) }
+    var isNavigatingBack by remember { mutableStateOf(false) }
     
     // Анимация поворота иконки
     val rotationAngle by animateFloatAsState(
@@ -99,9 +101,15 @@ fun SelectProductScreen(
                 navigationIcon = {
                     IconButton(
                         onClick = {
-                            viewModel.clearCurrentSelection()
-                            navController.popBackStack()
-                        }
+                            if (!isNavigatingBack) {
+                                isNavigatingBack = true
+                                Log.d("SelectProductScreen", "Нажата кнопка закрытия, вызываем popBackStack")
+                                viewModel.clearCurrentSelection()
+                                navController.popBackStack()
+                                Log.d("SelectProductScreen", "popBackStack вызван")
+                            }
+                        },
+                        enabled = !isNavigatingBack
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,

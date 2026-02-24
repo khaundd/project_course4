@@ -91,12 +91,14 @@ class ClientAPI (private val sessionManager: SessionManager){
         email: String,
         height: Float,
         bodyweight: Float,
-        age: Int
+        age: Int,
+        goal: String? = null,
+        gender: String? = null
     ): Result<String> {
         val url = "$BASE_URL/register"
         return withContext(Dispatchers.IO) {
             try {
-                val userData = mapOf<String, String>(
+                val userData = mutableMapOf<String, String>(
                     "username" to username,
                     "password" to password,
                     "email" to email,
@@ -104,6 +106,10 @@ class ClientAPI (private val sessionManager: SessionManager){
                     "bodyweight" to bodyweight.toString(),
                     "age" to age.toString()
                 )
+                
+                // Добавляем goal и gender если они предоставлены
+                goal?.let { userData["goal"] = it }
+                gender?.let { userData["gender"] = it }
                 val response = client.post(url) {
                     contentType(ContentType.Application.Json)
                     setBody(userData)
@@ -508,7 +514,9 @@ class ClientAPI (private val sessionManager: SessionManager){
     suspend fun updateProfileData(
         height: Float,
         bodyweight: Float,
-        age: Int
+        age: Int,
+        goal: String? = null,
+        gender: String? = null
     ): Result<String> {
         val url = "$BASE_URL/profile"
         return withContext(Dispatchers.IO) {
@@ -518,7 +526,9 @@ class ClientAPI (private val sessionManager: SessionManager){
                 val profileRequest = ProfileUpdateRequest(
                     height = height,
                     bodyweight = bodyweight,
-                    age = age
+                    age = age,
+                    goal = goal,
+                    gender = gender
                 )
                 
                 val response = client.post(url) {
