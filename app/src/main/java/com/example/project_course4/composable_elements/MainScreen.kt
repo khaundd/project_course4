@@ -270,7 +270,7 @@ fun MainScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(220.dp)
-                                .padding(top = 10.dp)
+                                .padding(vertical = 10.dp)
                         )
                     }
                     items(meals) { meal ->
