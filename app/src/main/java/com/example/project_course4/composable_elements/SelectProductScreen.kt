@@ -134,7 +134,7 @@ fun SelectProductScreen(
                         }
                         navController.popBackStack()
                     },
-                    containerColor = Color.Green,
+                    containerColor = Color(0xFF4CAF50),
                     contentColor = Color.White,
                     shape = CircleShape,
                     modifier = Modifier.padding(16.dp)
@@ -161,7 +161,7 @@ fun SelectProductScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFFD9D7D7)) // Сероватый фон
+                    .background(MaterialTheme.colorScheme.surface)
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 Row(
@@ -191,7 +191,7 @@ fun SelectProductScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             // Содержимое
             if (isLoading) {

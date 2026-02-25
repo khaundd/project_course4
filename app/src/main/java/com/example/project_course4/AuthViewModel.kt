@@ -12,6 +12,7 @@ import com.example.project_course4.api.MealData
 import com.example.project_course4.utils.DateUtils
 import com.example.project_course4.api.ProfileData
 import com.example.project_course4.SessionManager
+import com.example.project_course4.utils.ErrorHandler
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
@@ -325,27 +326,31 @@ class AuthViewModel(
                                     onFailure = { error ->
                                         // При ошибке logout не очищаем токен, так как данные уже синхронизированы
                                         Log.e("AuthViewModel", "Ошибка при выходе: ${error.message}")
-                                        onError("Сервер недоступен, повторите попытку позднее")
+                                        val errorMessage = ErrorHandler.handleNetworkException(error)
+                                        onError(errorMessage)
                                     }
                                 )
                             },
                             onFailure = { error ->
                                 Log.e("AuthViewModel", "Ошибка синхронизации: ${error.message}")
                                 // При ошибке синхронизации прерываем процесс и не очищаем локальные данные
-                                onError("Сервер недоступен, повторите попытку позднее")
+                                val errorMessage = ErrorHandler.handleNetworkException(error)
+                                onError(errorMessage)
                             }
                         )
                     },
                     onFailure = { error ->
                         Log.e("AuthViewModel", "Ошибка очистки сервера: ${error.message}")
                         // При ошибке очистки сервера прерываем процесс
-                        onError("Сервер недоступен, повторите попытку позднее")
+                        val errorMessage = ErrorHandler.handleNetworkException(error)
+                        onError(errorMessage)
                     }
                 )
             } catch (e: Exception) {
                 Log.e("AuthViewModel", "Исключение при выходе: ${e.message}", e)
                 // При исключении не очищаем БД и токен
-                onError("Сервер недоступен, повторите попытку позднее")
+                val errorMessage = ErrorHandler.handleNetworkException(e)
+                onError(errorMessage)
             }
         }
     }

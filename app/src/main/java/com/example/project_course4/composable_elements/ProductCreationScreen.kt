@@ -35,6 +35,7 @@ import com.example.project_course4.ProductCreationValidator
 import com.example.project_course4.ValidationResult
 import com.example.project_course4.viewmodel.ProductViewModel
 import com.example.project_course4.utils.NetworkUtils
+import com.example.project_course4.utils.ErrorHandler
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,6 +50,7 @@ fun ProductCreationScreen(
     val state by viewModel.productCreationState.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     var showNetworkError by remember { mutableStateOf(false) }
+    var isNavigatingBack by remember { mutableStateOf(false) }
     Log.d("ProductCreation", "Текущее состояние barcode в UI: '${state.barcode}'")
     Log.d("ProductCreation", "initialBarcode: $initialBarcode")
 
@@ -106,7 +108,13 @@ fun ProductCreationScreen(
                 },
                 navigationIcon = {
                     IconButton(
-                        onClick = { navController.popBackStack() }
+                        onClick = {
+                            if (!isNavigatingBack) {
+                                isNavigatingBack = true
+                                navController.popBackStack()
+                            }
+                        },
+                        enabled = !isNavigatingBack
                     ) {
                         Icon(
                             imageVector = ImageVector.vectorResource(ic_close_24px),
@@ -198,12 +206,13 @@ fun ProductCreationScreen(
                                                             viewModel.hideProductCreationScreen()
                                                         },
                                                         onFailure = { error ->
+                                                            val errorMessage = ErrorHandler.handleNetworkException(error)
                                                             if (NetworkUtils.isNetworkError(error)) {
                                                                 viewModel.setLoading(false)
                                                                 showNetworkError = true
                                                             } else {
                                                                 val errorState = updatedState.copy(
-                                                                    nameError = "Ошибка сохранения: ${error.message}"
+                                                                    nameError = "Ошибка сохранения: $errorMessage"
                                                                 )
                                                                 viewModel.updateProductCreationState(
                                                                     errorState
@@ -215,11 +224,12 @@ fun ProductCreationScreen(
                                             },
                                             onFailure = { error ->
                                                 viewModel.setLoading(false)
+                                                val errorMessage = ErrorHandler.handleNetworkException(error)
                                                 if (NetworkUtils.isNetworkError(error)) {
                                                     showNetworkError = true
                                                 } else {
                                                     val errorState = updatedState.copy(
-                                                        nameError = "Ошибка проверки названия: ${error.message}"
+                                                        nameError = "Ошибка проверки названия: $errorMessage"
                                                     )
                                                     viewModel.updateProductCreationState(errorState)
                                                 }
@@ -227,11 +237,12 @@ fun ProductCreationScreen(
                                         )
                                     } catch (e: Exception) {
                                         viewModel.setLoading(false)
+                                        val errorMessage = ErrorHandler.handleNetworkException(e)
                                         if (NetworkUtils.isNetworkError(e)) {
                                             showNetworkError = true
                                         } else {
                                             val errorState = updatedState.copy(
-                                                nameError = "Ошибка: ${e.message}"
+                                                nameError = "Ошибка: $errorMessage"
                                             )
                                             viewModel.updateProductCreationState(errorState)
                                         }

@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.project_course4.SessionManager
 import com.example.project_course4.api.ClientAPI
+import com.example.project_course4.utils.ErrorHandler
 import com.example.project_course4.composable_elements.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -112,6 +113,8 @@ class ProfileViewModel(
                 } catch (e: Exception) {
                     Log.e("ProfileViewModel", "=== ИСКЛЮЧЕНИЕ ПРИ ЗАГРУЗКЕ С СЕРВЕРА ===")
                     Log.e("ProfileViewModel", "Исключение при загрузке данных профиля с сервера: ${e.message}", e)
+                    val errorMessage = ErrorHandler.handleNetworkException(e)
+                    Log.e("ProfileViewModel", "Обработанное сообщение: $errorMessage")
                 }
             } ?: run {
                 Log.w("ProfileViewModel", "ClientAPI недоступен, пропускаем загрузку с сервера")
@@ -234,6 +237,8 @@ class ProfileViewModel(
                     )
                 } catch (e: Exception) {
                     Log.e("ProfileViewModel", "Исключение при синхронизации данных профиля: ${e.message}", e)
+                    val errorMessage = ErrorHandler.handleNetworkException(e)
+                    Log.e("ProfileViewModel", "Обработанное сообщение: $errorMessage")
                 }
             }
         }

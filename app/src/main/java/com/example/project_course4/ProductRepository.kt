@@ -8,6 +8,7 @@ import com.example.project_course4.local_db.dao.ProductsDao
 import com.example.project_course4.local_db.entities.MealEntity
 import com.example.project_course4.local_db.entities.Products
 import com.example.project_course4.utils.NetworkUtils
+import com.example.project_course4.utils.ErrorHandler
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.Instant
@@ -38,6 +39,8 @@ class ProductRepository(
             productDao.insertProducts(entities)
         } catch (e: Exception) {
             Log.e("Repository", "Ошибка синхронизации продуктов", e)
+            val errorMessage = ErrorHandler.handleNetworkException(e)
+            Log.e("Repository", "Обработанное сообщение: $errorMessage")
         }
     }
 
@@ -189,7 +192,8 @@ class ProductRepository(
             )
         } catch (e: Exception) {
             Log.e("ProductRepository", "Ошибка проверки названия продукта: ${e.message}", e)
-            Result.failure(e)
+            val errorMessage = ErrorHandler.handleNetworkException(e)
+            Result.failure(Exception(errorMessage))
         }
     }
 
@@ -229,7 +233,8 @@ class ProductRepository(
             )
         } catch (e: Exception) {
             Log.e("ProductRepository", "Ошибка добавления продукта: ${e.message}", e)
-            Result.failure(e)
+            val errorMessage = ErrorHandler.handleNetworkException(e)
+            Result.failure(Exception(errorMessage))
         }
     }
 }

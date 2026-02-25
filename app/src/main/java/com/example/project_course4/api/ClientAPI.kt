@@ -30,6 +30,7 @@ import com.example.project_course4.local_db.entities.MealComponent
 import com.example.project_course4.local_db.dao.MealDao
 import com.example.project_course4.local_db.MealComponentWithJunction
 import com.example.project_course4.utils.DateUtils
+import com.example.project_course4.utils.ErrorHandler
 
 class ClientAPI (private val sessionManager: SessionManager){
 
@@ -80,6 +81,8 @@ class ClientAPI (private val sessionManager: SessionManager){
                 }
             } catch (e: Exception) {
                 Log.e("api_test", "Ошибка в getProducts: ${e.message}", e)
+                val errorMessage = ErrorHandler.handleNetworkException(e)
+                Log.e("api_test", "Обработанное сообщение: $errorMessage")
                 emptyList()
             }
         }
@@ -143,7 +146,8 @@ class ClientAPI (private val sessionManager: SessionManager){
                 }
             } catch (e: Exception) {
                 Log.e("api_test", "Ошибка в register: ${e.message}", e)
-                Result.failure(e)
+                val errorMessage = ErrorHandler.handleNetworkException(e)
+                Result.failure(Exception(errorMessage))
             }
         }
     }
@@ -174,7 +178,8 @@ class ClientAPI (private val sessionManager: SessionManager){
                 }
             } catch (e: Exception) {
                 Log.e("api_test", "Ошибка в login: ${e.message}", e)
-                Result.failure(Exception("Сервер недоступен, повторите попытку позднее"))
+                val errorMessage = ErrorHandler.handleNetworkException(e)
+                Result.failure(Exception(errorMessage))
             }
         }
     }
@@ -197,7 +202,8 @@ class ClientAPI (private val sessionManager: SessionManager){
             } catch (e: Exception) {
                 Log.e("api_test", "Ошибка в logout: ${e.message}", e)
                 sessionManager.clearData()
-                Result.failure(e)
+                val errorMessage = ErrorHandler.handleNetworkException(e)
+                Result.failure(Exception(errorMessage))
             }
         }
     }
@@ -244,7 +250,8 @@ class ClientAPI (private val sessionManager: SessionManager){
                 }
             } catch (e: Exception) {
                 Log.e("api_test", "Ошибка в verifyEmail: ${'$'}{e.message}", e)
-                Result.failure(e)
+                val errorMessage = ErrorHandler.handleNetworkException(e)
+                Result.failure(Exception(errorMessage))
             }
         }
     }
@@ -299,7 +306,8 @@ class ClientAPI (private val sessionManager: SessionManager){
                 }
             } catch (e: Exception) {
                 Log.e("api_test", "Ошибка в syncMealsToServer: ${e.message}", e)
-                Result.failure(e)
+                val errorMessage = ErrorHandler.handleNetworkException(e)
+                Result.failure(Exception(errorMessage))
             }
         }
     }
@@ -328,7 +336,8 @@ class ClientAPI (private val sessionManager: SessionManager){
                 }
             } catch (e: Exception) {
                 Log.e("api_test", "Ошибка в clearMealsFromServer: ${e.message}", e)
-                Result.failure(e)
+                val errorMessage = ErrorHandler.handleNetworkException(e)
+                Result.failure(Exception(errorMessage))
             }
         }
     }
@@ -361,7 +370,8 @@ class ClientAPI (private val sessionManager: SessionManager){
                 }
             } catch (e: Exception) {
                 Log.e("api_test", "Ошибка в loadMealsFromServer: ${e.message}", e)
-                Result.failure(e)
+                val errorMessage = ErrorHandler.handleNetworkException(e)
+                Result.failure(Exception(errorMessage))
             }
         }
     }
@@ -387,7 +397,8 @@ class ClientAPI (private val sessionManager: SessionManager){
                 }
             } catch (e: Exception) {
                 Log.e("api_test", "Ошибка в checkProductNameExists: ${e.message}", e)
-                Result.failure(e)
+                val errorMessage = ErrorHandler.handleNetworkException(e)
+                Result.failure(Exception(errorMessage))
             }
         }
     }
@@ -432,7 +443,8 @@ class ClientAPI (private val sessionManager: SessionManager){
                 }
             } catch (e: Exception) {
                 Log.e("api_test", "Ошибка в addProduct: ${e.message}", e)
-                Result.failure(e)
+                val errorMessage = ErrorHandler.handleNetworkException(e)
+                Result.failure(Exception(errorMessage))
             }
         }
     }
@@ -506,7 +518,8 @@ class ClientAPI (private val sessionManager: SessionManager){
                 }
             } catch (e: Exception) {
                 Log.e("api_test", "КРИТИЧЕСКАЯ ОШИБКА В getProfileData: ${e.message}", e)
-                Result.failure(e)
+                val errorMessage = ErrorHandler.handleNetworkException(e)
+                Result.failure(Exception(errorMessage))
             }
         }
     }
@@ -556,7 +569,8 @@ class ClientAPI (private val sessionManager: SessionManager){
                 }
             } catch (e: Exception) {
                 Log.e("api_test", "Ошибка в updateProfileData: ${e.message}", e)
-                Result.failure(e)
+                val errorMessage = ErrorHandler.handleNetworkException(e)
+                Result.failure(Exception(errorMessage))
             }
         }
     }

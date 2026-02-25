@@ -152,16 +152,23 @@ fun ProfileScreen(
                     value = "${profileData.weight.toInt()} кг",
                     isEditing = isEditingWeight,
                     tempValue = tempWeight,
+                    errorMessage = validation.weightError,
                     onEditClick = { 
                         isEditingWeight = true
                         tempWeight = profileData.weight.toString()
+                        validation.weight = ""
+                        validation.weightError = ""
                     },
                     onValueChange = { tempWeight = it },
                     onSave = { 
-                        tempWeight.toFloatOrNull()?.let { weight ->
-                            profileViewModel.updateWeight(weight)
+                        validation.weight = tempWeight
+                        validation.validateWeight()
+                        if (validation.weightError.isEmpty()) {
+                            tempWeight.toFloatOrNull()?.let { weight ->
+                                profileViewModel.updateWeight(weight)
+                            }
+                            isEditingWeight = false
                         }
-                        isEditingWeight = false 
                     },
                     onCancel = { isEditingWeight = false }
                 )
@@ -172,16 +179,23 @@ fun ProfileScreen(
                     value = "${profileData.height.toInt()} см",
                     isEditing = isEditingHeight,
                     tempValue = tempHeight,
+                    errorMessage = validation.heightError,
                     onEditClick = { 
                         isEditingHeight = true
                         tempHeight = profileData.height.toString()
+                        validation.height = ""
+                        validation.heightError = ""
                     },
                     onValueChange = { tempHeight = it },
                     onSave = { 
-                        tempHeight.toFloatOrNull()?.let { height ->
-                            profileViewModel.updateHeight(height)
+                        validation.height = tempHeight
+                        validation.validateHeight()
+                        if (validation.heightError.isEmpty()) {
+                            tempHeight.toFloatOrNull()?.let { height ->
+                                profileViewModel.updateHeight(height)
+                            }
+                            isEditingHeight = false
                         }
-                        isEditingHeight = false 
                     },
                     onCancel = { isEditingHeight = false }
                 )
@@ -352,6 +366,7 @@ private fun EditableProfileDataRow(
     value: String,
     isEditing: Boolean,
     tempValue: String,
+    errorMessage: String = "",
     onEditClick: () -> Unit,
     onValueChange: (String) -> Unit,
     onSave: () -> Unit,
@@ -367,24 +382,35 @@ private fun EditableProfileDataRow(
         Text(text = label, style = MaterialTheme.typography.bodyLarge)
         
         if (isEditing) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TextField(
-                    value = tempValue,
-                    onValueChange = onValueChange,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.width(100.dp),
-                    singleLine = true,
-                    colors = TextFieldDefaults.colors(
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                        focusedContainerColor = MaterialTheme.colorScheme.surface
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextField(
+                        value = tempValue,
+                        onValueChange = onValueChange,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.width(100.dp),
+                        singleLine = true,
+                        colors = TextFieldDefaults.colors(
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                            focusedContainerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        isError = errorMessage.isNotEmpty()
                     )
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                TextButton(onClick = onSave) {
-                    Text("Сохранить")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(onClick = onSave) {
+                        Text("Сохранить")
+                    }
+                    TextButton(onClick = onCancel) {
+                        Text("Отмена")
+                    }
                 }
-                TextButton(onClick = onCancel) {
-                    Text("Отмена")
+                if (errorMessage.isNotEmpty()) {
+                    Text(
+                        text = errorMessage,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 0.dp, top = 4.dp)
+                    )
                 }
             }
         } else {
