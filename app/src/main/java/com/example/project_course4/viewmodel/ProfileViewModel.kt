@@ -22,13 +22,16 @@ class ProfileViewModel(
     private val _profileData = MutableStateFlow(ProfileData())
     val profileData: StateFlow<ProfileData> = _profileData.asStateFlow()
     
-    private val _dailyCalories = MutableStateFlow(1950f)
+    private val _dailyCalories = MutableStateFlow(0f)
     val dailyCalories: StateFlow<Float> = _dailyCalories.asStateFlow()
     
-    private val _macroNutrients = MutableStateFlow(MacroNutrients(100f, 70f, 230f))
+    private val _macroNutrients = MutableStateFlow(MacroNutrients(0f, 0f, 0f))
     val macroNutrients: StateFlow<MacroNutrients> = _macroNutrients.asStateFlow()
     
     init {
+        // Сразу загружаем данные из SharedPreferences для немедленного расчета
+        loadLocalProfileData()
+        
         // Подписываемся на события обновления данных от AuthViewModel
         dataUpdateEvent?.let { eventFlow ->
             viewModelScope.launch {
@@ -47,10 +50,43 @@ class ProfileViewModel(
         loadProfileData()
     }
     
+    private fun loadLocalProfileData() {
+        val weight = sessionManager.getProfileWeight()
+        val height = sessionManager.getProfileHeight()
+        val age = sessionManager.getProfileAge()
+        val goalString = sessionManager.getProfileGoal()
+        val genderString = sessionManager.getProfileGender()
+        
+        // Если есть сохраненные данные, используем их для расчета
+        if (weight > 0f && height > 0f && age > 0) {
+            val goal = when (goalString) {
+                "GAIN" -> NutritionGoal.GAIN
+                "LOSE" -> NutritionGoal.LOSE
+                else -> NutritionGoal.MAINTAIN
+            }
+            
+            val gender = when (genderString) {
+                "FEMALE" -> Gender.FEMALE
+                else -> Gender.MALE
+            }
+            
+            val localProfileData = ProfileData(
+                weight = weight,
+                height = height,
+                age = age,
+                goal = goal,
+                gender = gender
+            )
+            
+            _profileData.value = localProfileData
+            calculateNutrition()
+        } else {
+            Log.w("ProfileViewModel", "Нет локальных данных для расчета")
+        }
+    }
+    
     private fun loadProfileData() {
         viewModelScope.launch {
-            Log.d("ProfileViewModel", "=== ЗАГРУЗКА ДАННЫХ ПРОФИЛЯ НАЧАЛО ===")
-            
             // Сначала пытаемся загрузить данные с сервера
             clientAPI?.let { api ->
                 try {
@@ -58,7 +94,6 @@ class ProfileViewModel(
                     val result = api.getProfileData()
                     result.fold(
                         onSuccess = { profileData ->
-                            Log.d("ProfileViewModel", "=== ДАННЫЕ С СЕРВЕРА ПОЛУЧЕНЫ ===")
                             Log.d("ProfileViewModel", "Полученные данные:")
                             Log.d("ProfileViewModel", "  - Height: ${profileData.height}")
                             Log.d("ProfileViewModel", "  - Bodyweight: ${profileData.bodyweight}")
@@ -78,7 +113,6 @@ class ProfileViewModel(
                             Log.d("ProfileViewModel", "Данные сохранены в SharedPreferences")
                             
                             // Обновляем StateFlow
-                            Log.d("ProfileViewModel", "Преобразование и обновление StateFlow...")
                             val goal = when (profileData.goal) {
                                 "GAIN" -> NutritionGoal.GAIN
                                 "LOSE" -> NutritionGoal.LOSE
@@ -99,19 +133,15 @@ class ProfileViewModel(
                             )
                             
                             _profileData.value = newProfileData
-                            Log.d("ProfileViewModel", "StateFlow обновлен: $newProfileData")
                             
                             calculateNutrition()
-                            Log.d("ProfileViewModel", "=== ЗАГРУЗКА С СЕРВЕРА УСПЕШНО ЗАВЕРШЕНА ===")
                             return@launch
                         },
                         onFailure = { error ->
-                            Log.e("ProfileViewModel", "=== ОШИБКА ЗАГРУЗКИ С СЕРВЕРА ===")
                             Log.e("ProfileViewModel", "Ошибка загрузки данных профиля с сервера: ${error.message}")
                         }
                     )
                 } catch (e: Exception) {
-                    Log.e("ProfileViewModel", "=== ИСКЛЮЧЕНИЕ ПРИ ЗАГРУЗКЕ С СЕРВЕРА ===")
                     Log.e("ProfileViewModel", "Исключение при загрузке данных профиля с сервера: ${e.message}", e)
                     val errorMessage = ErrorHandler.handleNetworkException(e)
                     Log.e("ProfileViewModel", "Обработанное сообщение: $errorMessage")
@@ -121,7 +151,6 @@ class ProfileViewModel(
             }
             
             // Если не удалось загрузить с сервера, загружаем из SharedPreferences
-            Log.d("ProfileViewModel", "=== ПОПЫТКА ЗАГРУЗКИ ИЗ SharedPreferences ===")
             val weight = sessionManager.getProfileWeight()
             val height = sessionManager.getProfileHeight()
             val age = sessionManager.getProfileAge()
@@ -158,13 +187,11 @@ class ProfileViewModel(
                 )
                 
                 _profileData.value = localProfileData
-                Log.d("ProfileViewModel", "StateFlow обновлен из локальных данных: $localProfileData")
             } else {
                 Log.w("ProfileViewModel", "Нет сохраненных данных в SharedPreferences")
             }
             
             calculateNutrition()
-            Log.d("ProfileViewModel", "=== ЗАГРУЗКА ДАННЫХ ПРОФИЛЯ ЗАВЕРШЕНА ===")
         }
     }
     

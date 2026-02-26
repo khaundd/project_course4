@@ -27,15 +27,15 @@ import com.example.project_course4.ui.theme.ProteinColor
 
 @Composable
 fun NutritionChart(
+    modifier: Modifier = Modifier,
     protein: Float,
     fats: Float,
     carbs: Float,
     totalCalories: Float,
-    targetProtein: Float = 100f,
-    targetFats: Float = 70f,
-    targetCarbs: Float = 230f,
-    targetCalories: Float = 1950f,
-    modifier: Modifier = Modifier
+    targetProtein: Float,
+    targetFats: Float,
+    targetCarbs: Float,
+    targetCalories: Float,
 ) {
     var isExpanded by remember { mutableStateOf(false) }
     
