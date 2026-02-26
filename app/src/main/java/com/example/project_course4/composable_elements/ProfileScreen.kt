@@ -64,6 +64,7 @@ fun ProfileScreen(
     
     var expandedGoal by remember { mutableStateOf(false) }
     var expandedGender by remember { mutableStateOf(false) }
+    var isLogoutInProgress by remember { mutableStateOf(false) }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -276,10 +277,13 @@ fun ProfileScreen(
                 // Кнопка выхода
                 TextButton(
                     onClick = {
+                        if (isLogoutInProgress) return@TextButton
+                        
                         // Проверяем интернет-соединение перед выходом
                         if (!NetworkUtils.isInternetAvailable(context)) {
                             validation.toastMessage = "Отсутствует интернет-соединение"
                         } else {
+                            isLogoutInProgress = true
                             authViewModel.logout(
                                 onSuccess = { message ->
                                     navController.navigate(Screen.Login.route) {
@@ -288,10 +292,12 @@ fun ProfileScreen(
                                 },
                                 onError = { error ->
                                     validation.toastMessage = error
+                                    isLogoutInProgress = false
                                 }
                             )
                         }
                     },
+                    enabled = !isLogoutInProgress,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(
@@ -302,7 +308,7 @@ fun ProfileScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        "Выйти", 
+                        if (isLogoutInProgress) "Выход..." else "Выйти", 
                         color = colorResource(id = R.color.textButtonRedirectColor)
                     )
                 }
