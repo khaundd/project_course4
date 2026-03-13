@@ -237,4 +237,45 @@ class ProductRepository(
             Result.failure(Exception(errorMessage))
         }
     }
+
+    suspend fun getProductByBarcode(barcode: String): Result<Product?> {
+        return try {
+            // Сначала ищем в локальной базе
+            val currentUserId = sessionManager.fetchUserId()
+            val localProduct = productDao.getProductByBarcode(barcode, currentUserId)
+            
+            if (localProduct != null) {
+                Log.d("ProductRepository", "Продукт найден в локальной базе: ${localProduct.productName}")
+                Result.success(localProduct.toUiModel())
+            } else {
+                Log.d("ProductRepository", "Продукт не найден в локальной базе, ищем на сервере")
+                // Если нет в локальной базе, ищем на сервере
+                if (!NetworkUtils.isInternetAvailable(context)) {
+                    return Result.failure(Exception("Отсутствует интернет-соединение"))
+                }
+                
+                val serverResult = clientAPI.getProductByBarcode(barcode)
+                serverResult.fold(
+                    onSuccess = { product ->
+                        if (product != null) {
+                            Log.d("ProductRepository", "Продукт найден на сервере: ${product.name}")
+                            // НЕ сохраняем в локальную БД автоматически - только после подтверждения пользователем
+                            Result.success(product)
+                        } else {
+                            Log.d("ProductRepository", "Продукт не найден ни на сервере, ни в локальной базе")
+                            Result.success(null)
+                        }
+                    },
+                    onFailure = { error ->
+                        Log.e("ProductRepository", "Ошибка поиска продукта на сервере: ${error.message}")
+                        Result.failure(error)
+                    }
+                )
+            }
+        } catch (e: Exception) {
+            Log.e("ProductRepository", "Ошибка поиска продукта по штрих-коду: ${e.message}", e)
+            val errorMessage = ErrorHandler.handleNetworkException(e)
+            Result.failure(Exception(errorMessage))
+        }
+    }
 }

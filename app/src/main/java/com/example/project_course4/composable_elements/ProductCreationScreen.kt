@@ -49,10 +49,12 @@ fun ProductCreationScreen(
     val context = LocalContext.current
     val state by viewModel.productCreationState.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val prefillData by viewModel.prefillProductData.collectAsState()
     var showNetworkError by remember { mutableStateOf(false) }
     var isNavigatingBack by remember { mutableStateOf(false) }
     Log.d("ProductCreation", "Текущее состояние barcode в UI: '${state.barcode}'")
     Log.d("ProductCreation", "initialBarcode: $initialBarcode")
+    Log.d("ProductCreation", "prefillData: $prefillData")
 
     // подставляем отсканированный штрих-код в поле
     LaunchedEffect(initialBarcode) {
@@ -60,6 +62,22 @@ fun ProductCreationScreen(
         initialBarcode?.takeIf { it.isNotBlank() }?.let { barcode ->
             Log.d("ProductCreation", "Обновляем состояние с barcode: $barcode")
             viewModel.updateProductCreationState(state.copy(barcode = barcode))
+        }
+    }
+
+    // Предзаполняем поля данными из OpenFoodFacts если они есть
+    LaunchedEffect(prefillData) {
+        prefillData?.let { product ->
+            Log.d("ProductCreation", "Предзаполнение данными из OpenFoodFacts: ${product.name}")
+            viewModel.updateProductCreationState(
+                state.copy(
+                    name = product.name,
+                    protein = product.protein.toString(),
+                    fats = product.fats.toString(),
+                    carbs = product.carbs.toString(),
+                    barcode = product.barcode ?: ""
+                )
+            )
         }
     }
 
@@ -75,6 +93,8 @@ fun ProductCreationScreen(
                 barcodeError = null
             )
             viewModel.updateProductCreationState(clearedState)
+            // Очищаем состояние предзаполнения
+            viewModel.hideAllBarcodeDialogs()
         }
     }
     val validator = remember { ProductCreationValidator() }

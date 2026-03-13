@@ -16,6 +16,9 @@ interface ProductsDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertProducts(products: Products)
 
+    @Query("SELECT * FROM products WHERE barcode = :barcode AND (createdBy = :userId OR isSavedLocally = 1) LIMIT 1")
+    suspend fun getProductByBarcode(barcode: String, userId: Int): Products?
+
     @Query("SELECT * FROM products WHERE barcode = :barcode LIMIT 1")
     suspend fun getProductByBarcode(barcode: Long): Products?
 

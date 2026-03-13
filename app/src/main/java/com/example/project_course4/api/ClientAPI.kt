@@ -574,4 +574,60 @@ class ClientAPI (private val sessionManager: SessionManager){
             }
         }
     }
+
+    suspend fun getProductByBarcode(barcode: String): Result<Product?> {
+        val url = "$BASE_URL/products/by-barcode?barcode=$barcode"
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("api_test", "Поиск продукта по штрих-коду: $barcode")
+                val response = client.get(url)
+                Log.d("api_test", "Статус ответа: ${response.status.value}")
+                
+                when (response.status.value) {
+                    in 200..299 -> {
+                        // Получаем ответ как текст и парсим JSON вручную
+                        val rawResponse = response.bodyAsText()
+                        Log.d("api_test", "Сырой ответ сервера: $rawResponse")
+                        
+                        try {
+                            val responseBody = Json.decodeFromString<ProductResponse>(rawResponse)
+                            Log.d("api_test", "Продукт найден: $responseBody")
+                            val product = Product(
+                                productId = responseBody.productId ?: 0,
+                                name = responseBody.name ?: "",
+                                protein = responseBody.protein ?: 0f,
+                                fats = responseBody.fats ?: 0f,
+                                carbs = responseBody.carbs ?: 0f,
+                                calories = responseBody.calories ?: 0f,
+                                barcode = responseBody.barcode,
+                                isDish = responseBody.isDish ?: false,
+                                createdBy = responseBody.createdBy ?: 0
+                            )
+                            Result.success(product)
+                        } catch (e: Exception) {
+                            Log.e("api_test", "Ошибка парсинга JSON: ${e.message}, ответ: $rawResponse")
+                            Result.failure(Exception("Ошибка парсинга ответа сервера: ${e.message}"))
+                        }
+                    }
+                    404 -> {
+                        Log.d("api_test", "Продукт не найден в базе данных")
+                        Result.success(null)
+                    }
+                    else -> {
+                        val rawResponse = response.bodyAsText()
+                        Log.e("api_test", "Ошибка сервера: ${response.status.value}, ответ: $rawResponse")
+                        if (rawResponse.contains("Продукт не найден в базе данных")) {
+                            Result.success(null)
+                        } else {
+                            Result.failure(Exception("Ошибка поиска продукта: ${response.status.value}"))
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("api_test", "Ошибка в getProductByBarcode: ${e.message}", e)
+                val errorMessage = ErrorHandler.handleNetworkException(e)
+                Result.failure(Exception(errorMessage))
+            }
+        }
+    }
 }

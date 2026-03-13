@@ -34,13 +34,20 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,19 +62,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FabPosition
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.collectAsState
 import androidx.navigation.NavController
 import com.example.project_course4.R
-import com.example.project_course4.viewmodel.ProductViewModel
-import com.example.project_course4.ui.theme.ProteinColor
-import com.example.project_course4.ui.theme.FatColor
 import com.example.project_course4.ui.theme.CarbColor
+import com.example.project_course4.ui.theme.FatColor
+import com.example.project_course4.ui.theme.ProteinColor
+import com.example.project_course4.viewmodel.ProductViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,10 +82,15 @@ fun SelectProductScreen(
     val currentSelection by viewModel.currentSelection.collectAsState()
     val shouldShowProductCreation by viewModel.shouldShowProductCreation.collectAsState()
 
+    val showBarcodeScanLoading by viewModel.showBarcodeScanLoading.collectAsState()
+    val showProductNotFoundDialog by viewModel.showProductNotFoundDialog.collectAsState()
+    val showProductFoundDialog by viewModel.showProductFoundDialog.collectAsState()
+    val scannedBarcode by viewModel.scannedBarcode.collectAsState()
+    val foundProduct by viewModel.foundProduct.collectAsState()
+
     var isFabMenuExpanded by remember { mutableStateOf(false) }
     var isNavigatingBack by remember { mutableStateOf(false) }
-    
-    // Анимация поворота иконки
+
     val rotationAngle by animateFloatAsState(
         targetValue = if (isFabMenuExpanded) 45f else 0f,
         animationSpec = tween(durationMillis = 300),
@@ -95,9 +100,7 @@ fun SelectProductScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = {
-                    Text("Продукты")
-                },
+                title = { Text("Продукты") },
                 navigationIcon = {
                     IconButton(
                         onClick = {
@@ -157,7 +160,6 @@ fun SelectProductScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Легенда БЖУ как продолжение верхней панели
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -190,10 +192,8 @@ fun SelectProductScreen(
                     )
                 }
             }
-
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Содержимое
             if (isLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -218,7 +218,6 @@ fun SelectProductScreen(
             }
         }
 
-        // FAB меню внизу справа
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -228,23 +227,18 @@ fun SelectProductScreen(
         ) {
             Column(
                 horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(12.dp) // Отступ между кнопками
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Кнопки меню (выезжают снизу вверх)
                 AnimatedVisibility(
                     visible = isFabMenuExpanded,
-                    enter = fadeIn(
-                        animationSpec = tween(durationMillis = 300)
-                    ) + slideInVertically(
+                    enter = fadeIn(animationSpec = tween(durationMillis = 300)) + slideInVertically(
                         initialOffsetY = { fullHeight -> fullHeight },
                         animationSpec = tween(durationMillis = 300)
                     ) + scaleIn(
                         animationSpec = tween(durationMillis = 300),
                         initialScale = 0.8f
                     ),
-                    exit = fadeOut(
-                        animationSpec = tween(durationMillis = 200)
-                    ) + slideOutVertically(
+                    exit = fadeOut(animationSpec = tween(durationMillis = 200)) + slideOutVertically(
                         targetOffsetY = { fullHeight -> fullHeight },
                         animationSpec = tween(durationMillis = 200)
                     ) + scaleOut(
@@ -254,9 +248,8 @@ fun SelectProductScreen(
                 ) {
                     Column(
                         horizontalAlignment = Alignment.End,
-                        verticalArrangement = Arrangement.spacedBy(12.dp) // Отступ между доп. кнопками
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // Кнопка "Сканировать"
                         FloatingActionButton(
                             onClick = {
                                 isFabMenuExpanded = false
@@ -278,7 +271,6 @@ fun SelectProductScreen(
                             )
                         }
 
-                        // Кнопка "Новый"
                         FloatingActionButton(
                             onClick = {
                                 isFabMenuExpanded = false
@@ -301,7 +293,6 @@ fun SelectProductScreen(
                     }
                 }
 
-                // Основная FAB кнопка (всегда внизу колонки)
                 FloatingActionButton(
                     onClick = { isFabMenuExpanded = !isFabMenuExpanded },
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -316,5 +307,42 @@ fun SelectProductScreen(
                 }
             }
         }
+    }
+
+    if (showBarcodeScanLoading) {
+        BarcodeScanLoadingDialog(
+            onDismiss = { viewModel.hideAllBarcodeDialogs() }
+        )
+    }
+
+    if (showProductNotFoundDialog) {
+        ProductNotFoundDialog(
+            barcode = scannedBarcode,
+            onDismiss = { viewModel.hideAllBarcodeDialogs() },
+            onCreateProduct = {
+                viewModel.createProductFromBarcode()
+                navController.navigate("productCreation?barcode=$scannedBarcode")
+            }
+        )
+    }
+
+    if (showProductFoundDialog && foundProduct != null) {
+        ProductFoundDialog(
+            barcode = scannedBarcode,
+            product = foundProduct!!,
+            onDismiss = { viewModel.hideAllBarcodeDialogs() },
+            onAccept = { 
+                viewModel.acceptScannedProduct()
+                viewModel.hideAllBarcodeDialogs()
+            },
+            onEdit = {
+                viewModel.editScannedProduct()
+                navController.navigate("productCreation?barcode=$scannedBarcode")
+            },
+            onAddOwn = {
+                viewModel.addOwnProductFromBarcode()
+                navController.navigate("productCreation?barcode=$scannedBarcode")
+            }
+        )
     }
 }

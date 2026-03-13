@@ -86,6 +86,25 @@ class ProductViewModel(
     private var _selectedDate = MutableStateFlow(LocalDate.now())
     var selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
 
+    // Состояния для сканирования штрих-кодов
+    private var _showBarcodeScanLoading = MutableStateFlow(false)
+    var showBarcodeScanLoading: StateFlow<Boolean> = _showBarcodeScanLoading.asStateFlow()
+
+    private var _showProductNotFoundDialog = MutableStateFlow(false)
+    var showProductNotFoundDialog: StateFlow<Boolean> = _showProductNotFoundDialog.asStateFlow()
+
+    private var _showProductFoundDialog = MutableStateFlow(false)
+    var showProductFoundDialog: StateFlow<Boolean> = _showProductFoundDialog.asStateFlow()
+
+    private var _scannedBarcode = MutableStateFlow("")
+    var scannedBarcode: StateFlow<String> = _scannedBarcode.asStateFlow()
+
+    private var _foundProduct = MutableStateFlow<Product?>(null)
+    var foundProduct: StateFlow<Product?> = _foundProduct.asStateFlow()
+
+    private var _prefillProductData = MutableStateFlow<Product?>(null)
+    var prefillProductData: StateFlow<Product?> = _prefillProductData.asStateFlow()
+
     // функция для установки идентификатора приёма пищи
     fun setEditingMealId(mealId: Int?) {
         _editingMealId.value = mealId
@@ -101,8 +120,6 @@ class ProductViewModel(
     init {
         viewModelScope.launch {
             Log.d("ProductViewModel", "Инициализация ProductViewModel")
-            
-            // Проверяем наличие токена перед загрузкой продуктов
             val token = authViewModel.sessionManagerPublic.fetchAuthToken()
             if (!token.isNullOrEmpty()) {
                 Log.d("ProductViewModel", "Токен найден, загружаем продукты")
@@ -110,15 +127,9 @@ class ProductViewModel(
             } else {
                 Log.d("ProductViewModel", "Токен отсутствует, пропускаем загрузку продуктов")
             }
-            
             Log.d("ProductViewModel", "Загрузка приёмов пищи за текущую дату: ${_selectedDate.value}")
             loadMealsForDate(_selectedDate.value, createDefaultsIfEmpty = true)
-            
-            // НЕ загружаем приёмы пищи с сервера автоматически
-            // Они должны синхронизироваться только при выходе из аккаунта
             Log.d("ProductViewModel", "Автозагрузка с сервера отключена")
-            
-            // Подписываемся на события обновления данных от AuthViewModel
             authViewModel.dataUpdateEvent.collect {
                 Log.d("ProductViewModel", "Получено событие обновления данных, перезагружаем за дату ${_selectedDate.value}")
                 loadMealsForDate(_selectedDate.value, createDefaultsIfEmpty = true)
@@ -221,11 +232,11 @@ class ProductViewModel(
     fun clearCurrentSelection() {
         _currentSelection.value = emptySet()
     }
-    
+
     fun saveCurrentSelection() {
         val selected = _currentSelection.value.toList()
         val mealId: Int = _editingMealId.value ?: -1
-        
+
         if (selected.isNotEmpty()) {
             // Фильтруем продукты, которых еще нет в приёме пищи
             val productsToAdd = selected.filter { product ->
@@ -233,7 +244,7 @@ class ProductViewModel(
                     it.product.productId == product.productId && it.mealId == mealId 
                 }
             }
-            
+
             if (productsToAdd.isNotEmpty()) {
                 _pendingProducts.value = productsToAdd
                 _shouldShowWeightInput.value = true
@@ -251,7 +262,7 @@ class ProductViewModel(
     fun addSelectionToMealWithWeightInput() {
         val selected = _currentSelection.value.toList()
         if (selected.isEmpty()) return
-        
+
         val mealId: Int = _editingMealId.value ?: -1
         // фильтруем продукты, которых еще нет в приёме пищи
         val productsToAdd = selected.filter { product ->
@@ -259,7 +270,7 @@ class ProductViewModel(
                 it.product.productId == product.productId && it.mealId == mealId 
             }
         }
-        
+
         if (productsToAdd.isNotEmpty()) {
             _pendingProducts.value = productsToAdd
             _shouldShowWeightInput.value = true
@@ -272,33 +283,24 @@ class ProductViewModel(
         _currentSelection.value = emptySet()
     }
 
-
     fun addProductWithWeight(weight: Int) {
         val currentProduct = _currentProductForWeight.value
         val mealId = _editingMealId.value ?: -1
-        
         if (currentProduct != null) {
             val updatedSelection = _finalSelection.value.toMutableList()
-            
-            // проверяем, есть ли продукт с таким же product и mealId
             val existingProductIndex = updatedSelection.indexOfFirst { 
                 it.product.productId == currentProduct.productId && it.mealId == mealId 
             }
-            
             if (existingProductIndex != -1) {
                 val existing = updatedSelection[existingProductIndex]
-                // используем флаг isAddingFromList для определения режима
                 if (isAddingFromList.value) {
-                    // режим добавления из списка - суммируем вес, сохраняем junctionId
                     updatedSelection[existingProductIndex] = existing.copy(
                         weight = existing.weight + weight
                     )
                 } else {
-                    // режим редактирования - только меняем вес в существующей записи, junctionId сохраняем
                     updatedSelection[existingProductIndex] = existing.copy(weight = weight)
                 }
             } else {
-                // если продукт новый, добавляем его
                 updatedSelection.add(
                     SelectedProduct(
                         product = currentProduct,
@@ -308,11 +310,9 @@ class ProductViewModel(
                 )
             }
             _finalSelection.value = updatedSelection
-
             val pending = _pendingProducts.value.toMutableList()
             pending.remove(currentProduct)
             _pendingProducts.value = pending
-
             if (pending.isNotEmpty()) {
                 _currentProductForWeight.value = pending.first()
             } else {
@@ -326,7 +326,6 @@ class ProductViewModel(
 
     private fun saveMealToDb(mealId: Int) {
         val productsInMeal = getProductsForMeal(mealId)
-
         if (productsInMeal.isNotEmpty()) {
             viewModelScope.launch {
                 saveCurrentMeal(mealId)
@@ -460,7 +459,7 @@ class ProductViewModel(
             name = name
         )
         _meals.value += newMeal
-        
+
         // Сразу сохраняем приём пищи в БД
         viewModelScope.launch {
             try {
@@ -469,23 +468,23 @@ class ProductViewModel(
                 val fullDateTime = currentTime.atDate(currentDate)
                     .atZone(ZoneId.systemDefault())
                     .toInstant().toEpochMilli()
-                
+
                 val startOfDay = currentDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
                 val timeOnly = fullDateTime - startOfDay
-                
+
                 val newMealEntity = MealEntity(
                     name = name,
                     mealTime = timeOnly, // Только время от начала дня
                     mealDate = startOfDay // Начало дня
                 )
-                
+
                 val generatedMealId = repository.saveMealOnly(newMealEntity)
-                
+
                 // Обновляем временный ID на реальный
                 _meals.value = _meals.value.map {
                     if (it.id == newMeal.id) it.copy(id = generatedMealId) else it
                 }
-                
+
                 Log.d("AddMeal", "Приём пищи сохранён в БД с ID: $generatedMealId")
             } catch (e: Exception) {
                 Log.e("AddMeal", "Ошибка сохранения приёма пищи: ${e.message}")
@@ -500,10 +499,10 @@ class ProductViewModel(
             try {
                 // Удаляем приём пищи из UI независимо от ID
                 _meals.value = _meals.value.filter { it.id != mealId }
-                
+
                 // Удаляем связанные продукты из finalSelection
                 _finalSelection.value = _finalSelection.value.filter { it.mealId != mealId }
-                
+
                 // если ID > 0, значит приём пищи уже есть в БД
                 if (mealId > 0) {
                     Log.d("MealDelete", "Удаление из локальной БД по ID: $mealId")
@@ -511,7 +510,6 @@ class ProductViewModel(
                 }
 
                 Log.d("MealDelete", "Приём пищи удален, текущее количество: ${_meals.value.size}")
-
             } catch (e: Exception) {
                 Log.e("MealDelete", "Ошибка при удалении приёма пищи: ${e.message}")
                 // В случае ошибки перезагружаем данные
@@ -527,7 +525,7 @@ class ProductViewModel(
             updatedMeals[index] = updatedMeals[index].copy(time = newTime)
             // сортируем приёмы пищи по времени
             _meals.value = updatedMeals.sortedBy { it.time }
-            
+
             // Обновляем время в БД
             viewModelScope.launch {
                 try {
@@ -561,9 +559,10 @@ class ProductViewModel(
         val totalCarbs = products.sumOf {
             (it.product.carbs.toDouble() * it.weight / 100)
         }.toFloat()
-        
+
         return MealNutrition(totalProtein, totalFats, totalCarbs, totalCalories)
     }
+
     suspend fun getCaloriesForDate(date: LocalDate): Int {
         return try {
             repository.getCaloriesForDate(date)
@@ -576,7 +575,7 @@ class ProductViewModel(
     suspend fun saveCurrentMeal(mealIdInUi: Int) {
         try {
             val productsInThisMeal = _finalSelection.value.filter { it.mealId == mealIdInUi }
-            
+
             // Если продуктов нет, ничего не сохраняем
             if (productsInThisMeal.isEmpty()) {
                 Log.d("SaveMeal", "Нет продуктов для сохранения в приёме пищи $mealIdInUi")
@@ -625,10 +624,10 @@ class ProductViewModel(
                     val fullDateTime = mealToSave.time.atDate(currentDate)
                         .atZone(ZoneId.systemDefault())
                         .toInstant().toEpochMilli()
-                    
+
                     val startOfDay = currentDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
                     val timeOnly = fullDateTime - startOfDay
-                    
+
                     val newMealEntity = MealEntity(
                         name = mealToSave.name,
                         mealTime = timeOnly, // Только время от начала дня
@@ -697,5 +696,95 @@ class ProductViewModel(
         } finally {
             _isLoading.value = false
         }
+    }
+
+    // Методы для управления сканированием штрих-кодов
+    fun searchProductByBarcode(barcode: String) {
+        viewModelScope.launch {
+            _scannedBarcode.value = barcode
+            _showBarcodeScanLoading.value = true
+            try {
+                val result = repository.getProductByBarcode(barcode)
+                result.fold(
+                    onSuccess = { product ->
+                        if (product != null) {
+                            val localProducts = products.value
+                            val existingProduct = localProducts.find { it.barcode == barcode }
+                            if (existingProduct != null) {
+                                Log.d("ProductViewModel", "Продукт найден в локальной базе, выбираем: ${existingProduct.name}")
+                                toggleCurrentSelection(existingProduct)
+                                hideAllBarcodeDialogs()
+                            } else {
+                                Log.d("ProductViewModel", "Продукт найден на сервере, показываем диалог: ${product.name}")
+                                _foundProduct.value = product
+                                _showProductFoundDialog.value = true
+                            }
+                        } else {
+                            Log.d("ProductViewModel", "Продукт не найден, показываем диалог создания")
+                            _showProductNotFoundDialog.value = true
+                        }
+                    },
+                    onFailure = { error ->
+                        Log.e("ProductViewModel", "Ошибка поиска продукта по штрих-коду: ${error.message}")
+                        _showProductNotFoundDialog.value = true
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e("ProductViewModel", "Исключение при поиске продукта: ${e.message}", e)
+                _showProductNotFoundDialog.value = true
+            } finally {
+                _showBarcodeScanLoading.value = false
+            }
+        }
+    }
+
+    fun hideAllBarcodeDialogs() {
+        _showBarcodeScanLoading.value = false
+        _showProductNotFoundDialog.value = false
+        _showProductFoundDialog.value = false
+        _scannedBarcode.value = ""
+        _foundProduct.value = null
+    }
+
+    fun acceptScannedProduct() {
+        val product = _foundProduct.value
+        if (product != null) {
+            viewModelScope.launch {
+                try {
+                    val result = repository.addProductToServerAndLocal(product)
+                    result.fold(
+                        onSuccess = { savedProduct ->
+                            Log.d("ProductViewModel", "Отсканированный продукт успешно добавлен: ${savedProduct.name}")
+                            hideAllBarcodeDialogs()
+                        },
+                        onFailure = { error ->
+                            Log.e("ProductViewModel", "Ошибка добавления отсканированного продукта: ${error.message}")
+                        }
+                    )
+                } catch (e: Exception) {
+                    Log.e("ProductViewModel", "Исключение при добавлении отсканированного продукта: ${e.message}", e)
+                }
+            }
+        }
+    }
+
+    fun editScannedProduct() {
+        val product = _foundProduct.value
+        if (product != null) {
+            _prefillProductData.value = product
+        }
+        hideAllBarcodeDialogs()
+    }
+
+    fun createProductFromBarcode() {
+        _prefillProductData.value = null
+        resetProductCreationState()
+        hideAllBarcodeDialogs()
+    }
+
+    fun addOwnProductFromBarcode() {
+        _prefillProductData.value = null
+        resetProductCreationState()
+        hideAllBarcodeDialogs()
     }
 }

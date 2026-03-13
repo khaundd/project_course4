@@ -57,29 +57,6 @@ fun NavigationApp() {
         )
     }
 
-    // функция обработки сканирования
-    val handleScanning = { navController: NavController ->
-        scannerManager.startScanning(
-            onResult = { barcode ->
-                Log.d("BarcodeScanner", "Scanned barcode: $barcode")
-                navController.navigate("productCreation?barcode=${java.net.URLEncoder.encode(barcode, Charsets.UTF_8.name())}")
-            },
-            onError = { e ->
-                Log.e("BarcodeScanner", "Ошибка: $e")
-                val message = e.message ?: e.javaClass.simpleName
-                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-            }
-        )
-    }
-
-    // куда направить пользователя
-    // если токен есть, то отправляем на главную, иначе на логин
-    val startDestination = if (sessionManager.fetchAuthToken() != null) {
-        Screen.Main.route
-    } else {
-        Screen.Login.route
-    }
-
     // фабрика для создания ViewModel
     val factory = remember {
         object : ViewModelProvider.Factory {
@@ -117,6 +94,30 @@ fun NavigationApp() {
             }
         }
     )
+
+    // функция обработки сканирования
+    val handleScanning = { navController: NavController ->
+        scannerManager.startScanning(
+            onResult = { barcode ->
+                Log.d("BarcodeScanner", "Scanned barcode: $barcode")
+                // Запускаем поиск продукта по штрих-коду
+                productViewModel.searchProductByBarcode(barcode)
+            },
+            onError = { e ->
+                Log.e("BarcodeScanner", "Ошибка: $e")
+                val message = e.message ?: e.javaClass.simpleName
+                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            }
+        )
+    }
+
+    // куда направить пользователя
+    // если токен есть, то отправляем на главную, иначе на логин
+    val startDestination = if (sessionManager.fetchAuthToken() != null) {
+        Screen.Main.route
+    } else {
+        Screen.Login.route
+    }
 
     NavHost(
         navController = navController,
