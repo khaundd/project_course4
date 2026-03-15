@@ -1,12 +1,19 @@
 package com.example.project_course4.composable_elements
 
 import android.util.Log
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -28,6 +35,8 @@ import com.example.project_course4.composable_elements.auth.RegistrationScreen
 import com.example.project_course4.composable_elements.auth.verification.VerificationScreen
 import com.example.project_course4.composable_elements.scanner.BarcodeScannerManager
 import com.example.project_course4.local_db.AppDatabase
+import com.example.project_course4.utils.NetworkUtils
+import com.example.project_course4.utils.Validation
 import com.example.project_course4.viewmodel.ProductViewModel
 import com.example.project_course4.viewmodel.ProfileViewModel
 
@@ -38,6 +47,8 @@ fun NavigationApp() {
     val scannerManager = remember { BarcodeScannerManager(context) }
     val sessionManager = remember { SessionManager(context) }
     val clientAPI = remember { ClientAPI(sessionManager) }
+    val validation = remember { Validation() }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val database = remember {
         Room.databaseBuilder(
@@ -95,20 +106,36 @@ fun NavigationApp() {
         }
     )
 
+    // Отслеживание toast сообщений
+    LaunchedEffect(validation.toastMessage) {
+        validation.toastMessage?.let { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Short
+            )
+            validation.clearToastMessage()
+        }
+    }
+
     // функция обработки сканирования
     val handleScanning = { navController: NavController ->
-        scannerManager.startScanning(
-            onResult = { barcode ->
-                Log.d("BarcodeScanner", "Scanned barcode: $barcode")
-                // Запускаем поиск продукта по штрих-коду
-                productViewModel.searchProductByBarcode(barcode)
-            },
-            onError = { e ->
-                Log.e("BarcodeScanner", "Ошибка: $e")
-                val message = e.message ?: e.javaClass.simpleName
-                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-            }
-        )
+        // Проверяем интернет-соединение перед вызовом сканера
+        if (NetworkUtils.isInternetAvailable(context)) {
+            scannerManager.startScanning(
+                onResult = { barcode ->
+                    Log.d("BarcodeScanner", "Scanned barcode: $barcode")
+                    // Запускаем поиск продукта по штрих-коду
+                    productViewModel.searchProductByBarcode(barcode)
+                },
+                onError = { e ->
+                    Log.e("BarcodeScanner", "Ошибка: $e")
+                    val message = e.message ?: e.javaClass.simpleName
+                    validation.toastMessage = message
+                }
+            )
+        } else {
+            validation.toastMessage = "Невозможно вызвать сканер штрих-кодов. Отсутствует интернет-соединение"
+        }
     }
 
     // куда направить пользователя
@@ -119,112 +146,115 @@ fun NavigationApp() {
         Screen.Login.route
     }
 
-    NavHost(
-        navController = navController,
-        startDestination = startDestination // используем вычисленный путь
-    ) {
-        composable(Screen.Main.route) { backStackEntry ->
-            MainScreen(
-                navController = navController,
-                viewModel = productViewModel,
-                profileViewModel = profileViewModel,
-                onLogout = {
-                    authViewModel.logout(
-                        onSuccess = { message ->
-                            Log.d("NavigationApp", "Выход успешен: $message")
-                            navController.navigate(Screen.Login.route) {
-                                popUpTo(Screen.Main.route) { inclusive = true }
+    Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { paddingValues ->
+        NavHost(
+            navController = navController,
+            startDestination = startDestination // используем вычисленный путь
+        ) {
+            composable(Screen.Main.route) { backStackEntry ->
+                MainScreen(
+                    navController = navController,
+                    viewModel = productViewModel,
+                    profileViewModel = profileViewModel,
+                    onLogout = {
+                        authViewModel.logout(
+                            onSuccess = { message ->
+                                Log.d("NavigationApp", "Выход успешен: $message")
+                                navController.navigate(Screen.Login.route) {
+                                    popUpTo(Screen.Main.route) { inclusive = true }
+                                }
+                            },
+                            onError = { error ->
+                                Log.e("NavigationApp", "Ошибка при выходе: $error")
+                                Toast.makeText(context, error, Toast.LENGTH_LONG).show()
                             }
-                        },
-                        onError = { error ->
-                            Log.e("NavigationApp", "Ошибка при выходе: $error")
-                            // Показываем сообщение об ошибке и не переходим на экран входа
-                            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
-                        }
-                    )
-                }
-            )
-        }
+                        )
+                    }
+                )
+            }
 
-        composable(Screen.Profile.route) { backStackEntry ->
-            ProfileScreen(
-                navController = navController,
-                authViewModel = authViewModel,
-                profileViewModel = profileViewModel
-            )
-        }
-        
-        composable("selectProductWithMeal/{mealId}") { backStackEntry ->
-            val mealId = backStackEntry.arguments?.getString("mealId")
-            Log.d("NavigationApp", "Создан SelectProductScreen с mealId: $mealId")
-            SelectProductScreen(
-                navController = navController,
-                viewModel = productViewModel,
-                mealId = mealId,
-                onBarcodeScan = {
-                    handleScanning(navController)
-                }
-            )
-        }
-        composable(Screen.SelectProduct.route) {backStackEntry ->
-            Log.d("NavigationApp", "Создан SelectProductScreen")
-            SelectProductScreen(
-                navController = navController,
-                viewModel = productViewModel
-            )
-        }
+            composable(Screen.Profile.route) { backStackEntry ->
+                ProfileScreen(
+                    navController = navController,
+                    authViewModel = authViewModel,
+                    profileViewModel = profileViewModel
+                )
+            }
+            
+            composable("selectProductWithMeal/{mealId}") { backStackEntry ->
+                val mealId = backStackEntry.arguments?.getString("mealId")
+                Log.d("NavigationApp", "Создан SelectProductScreen с mealId: $mealId")
+                SelectProductScreen(
+                    navController = navController,
+                    viewModel = productViewModel,
+                    mealId = mealId,
+                    onBarcodeScan = {
+                        handleScanning(navController)
+                    }
+                )
+            }
+            composable(Screen.SelectProduct.route) {backStackEntry ->
+                Log.d("NavigationApp", "Создан SelectProductScreen")
+                SelectProductScreen(
+                    navController = navController,
+                    viewModel = productViewModel
+                )
+            }
 
-        composable(
-            route = "productCreation?barcode={barcode}",
-            arguments = listOf(
-                navArgument("barcode") {
-                    type = NavType.StringType
-                    defaultValue = ""
-                    nullable = false
-                }
-            )
-        ) { backStackEntry ->
-            val barcodeArg = backStackEntry.arguments?.getString("barcode").orEmpty()
-            Log.d("NavigationApp", "Получен barcodeArg из навигации: '$barcodeArg'")
-    Log.d("NavigationApp", "URL декодирован: '${java.net.URLDecoder.decode(barcodeArg, Charsets.UTF_8.name())}'")
-            ProductCreationScreen(
-                navController = navController,
-                viewModel = productViewModel,
-                onBarcodeScan = {
-                    handleScanning(navController)
-                },
-                initialBarcode = barcodeArg.takeIf { it.isNotBlank() }
-            )
-        }
-        // альтернативный маршрут без параметра
-        composable(Screen.ProductCreation.route) { backStackEntry ->
-            ProductCreationScreen(
-                navController = navController,
-                viewModel = productViewModel,
-                onBarcodeScan = {
-                    handleScanning(navController)
-                },
-                initialBarcode = null
-            )
-        }
-        composable(Screen.Login.route) { backStackEntry ->
-            LoginScreen(
-                navController = navController,
-                viewModel = authViewModel
-            )
-        }
-        composable(Screen.Registration.route) { backStackEntry ->
-            RegistrationScreen(
-                navController = navController,
-                viewModel = authViewModel
-            )
-        }
-        composable(
-            route = "${Screen.Verification.route}?email={email}",
-            arguments = listOf(navArgument("email") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val email = backStackEntry.arguments?.getString("email") ?: ""
-            VerificationScreen(navController = navController, email = email, viewModel = authViewModel)
+            composable(
+                route = "productCreation?barcode={barcode}",
+                arguments = listOf(
+                    navArgument("barcode") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                        nullable = false
+                    }
+                )
+            ) { backStackEntry ->
+                val barcodeArg = backStackEntry.arguments?.getString("barcode").orEmpty()
+                Log.d("NavigationApp", "Получен barcodeArg из навигации: '$barcodeArg'")
+                Log.d("NavigationApp", "URL декодирован: '${java.net.URLDecoder.decode(barcodeArg, Charsets.UTF_8.name())}'")
+                ProductCreationScreen(
+                    navController = navController,
+                    viewModel = productViewModel,
+                    onBarcodeScan = {
+                        handleScanning(navController)
+                    },
+                    initialBarcode = barcodeArg.takeIf { it.isNotBlank() }
+                )
+            }
+            // альтернативный маршрут без параметра
+            composable(Screen.ProductCreation.route) { backStackEntry ->
+                ProductCreationScreen(
+                    navController = navController,
+                    viewModel = productViewModel,
+                    onBarcodeScan = {
+                        handleScanning(navController)
+                    },
+                    initialBarcode = null
+                )
+            }
+            composable(Screen.Login.route) { backStackEntry ->
+                LoginScreen(
+                    navController = navController,
+                    viewModel = authViewModel
+                )
+            }
+            composable(Screen.Registration.route) { backStackEntry ->
+                RegistrationScreen(
+                    navController = navController,
+                    viewModel = authViewModel
+                )
+            }
+            composable(
+                route = "${Screen.Verification.route}?email={email}",
+                arguments = listOf(navArgument("email") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val email = backStackEntry.arguments?.getString("email") ?: ""
+                VerificationScreen(navController = navController, email = email, viewModel = authViewModel)
+            }
         }
     }
 }

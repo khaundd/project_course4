@@ -240,42 +240,70 @@ class ProductRepository(
 
     suspend fun getProductByBarcode(barcode: String): Result<Product?> {
         return try {
-            // Сначала ищем в локальной базе
+            Log.d("ProductRepository", "=== ПОИСК ПРОДУКТА ПО ШТРИХ-КОДУ: $barcode ===")
             val currentUserId = sessionManager.fetchUserId()
+            Log.d("ProductRepository", "Текущий userId: $currentUserId")
             val localProduct = productDao.getProductByBarcode(barcode, currentUserId)
+            Log.d("ProductRepository", "Локальный продукт: ${localProduct?.productName}, productId: ${localProduct?.productId}, createdBy: ${localProduct?.createdBy}")
             
-            if (localProduct != null) {
-                Log.d("ProductRepository", "Продукт найден в локальной базе: ${localProduct.productName}")
-                Result.success(localProduct.toUiModel())
-            } else {
-                Log.d("ProductRepository", "Продукт не найден в локальной базе, ищем на сервере")
-                // Если нет в локальной базе, ищем на сервере
-                if (!NetworkUtils.isInternetAvailable(context)) {
-                    return Result.failure(Exception("Отсутствует интернет-соединение"))
+            // Всегда вызываем сервер при сканировании
+            if (!NetworkUtils.isInternetAvailable(context)) {
+                // Если нет интернета, возвращаем локальный продукт если он есть
+                return if (localProduct != null) {
+                    Log.d("ProductRepository", "Нет интернета, продукт найден в локальной базе: ${localProduct.productName}")
+                    Result.success(localProduct.toUiModel())
+                } else {
+                    Log.d("ProductRepository", "Нет интернета и продукт не найден в локальной базе")
+                    Result.success(null)
                 }
-                
-                val serverResult = clientAPI.getProductByBarcode(barcode)
-                serverResult.fold(
-                    onSuccess = { product ->
-                        if (product != null) {
-                            Log.d("ProductRepository", "Продукт найден на сервере: ${product.name}")
-                            // НЕ сохраняем в локальную БД автоматически - только после подтверждения пользователем
-                            Result.success(product)
-                        } else {
-                            Log.d("ProductRepository", "Продукт не найден ни на сервере, ни в локальной базе")
-                            Result.success(null)
-                        }
-                    },
-                    onFailure = { error ->
-                        Log.e("ProductRepository", "Ошибка поиска продукта на сервере: ${error.message}")
+            }
+            
+            // Вызываем сервер в любом случае
+            Log.d("ProductRepository", "Вызываем сервер для поиска продукта")
+            val serverResult = clientAPI.getProductByBarcode(barcode)
+            serverResult.fold(
+                onSuccess = { serverProduct ->
+                    Log.d("ProductRepository", "Сервер вернул продукт: ${serverProduct?.name}, productId: ${serverProduct?.productId}, createdBy: ${serverProduct?.createdBy}")
+                    if (serverProduct != null) {
+                        Log.d("ProductRepository", "Продукт найден на сервере: ${serverProduct.name}")
+                        Result.success(serverProduct)
+                    } else {
+                        Log.d("ProductRepository", "Продукт не найден на сервере, возвращаем null")
+                        // Если на сервере не нашли, возвращаем null чтобы ViewModel не считал это серверным продуктом
+                        Result.success(null)
+                    }
+                },
+                onFailure = { error ->
+                    Log.e("ProductRepository", "Ошибка поиска продукта на сервере: ${error.message}, пробуем локальную базу")
+                    // Если сервер вернул ошибку, пробуем локальную базу
+                    if (localProduct != null) {
+                        Log.d("ProductRepository", "Продукт найден в локальной базе: ${localProduct.productName}")
+                        Result.success(localProduct.toUiModel())
+                    } else {
+                        Log.e("ProductRepository", "Продукт не найден и сервер недоступен")
                         Result.failure(error)
                     }
-                )
-            }
+                }
+            )
         } catch (e: Exception) {
             Log.e("ProductRepository", "Ошибка поиска продукта по штрих-коду: ${e.message}", e)
             val errorMessage = ErrorHandler.handleNetworkException(e)
             Result.failure(Exception(errorMessage))
+        }
+    }
+
+    suspend fun getAllUserProductsByBarcode(barcode: String): Result<List<Product>> {
+        return try {
+            val currentUserId = sessionManager.fetchUserId()
+            val localProducts = productDao.getAllUserProductsByBarcode(barcode, currentUserId)
+            
+            Log.d("ProductRepository", "Найдено ${localProducts.size} пользовательских продуктов с штрих-кодом: $barcode")
+            
+            val products = localProducts.map { it.toUiModel() }
+            Result.success(products)
+        } catch (e: Exception) {
+            Log.e("ProductRepository", "Ошибка получения пользовательских продуктов по штрих-коду: ${e.message}", e)
+            Result.failure(e)
         }
     }
 }

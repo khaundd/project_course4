@@ -606,7 +606,12 @@ class ClientAPI (private val sessionManager: SessionManager){
                             Result.success(product)
                         } catch (e: Exception) {
                             Log.e("api_test", "Ошибка парсинга JSON: ${e.message}, ответ: $rawResponse")
-                            Result.failure(Exception("Ошибка парсинга ответа сервера: ${e.message}"))
+                            // Проверяем, не является ли это ответом об ошибке
+                            if (rawResponse.contains("Продукт не найден в базе")) {
+                                Result.success(null)
+                            } else {
+                                Result.failure(Exception("Ошибка парсинга ответа сервера: ${e.message}"))
+                            }
                         }
                     }
                     404 -> {
@@ -616,7 +621,7 @@ class ClientAPI (private val sessionManager: SessionManager){
                     else -> {
                         val rawResponse = response.bodyAsText()
                         Log.e("api_test", "Ошибка сервера: ${response.status.value}, ответ: $rawResponse")
-                        if (rawResponse.contains("Продукт не найден в базе данных")) {
+                        if (rawResponse.contains("Продукт не найден в базе")) {
                             Result.success(null)
                         } else {
                             Result.failure(Exception("Ошибка поиска продукта: ${response.status.value}"))
