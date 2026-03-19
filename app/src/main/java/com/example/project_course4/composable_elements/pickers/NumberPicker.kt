@@ -1,6 +1,5 @@
 package com.example.project_course4.composable_elements.pickers
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,17 +12,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
 fun NumberPicker(
+    modifier: Modifier = Modifier,
     value: Int,
     onValueChange: (Int) -> Unit,
     range: IntRange,
     label: (Int) -> String = { it.toString() },
-    modifier: Modifier = Modifier,
     wheelModeEnabled: Boolean = true
 ) {
     val listState = rememberLazyListState()

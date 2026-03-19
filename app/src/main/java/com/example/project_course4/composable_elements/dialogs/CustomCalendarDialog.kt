@@ -1,4 +1,4 @@
-package com.example.project_course4.dialogs
+package com.example.project_course4.composable_elements.dialogs
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,7 +21,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.project_course4.viewmodel.ProductViewModel
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.time.LocalDate
 import java.time.YearMonth
@@ -69,7 +68,7 @@ fun CustomCalendarDialog(
                         Icon(Icons.Default.ChevronLeft, contentDescription = null)
                     }
                     Text(
-                        text = currentMonth.month.getDisplayName(TextStyle.FULL, Locale("ru"))
+                        text = currentMonth.month.getDisplayName(TextStyle.FULL, Locale.forLanguageTag("ru"))
                             .replaceFirstChar { it.uppercase() } + " ${currentMonth.year}",
                         style = MaterialTheme.typography.titleMedium
                     )

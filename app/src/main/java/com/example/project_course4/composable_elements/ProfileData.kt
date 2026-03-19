@@ -21,7 +21,7 @@ enum class Gender(val displayName: String) {
 
 object NutritionCalculator {
     fun calculateBMR(profileData: ProfileData): Float {
-        val (weight, height, age, goal, gender) = profileData
+        val (weight, height, age, _, gender) = profileData
         
         return when (gender) {
             Gender.MALE -> (10 * weight) + (6.25f * height) - (5 * age) + 5f

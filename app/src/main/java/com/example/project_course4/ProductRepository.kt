@@ -6,7 +6,6 @@ import com.example.project_course4.api.ClientAPI
 import com.example.project_course4.local_db.dao.MealDao
 import com.example.project_course4.local_db.dao.ProductsDao
 import com.example.project_course4.local_db.entities.MealEntity
-import com.example.project_course4.local_db.entities.Products
 import com.example.project_course4.utils.NetworkUtils
 import com.example.project_course4.utils.ErrorHandler
 import kotlinx.coroutines.flow.Flow
@@ -91,10 +90,6 @@ class ProductRepository(
         
         Log.d("ProductRepository", "Найдено ${mealEntities.size} приемов пищи для даты $date")
         
-        val productIds = components.map { it.productId }.distinct()
-        val productsMap = if (productIds.isEmpty()) emptyMap()
-        else productDao.getProductsByIds(productIds).associateBy { it.productId }
-
         val meals = mealEntities.map { entity ->
             // entity.mealTime - это смещение от начала дня в миллисекундах
             // entity.mealDate - это начало дня в миллисекундах
@@ -105,7 +100,13 @@ class ProductRepository(
             Meal(id = entity.mealId, time = time, name = entity.name)
         }
 
-        val selectedProducts = components.mapNotNull { comp ->
+        val mealIds = mealEntities.map { it.mealId }.toSet()
+        val filteredComponents = components.filter { it.mealId in mealIds }
+        val productIds = filteredComponents.map { it.productId }.distinct()
+        val productsMap = if (productIds.isEmpty()) emptyMap()
+        else productDao.getProductsByIds(productIds).associateBy { it.productId }
+
+        val selectedProducts = filteredComponents.mapNotNull { comp ->
             val productEntity = productsMap[comp.productId] ?: return@mapNotNull null
             SelectedProduct(
                 product = productEntity.toUiModel(),
@@ -140,42 +141,6 @@ class ProductRepository(
                 (product.calories * comp.weight.toInt() / 100).toInt()
             }
             .sum()
-    }
-
-    /**
-     * Загружает все приёмы пищи и их компоненты из локальной БД.
-     * Возвращает пару: список приёмов [Meal] и список выбранных продуктов [SelectedProduct].
-     */
-    suspend fun loadMealsFromDb(): Pair<List<Meal>, List<SelectedProduct>> {
-        val mealEntities = mealDao.getAllMeals()
-        val components = mealDao.getAllMealComponentsWithJunction()
-        if (mealEntities.isEmpty()) {
-            return emptyList<Meal>() to emptyList()
-        }
-        val productIds = components.map { it.productId }.distinct()
-        val productsMap = if (productIds.isEmpty()) emptyMap()
-        else productDao.getProductsByIds(productIds).associateBy { it.productId }
-
-        val meals = mealEntities.map { entity ->
-            // entity.mealTime - это смещение от начала дня в миллисекундах
-            // entity.mealDate - это начало дня в миллисекундах
-            val fullDateTime = entity.mealDate + entity.mealTime
-            val time = Instant.ofEpochMilli(fullDateTime)
-                .atZone(ZoneId.systemDefault())
-                .toLocalTime()
-            Meal(id = entity.mealId, time = time, name = entity.name)
-        }
-
-        val selectedProducts = components.mapNotNull { comp ->
-            val productEntity = productsMap[comp.productId] ?: return@mapNotNull null
-            SelectedProduct(
-                product = productEntity.toUiModel(),
-                weight = comp.weight.toInt(),
-                mealId = comp.mealId,
-                junctionId = comp.junctionId
-            )
-        }
-        return meals to selectedProducts
     }
 
     suspend fun checkProductNameExists(name: String): Result<Boolean> {

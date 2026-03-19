@@ -28,7 +28,7 @@ private fun DrawScope.drawFillAnimation(
     fillColor: Color,
     size: Size,
     borderColor: Color,
-    cornerRadius: androidx.compose.ui.unit.Dp
+    cornerRadius: Dp
 ) {
     if (progress > 0f) {
         val maxRadius = sqrt(size.width * size.width + size.height * size.height) / 2f
@@ -124,15 +124,12 @@ fun CustomButton(
                         isPressed = true
                         try {
                             awaitRelease()
-                            // Жест завершен успешно внутри кнопки
-                        } catch (e: Exception) {
-                            // Жест был отменен (палец уведен за пределы)
+                        } catch (_: Exception) {
                             isPressed = false
                             return@detectTapGestures
                         }
-                        isPressed = false
 
-                        // Выполняем действие кнопки
+                        isPressed = false
                         onClick()
                     }
                 )

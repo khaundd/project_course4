@@ -1,4 +1,4 @@
-package com.example.project_course4.composable_elements
+package com.example.project_course4.composable_elements.screens
 
 import android.util.Log
 import androidx.compose.foundation.background
@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Restaurant
@@ -25,7 +26,7 @@ import com.example.project_course4.Screen
 import com.example.project_course4.MealNutrition
 import com.example.project_course4.SelectedProduct
 import com.example.project_course4.composable_elements.charts.NutritionChart
-import com.example.project_course4.dialogs.CustomCalendarDialog
+import com.example.project_course4.composable_elements.dialogs.CustomCalendarDialog
 import com.example.project_course4.viewmodel.ProductViewModel
 import com.example.project_course4.viewmodel.ProfileViewModel
 import kotlinx.coroutines.launch
@@ -33,13 +34,17 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import com.example.project_course4.R
+import com.example.project_course4.composable_elements.CustomButton
+import com.example.project_course4.composable_elements.MealItem
+import com.example.project_course4.composable_elements.dialogs.WeightInputDialog
+import kotlinx.coroutines.delay
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     navController: NavController,
     viewModel: ProductViewModel,
     profileViewModel: ProfileViewModel,
-    onLogout: () -> Unit,
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -106,10 +111,10 @@ fun MainScreen(
             today -> "Сегодня"
             today.minusDays(1) -> "Вчера"
             today.plusDays(1) -> "Завтра"
-            else -> selectedLocalDate.format(DateTimeFormatter.ofPattern("EEE", Locale("ru")))
+            else -> selectedLocalDate.format(DateTimeFormatter.ofPattern("EEE", Locale.forLanguageTag("ru")))
                 .replaceFirstChar { it.uppercase() }
         }
-        "$label, ${selectedLocalDate.format(DateTimeFormatter.ofPattern("MMM dd", Locale("ru")))}"
+        "$label, ${selectedLocalDate.format(DateTimeFormatter.ofPattern("MMM dd", Locale.forLanguageTag("ru")))}"
     }
 
     ModalNavigationDrawer(
@@ -150,6 +155,18 @@ fun MainScreen(
                         Log.d("MainScreen", "Нажат пункт 'Профиль'")
                         scope.launch { drawerState.close() }
                         navController.navigate(Screen.Profile.route)
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = null) },
+                    label = { Text("Рецепты") },
+                    selected = currentRoute == Screen.Recipes.route,
+                    onClick = {
+                        Log.d("MainScreen", "Нажат пункт 'Рецепты'")
+                        scope.launch { drawerState.close() }
+                        navController.navigate(Screen.Recipes.route)
                     },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
@@ -194,7 +211,6 @@ fun MainScreen(
                     .background(Color.White)
             ) {
                 // Приёмы пищи уже инициализируются в ProductViewModel.init()
-                var isLoading by remember { mutableStateOf(false) }
                 val meals by viewModel.meals.collectAsState()
                 val finalSelection by viewModel.finalSelection.collectAsState()
                 val currentProductForWeight by viewModel.currentProductForWeight.collectAsState()
@@ -213,7 +229,7 @@ fun MainScreen(
                 }
 
                 // Вспомогательная функция для расчета нутриентов приёма пищи
-                fun getMealNutrition(mealId: Int, products: List<SelectedProduct>): MealNutrition {
+                fun getMealNutrition(products: List<SelectedProduct>): MealNutrition {
                     val totalCalories = products.sumOf {
                         (it.product.calories.toDouble() * it.weight / 100)
                     }.toFloat()
@@ -275,37 +291,57 @@ fun MainScreen(
                     }
                     items(meals) { meal ->
                         val products = finalSelection.filter { it.mealId == meal.id }
-                        val nutrition = getMealNutrition(meal.id, products)
+                        val nutrition = getMealNutrition(products)
 
                         MealItem(
                             meal = meal,
                             products = products,
                             nutrition = nutrition,
-                            onTimeClick = { mealId, newTime -> viewModel.updateMealTime(mealId, newTime) },
+                            onTimeClick = { _, newTime ->
+                                viewModel.updateMealTime(
+                                    meal.id,
+                                    newTime
+                                )
+                            },
                             onAddProductClick = { m ->
                                 if (!isNavigatingToAddProduct) {
                                     isNavigatingToAddProduct = true
-                                    Log.d("MainScreen", "Начинаем навигацию на SelectProductScreen для mealId: ${m.id}")
-                                    if (shouldShowWeightInput){
+                                    Log.d(
+                                        "MainScreen",
+                                        "Начинаем навигацию на SelectProductScreen для mealId: ${m.id}"
+                                    )
+                                    if (shouldShowWeightInput) {
                                         scope.launch { viewModel.saveCurrentMeal(meal.id) }
                                     }
                                     viewModel.setEditingMealId(m.id)
                                     navController.navigate("selectProductWithMeal/${m.id}")
-                                    
+
                                     // Сбрасываем флаг через 500мс, чтобы предотвратить множественные нажатия
                                     scope.launch {
-                                        kotlinx.coroutines.delay(500)
+                                        delay(500)
                                         isNavigatingToAddProduct = false
                                         Log.d("MainScreen", "Флаг навигации сброшен")
                                     }
                                 } else {
-                                    Log.d("MainScreen", "Навигация уже выполняется, игнорируем нажатие")
+                                    Log.d(
+                                        "MainScreen",
+                                        "Навигация уже выполняется, игнорируем нажатие"
+                                    )
                                 }
                             },
-                            onEditProduct = { p, m -> viewModel.editProductWeightInMeal(p, m.id, products.find { it.product == p }?.weight ?: 0) },
+                            onEditProduct = { p, m ->
+                                viewModel.editProductWeightInMeal(
+                                    p,
+                                    m.id
+                                )
+                            },
                             onDeleteProduct = { p, m ->
-                                Log.d("DeleteProduct","Удаляемый продукт: $p, id приема пищи: ${m.id}")
-                                viewModel.removeProductFromMeal(p, m.id) },
+                                Log.d(
+                                    "DeleteProduct",
+                                    "Удаляемый продукт: $p, id приема пищи: ${m.id}"
+                                )
+                                viewModel.removeProductFromMeal(p, m.id)
+                            },
                             onMealOptionsClick = { m -> viewModel.removeMeal(m.id) }
                         )
 

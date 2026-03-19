@@ -1,4 +1,4 @@
-package com.example.project_course4.composable_elements.auth
+package com.example.project_course4.composable_elements.screens.auth
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -15,13 +15,14 @@ import com.example.project_course4.utils.Validation
 import com.example.project_course4.utils.NetworkUtils
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Color
-import com.example.project_course4.AuthViewModel
+import com.example.project_course4.viewmodel.AuthViewModel
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextDecoration
 import com.example.project_course4.R
 import com.example.project_course4.composable_elements.CustomButton
+import com.example.project_course4.composable_elements.TextButtonRedirect
 
 @Composable
 fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
@@ -162,6 +163,16 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
                     textDecoration = TextDecoration.Underline
                 )
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            TextButtonRedirect(
+                text = "Забыли пароль?",
+                normalColor = colorResource(id = R.color.textButtonRedirectColor),
+                pressedColor = colorResource(id = R.color.buttonColor),
+                onClick = { navController.navigate(Screen.PasswordReset.route) },
+                textDecoration = TextDecoration.Underline
+            )
         }
     }
     

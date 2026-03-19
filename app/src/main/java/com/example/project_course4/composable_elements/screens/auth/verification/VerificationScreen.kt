@@ -1,4 +1,4 @@
-package com.example.project_course4.composable_elements.auth.verification
+package com.example.project_course4.composable_elements.screens.auth.verification
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -10,7 +10,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.project_course4.Screen
-import com.example.project_course4.AuthViewModel
+import com.example.project_course4.viewmodel.AuthViewModel
 import com.example.project_course4.utils.Validation
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material3.Text

@@ -3,12 +3,6 @@ package com.example.project_course4.api
 import android.util.Log
 import com.example.project_course4.Product
 import com.example.project_course4.SessionManager
-import com.example.project_course4.api.ProductCreateRequest
-import com.example.project_course4.api.ProductCreateResponse
-import com.example.project_course4.api.ProductResponse
-import com.example.project_course4.api.ProfileData
-import com.example.project_course4.api.ProfileResponse
-import com.example.project_course4.api.ProfileUpdateRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
@@ -26,8 +20,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import com.example.project_course4.local_db.entities.MealEntity
-import com.example.project_course4.local_db.entities.MealComponent
-import com.example.project_course4.local_db.dao.MealDao
 import com.example.project_course4.local_db.MealComponentWithJunction
 import com.example.project_course4.utils.DateUtils
 import com.example.project_course4.utils.ErrorHandler
@@ -72,9 +64,9 @@ class ClientAPI (private val sessionManager: SessionManager){
                     // Для ошибок пытаемся прочитать как ApiResponse
                     try {
                         val errorResponse = response.body<ApiResponse>()
-                        Log.e("api_test", "Ошибка сервера: ${errorResponse?.message}")
+                        Log.e("api_test", "Ошибка сервера: ${errorResponse.message}")
                         emptyList()
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         Log.e("api_test", "Ошибка при обработке ответа сервера: ${response.bodyAsText()}")
                         emptyList()
                     }
@@ -101,7 +93,7 @@ class ClientAPI (private val sessionManager: SessionManager){
         val url = "$BASE_URL/register"
         return withContext(Dispatchers.IO) {
             try {
-                val userData = mutableMapOf<String, String>(
+                val userData = mutableMapOf(
                     "username" to username,
                     "password" to password,
                     "email" to email,
@@ -212,7 +204,7 @@ class ClientAPI (private val sessionManager: SessionManager){
         val url = "$BASE_URL/verify-email"
         return withContext(Dispatchers.IO) {
             try {
-                val verificationData = mapOf<String, String>(
+                val verificationData = mapOf(
                     "email" to email,
                     "code" to code
                 )
@@ -301,7 +293,7 @@ class ClientAPI (private val sessionManager: SessionManager){
                     else -> {
                         val errorResponse = response.body<MealSyncResponse>()
                         Log.e("api_test", "Ошибка сервера: ${response.status.value}, ответ: $errorResponse")
-                        Result.failure(Exception(errorResponse?.message ?: "Ошибка сервера при синхронизации"))
+                        Result.failure(Exception(errorResponse.message ?: "Ошибка сервера при синхронизации"))
                     }
                 }
             } catch (e: Exception) {
@@ -331,7 +323,7 @@ class ClientAPI (private val sessionManager: SessionManager){
                     else -> {
                         val errorResponse = response.body<ApiResponse>()
                         Log.e("api_test", "Ошибка сервера при очистке: ${response.status.value}, ответ: $errorResponse")
-                        Result.failure(Exception(errorResponse?.error ?: "Ошибка сервера при очистке"))
+                        Result.failure(Exception(errorResponse.error ?: "Ошибка сервера при очистке"))
                     }
                 }
             } catch (e: Exception) {
@@ -365,7 +357,7 @@ class ClientAPI (private val sessionManager: SessionManager){
                     else -> {
                         val errorResponse = response.body<MealLoadResponse>()
                         Log.e("api_test", "Ошибка сервера при загрузке: ${response.status.value}, ответ: $errorResponse")
-                        Result.failure(Exception(errorResponse?.message ?: "Ошибка сервера при загрузке"))
+                        Result.failure(Exception(errorResponse.message ?: "Ошибка сервера при загрузке"))
                     }
                 }
             } catch (e: Exception) {
@@ -392,7 +384,7 @@ class ClientAPI (private val sessionManager: SessionManager){
                     }
                     else -> {
                         val errorResponse = response.body<ApiResponse>()
-                        Result.failure(Exception(errorResponse?.error ?: "Ошибка проверки названия продукта"))
+                        Result.failure(Exception(errorResponse.error ?: "Ошибка проверки названия продукта"))
                     }
                 }
             } catch (e: Exception) {
@@ -438,7 +430,7 @@ class ClientAPI (private val sessionManager: SessionManager){
                     }
                     else -> {
                         val errorResponse = response.body<ApiResponse>()
-                        Result.failure(Exception(errorResponse?.error ?: "Ошибка добавления продукта"))
+                        Result.failure(Exception(errorResponse.error ?: "Ошибка добавления продукта"))
                     }
                 }
             } catch (e: Exception) {
@@ -508,7 +500,7 @@ class ClientAPI (private val sessionManager: SessionManager){
                             Log.e("api_test", "  - Success: ${errorResponse.success}")
                             Log.e("api_test", "  - Message: ${errorResponse.message}")
                             Log.e("api_test", "  - Profile: ${errorResponse.profile}")
-                            Result.failure(Exception(errorResponse?.message ?: "Ошибка сервера при загрузке профиля"))
+                            Result.failure(Exception(errorResponse.message ?: "Ошибка сервера при загрузке профиля"))
                         } catch (parseException: Exception) {
                             Log.e("api_test", "ОШИБКА ПАРСИНГА ОШИБКИ: ${parseException.message}", parseException)
                             Log.e("api_test", "Сырой ответ ошибки: $rawResponse")
@@ -564,13 +556,81 @@ class ClientAPI (private val sessionManager: SessionManager){
                     else -> {
                         val errorResponse = response.body<ProfileResponse>()
                         Log.e("api_test", "Ошибка сервера при обновлении профиля: ${response.status.value}, ответ: $errorResponse")
-                        Result.failure(Exception(errorResponse?.message ?: "Ошибка сервера при обновлении профиля"))
+                        Result.failure(Exception(errorResponse.message ?: "Ошибка сервера при обновлении профиля"))
                     }
                 }
             } catch (e: Exception) {
                 Log.e("api_test", "Ошибка в updateProfileData: ${e.message}", e)
                 val errorMessage = ErrorHandler.handleNetworkException(e)
                 Result.failure(Exception(errorMessage))
+            }
+        }
+    }
+
+    suspend fun getRecipes(): Result<List<RecipeResponse>> {
+        val url = "$BASE_URL/recipes"
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = client.get(url)
+                if (response.status.value in 200..299) {
+                    Result.success(response.body<List<RecipeResponse>>())
+                } else {
+                    val error = response.body<ApiResponse>()
+                    Result.failure(Exception(error.error ?: "Ошибка загрузки рецептов"))
+                }
+            } catch (e: Exception) {
+                Log.e("api_test", "Ошибка в getRecipes: ${e.message}", e)
+                Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+            }
+        }
+    }
+
+    suspend fun createRecipe(request: CreateRecipeRequest): Result<String> {
+        val url = "$BASE_URL/recipes"
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = client.post(url) {
+                    contentType(ContentType.Application.Json)
+                    setBody(request)
+                }
+                when (response.status.value) {
+                    in 200..299 -> {
+                        val body = response.body<CreateRecipeResponse>()
+                        Result.success(body.result ?: "Рецепт успешно сохранён")
+                    }
+                    else -> {
+                        val body = response.body<CreateRecipeResponse>()
+                        Result.failure(Exception(body.error ?: "Ошибка сохранения рецепта"))
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("api_test", "Ошибка в createRecipe: ${e.message}", e)
+                Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+            }
+        }
+    }
+
+    suspend fun updateRecipe(productId: Int, request: CreateRecipeRequest): Result<String> {
+        val url = "$BASE_URL/recipes/$productId"
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = client.post(url) {
+                    contentType(ContentType.Application.Json)
+                    setBody(request)
+                }
+                when (response.status.value) {
+                    in 200..299 -> {
+                        val body = response.body<CreateRecipeResponse>()
+                        Result.success(body.result ?: "Рецепт успешно обновлён")
+                    }
+                    else -> {
+                        val body = response.body<CreateRecipeResponse>()
+                        Result.failure(Exception(body.error ?: "Ошибка обновления рецепта"))
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("api_test", "Ошибка в updateRecipe: ${e.message}", e)
+                Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
             }
         }
     }
@@ -593,7 +653,7 @@ class ClientAPI (private val sessionManager: SessionManager){
                             val responseBody = Json.decodeFromString<ProductResponse>(rawResponse)
                             Log.d("api_test", "Продукт найден: $responseBody")
                             val product = Product(
-                                productId = responseBody.productId ?: 0,
+                                productId = responseBody.productId,
                                 name = responseBody.name ?: "",
                                 protein = responseBody.protein ?: 0f,
                                 fats = responseBody.fats ?: 0f,
@@ -632,6 +692,68 @@ class ClientAPI (private val sessionManager: SessionManager){
                 Log.e("api_test", "Ошибка в getProductByBarcode: ${e.message}", e)
                 val errorMessage = ErrorHandler.handleNetworkException(e)
                 Result.failure(Exception(errorMessage))
+            }
+        }
+    }
+
+    suspend fun requestPasswordReset(email: String): Result<String> {
+        val url = "$BASE_URL/password-reset/request"
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = client.post(url) {
+                    contentType(ContentType.Application.Json)
+                    setBody(mapOf("email" to email))
+                }
+                val body = response.body<ApiResponse>()
+                if (response.status.value in 200..299) {
+                    Result.success(body.message ?: "Код отправлен")
+                } else {
+                    Result.failure(Exception(body.error ?: "Ошибка запроса сброса пароля"))
+                }
+            } catch (e: Exception) {
+                Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+            }
+        }
+    }
+
+    suspend fun verifyPasswordResetCode(email: String, code: String): Result<String> {
+        val url = "$BASE_URL/password-reset/verify"
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = client.post(url) {
+                    contentType(ContentType.Application.Json)
+                    setBody(mapOf("email" to email, "code" to code))
+                }
+                val body = response.body<ApiResponse>()
+                if (response.status.value in 200..299) {
+                    Result.success(body.message ?: "Код верный")
+                } else {
+                    Result.failure(Exception(body.error ?: "Неверный код"))
+                }
+            } catch (e: Exception) {
+                Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+            }
+        }
+    }
+
+    suspend fun confirmPasswordReset(email: String, code: String, newPassword: String): Result<String> {
+        val url = "$BASE_URL/password-reset/confirm"
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = client.post(url) {
+                    contentType(ContentType.Application.Json)
+                    setBody(mapOf("email" to email, "code" to code, "new_password" to newPassword))
+                }
+                val body = response.body<ApiResponse>()
+                if (response.status.value in 200..299) {
+                    body.token?.let { sessionManager.saveAuthToken(it) }
+                    body.userId?.let { sessionManager.saveUserId(it) }
+                    Result.success(body.message ?: "Пароль изменён")
+                } else {
+                    Result.failure(Exception(body.error ?: "Ошибка смены пароля"))
+                }
+            } catch (e: Exception) {
+                Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
             }
         }
     }

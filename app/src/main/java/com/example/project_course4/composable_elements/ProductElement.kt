@@ -8,11 +8,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,6 +31,7 @@ import com.example.project_course4.Product
 import com.example.project_course4.ui.theme.CarbColor
 import com.example.project_course4.ui.theme.FatColor
 import com.example.project_course4.ui.theme.ProteinColor
+import java.util.Locale
 
 @Composable
 fun ProductElement(
@@ -86,9 +85,9 @@ fun ProductElement(
                 fontSize = 15.sp,
                 color = textColor,
             )
-            Row(){
+            Row{
                 Text(
-                    text = String.format("%.1f", product.protein),
+                    text = String.format(Locale.getDefault(),"%.1f", product.protein),
                     fontSize = 12.sp,
                     color = ProteinColor,
                 )
@@ -98,7 +97,7 @@ fun ProductElement(
                     modifier = Modifier.padding(start = 12.dp, end = 12.dp)
                 )
                 Text(
-                    text = String.format("%.1f", product.fats),
+                    text = String.format(Locale.getDefault(),"%.1f", product.fats),
                     fontSize = 12.sp,
                     color = FatColor,
                 )
@@ -108,7 +107,7 @@ fun ProductElement(
                     modifier = Modifier.padding(start = 12.dp, end = 12.dp)
                 )
                 Text(
-                    text = String.format("%.1f", product.carbs),
+                    text = String.format(Locale.getDefault(),"%.1f", product.carbs),
                     fontSize = 12.sp,
                     color = CarbColor,
                 )
@@ -121,7 +120,7 @@ fun ProductElement(
                 .padding(end = 5.dp)
         ) {
             Text(
-                text = String.format("%.1f", product.calories),
+                text = String.format(Locale.getDefault(),"%.1f", product.calories),
                 fontSize = 12.sp,
                 color = textColor,
             )

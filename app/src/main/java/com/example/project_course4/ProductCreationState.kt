@@ -32,7 +32,7 @@ class ProductCreationValidator {
     fun validateFloatValue(value: String, fieldName: String): ValidationResult {
         return when {
             value.isBlank() -> ValidationResult.Invalid("$fieldName не может быть пустым")
-            !value.matches(Regex("^\\d*([\\.]\\d+)?")) -> ValidationResult.Invalid("Некорректное значение $fieldName")
+            !value.matches(Regex("^\\d*(\\.\\d+)?")) -> ValidationResult.Invalid("Некорректное значение $fieldName")
             else -> ValidationResult.Valid
         }
     }
@@ -48,7 +48,7 @@ class ProductCreationValidator {
                 total > 100f -> ValidationResult.Invalid("Сумма БЖУ не может превышать 100 граммов")
                 else -> ValidationResult.Valid
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             ValidationResult.Invalid("Ошибка расчета БЖУ")
         }
     }

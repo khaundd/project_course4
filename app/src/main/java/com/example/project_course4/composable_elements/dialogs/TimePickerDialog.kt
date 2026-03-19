@@ -6,18 +6,17 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import java.time.LocalTime
-import java.time.format.DateTimeFormatter
+import java.util.Locale
 import com.example.project_course4.composable_elements.pickers.NumberPicker
 
 @Composable
@@ -26,8 +25,8 @@ fun TimePickerDialog(
     onTimeSelected: (LocalTime) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var selectedHour by remember { mutableStateOf(initialTime.hour) }
-    var selectedMinute by remember { mutableStateOf(initialTime.minute) }
+    var selectedHour by remember { mutableIntStateOf(initialTime.hour) }
+    var selectedMinute by remember { mutableIntStateOf(initialTime.minute) }
     
     val selectedTime by remember(selectedHour, selectedMinute) {
         mutableStateOf(initialTime.withHour(selectedHour).withMinute(selectedMinute))
@@ -57,7 +56,7 @@ fun TimePickerDialog(
                             selectedHour = hour
                         },
                         range = 0..23,
-                        label = { String.format("%02d", it) }
+                        label = { String.format(Locale.getDefault(), "%02d", it) }
                     )
                 }
 
@@ -71,7 +70,7 @@ fun TimePickerDialog(
                             selectedMinute = minute
                         },
                         range = 0..59,
-                        label = { String.format("%02d", it) }
+                        label = { String.format(Locale.getDefault(), "%02d", it) }
                     )
                 }
             }

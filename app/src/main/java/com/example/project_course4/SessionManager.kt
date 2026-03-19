@@ -123,4 +123,16 @@ class SessionManager(context: Context) {
             remove("profile_gender")
         }
     }
+
+    fun saveCustomCalories(calories: Float) {
+        sharedPreferences.edit { putFloat("custom_calories", calories) }
+    }
+
+    fun getCustomCalories(): Float = sharedPreferences.getFloat("custom_calories", 0f)
+
+    fun saveUseCustomCalories(use: Boolean) {
+        sharedPreferences.edit { putBoolean("use_custom_calories", use) }
+    }
+
+    fun getUseCustomCalories(): Boolean = sharedPreferences.getBoolean("use_custom_calories", false)
 }

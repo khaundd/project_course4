@@ -2,7 +2,6 @@ package com.example.project_course4.local_db.entities
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
-import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(

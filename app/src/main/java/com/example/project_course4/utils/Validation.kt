@@ -34,29 +34,26 @@ class Validation {
     private val loginRegex = Regex("^[a-zA-Zа-яА-Я0-9_.-]*$")
 
     fun validateLogin() {
-        if (username.isEmpty()) {
-            usernameError = "Логин не может быть пустым"
-        }
-        else if (username.length > 32) {
-            usernameError = "Логин не должен превышать 32 символа"
-        }
-        else if (!username.matches(loginRegex)) {
-            usernameError = "Логин содержит недопустимые символы"
-        }
-        else {
-                usernameError = ""
+        usernameError = if (username.isEmpty()) {
+            "Логин не может быть пустым"
+        } else if (username.length > 32) {
+            "Логин не должен превышать 32 символа"
+        } else if (!username.matches(loginRegex)) {
+            "Логин содержит недопустимые символы"
+        } else {
+            ""
         }
     }
 
     fun validateEmail() {
-        if (email.isEmpty()) {
-            emailError = "Почта не может быть пустой"
+        emailError = if (email.isEmpty()) {
+            "Почта не может быть пустой"
         } else if (email.contains(" ")) {
-            emailError = "Почта не должна содержать пробелы"
+            "Почта не должна содержать пробелы"
         } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            emailError = "Некорректный формат почты"
+            "Некорректный формат почты"
         } else {
-            emailError = ""
+            ""
         }
     }
 
@@ -78,16 +75,14 @@ class Validation {
             }
             
             val h = height.toFloatOrNull()
-            if (h == null || h <= 0 ) {
-                heightError = "Некорректный рост"
+            heightError = if (h == null || h <= 0 ) {
+                "Некорректный рост"
             } else if (h > 300) {
-                heightError = "Рост не может быть больше 300 см"
-            }
-            else if (h < 80) {
-                heightError = "Рост не может быть меньше 80 см"
-            }
-            else {
-                heightError = ""
+                "Рост не может быть больше 300 см"
+            } else if (h < 80) {
+                "Рост не может быть меньше 80 см"
+            } else {
+                ""
             }
         }
     }
@@ -110,68 +105,66 @@ class Validation {
             }
             
             val w = weight.toFloatOrNull()
-            if (w == null || w <= 0) {
-                weightError = "Некорректный вес"
+            weightError = if (w == null || w <= 0) {
+                "Некорректный вес"
             } else if (w > 635) {
-                weightError = "Вес не может быть больше 635 кг"
-            }
-            else if (w < 25) {
-                weightError = "Вес не может быть меньше 25 кг"
-            }
-            else {
-                weightError = ""
+                "Вес не может быть больше 635 кг"
+            } else if (w < 25) {
+                "Вес не может быть меньше 25 кг"
+            } else {
+                ""
             }
         }
     }
 
     fun validateAge() {
-        if (age.isEmpty()) {
-            ageError = "Укажите возраст"
+        ageError = if (age.isEmpty()) {
+            "Укажите возраст"
         } else {
             val a = age.toIntOrNull()
             if (a == null || a <= 15 || a > 150) {
-                ageError = "Возраст от 16 до 150"
+                "Возраст от 16 до 150"
             } else {
-                ageError = ""
+                ""
             }
         }
     }
 
     fun validatePassword(isEmptyValid: Boolean = false) {
-        if (password.isEmpty() && !isEmptyValid) {
-            passwordError = "Пароль не может быть пустым"
+        passwordError = if (password.isEmpty() && !isEmptyValid) {
+            "Пароль не может быть пустым"
         } else if (password.length < 8) {
-            passwordError = "Пароль должен содержать минимум 8 символов"
+            "Пароль должен содержать минимум 8 символов"
         } else if (password.length > 32) {
-            passwordError = "Пароль не должен превышать 32 символа"
+            "Пароль не должен превышать 32 символа"
         } else if (password.contains(" ")) {
-            passwordError = "Пароль не должен содержать пробелы"
+            "Пароль не должен содержать пробелы"
         } else if (password.contains(Regex("[а-яА-Я]"))) {
-            passwordError = "Пароль не должен содержать кириллицу"
+            "Пароль не должен содержать кириллицу"
         } else {
-            passwordError = ""
+            ""
         }
     }
     
     fun validatePasswordConfirmation() {
-        if (passwordConfirmation.isEmpty()) {
-            passwordConfirmationError = "Пароль не может быть пустым"
+        passwordConfirmationError = if (passwordConfirmation.isEmpty()) {
+            "Пароль не может быть пустым"
         } else if (passwordConfirmation != password) {
-            passwordConfirmationError = "Пароли не совпадают"
+            "Пароли не совпадают"
         } else {
-            passwordConfirmationError = ""
+            ""
         }
     }
 
     fun validateCode() {
-        if (code.isEmpty()) {
-            codeError = "Код не может быть пустым"
+        codeError = if (code.isEmpty()) {
+            "Код не может быть пустым"
         } else if (code.length != 6) {
-            codeError = "Код должен содержать 6 цифр"
+            "Код должен содержать 6 цифр"
         } else if (!code.all { it.isDigit() }) {
-            codeError = "Код должен содержать только цифры"
+            "Код должен содержать только цифры"
         } else {
-            codeError = ""
+            ""
         }
     }
 

@@ -22,11 +22,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.project_course4.R
-import com.example.project_course4.dialogs.ProductOptionsDialog
+import com.example.project_course4.composable_elements.dialogs.ProductOptionsDialog
 import com.example.project_course4.ui.theme.CarbColor
 import com.example.project_course4.ui.theme.FatColor
 import com.example.project_course4.ui.theme.ProteinColor
 import androidx.compose.ui.tooling.preview.Preview
+import java.util.Locale
 
 
 @Composable
@@ -53,9 +54,9 @@ fun DishItem(
             modifier = Modifier.weight(1f)
         ) {
             Text(text = dishName, fontSize = 15.sp)
-            Row() {
+            Row {
                 Text(
-                    text = String.format("%.2f", proteins),
+                    text = String.format(Locale.getDefault(),"%.2f", proteins),
                     fontSize = 12.sp,
                     color = ProteinColor
                 )
@@ -65,7 +66,7 @@ fun DishItem(
                     modifier = Modifier.padding(start = 12.dp)
                 )
                 Text(
-                    text = String.format("%.2f", fats),
+                    text = String.format(Locale.getDefault(),"%.2f", fats),
                     fontSize = 12.sp,
                     color = FatColor
                 )
@@ -75,7 +76,7 @@ fun DishItem(
                     modifier = Modifier.padding(start = 12.dp)
                 )
                 Text(
-                    text = String.format("%.2f", carbs),
+                    text = String.format(Locale.getDefault(),"%.2f", carbs),
                     fontSize = 12.sp,
                     color = CarbColor
                 )
@@ -94,7 +95,7 @@ fun DishItem(
                         .clickable { showOptions = true }
                 )
             }
-            Text(text = "${String.format("%.2f", calories)} ккал.", fontSize = 12.sp)
+            Text(text = "${String.format(Locale.getDefault(),"%.2f", calories)} ккал.", fontSize = 12.sp)
         }
         
         ProductOptionsDialog(

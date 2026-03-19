@@ -1,4 +1,4 @@
-package com.example.project_course4.dialogs
+package com.example.project_course4.composable_elements.dialogs
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DropdownMenu

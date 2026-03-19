@@ -1,31 +1,21 @@
-package com.example.project_course4.composable_elements
+package com.example.project_course4.composable_elements.screens.product
 
 import android.util.Log
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import com.example.project_course4.R.drawable.barcode_scanner_24px
 import com.example.project_course4.R.drawable.ic_close_24px
 import com.example.project_course4.R.drawable.ic_check_24px
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
@@ -33,6 +23,8 @@ import androidx.navigation.NavController
 import com.example.project_course4.Product
 import com.example.project_course4.ProductCreationValidator
 import com.example.project_course4.ValidationResult
+import com.example.project_course4.composable_elements.LabeledTransparentTextField
+import com.example.project_course4.composable_elements.TransparentTextField
 import com.example.project_course4.viewmodel.ProductViewModel
 import com.example.project_course4.utils.NetworkUtils
 import com.example.project_course4.utils.ErrorHandler
@@ -98,7 +90,7 @@ fun ProductCreationScreen(
         }
     }
     val validator = remember { ProductCreationValidator() }
-    var calories by rememberSaveable { mutableStateOf(0f) }
+    var calories by rememberSaveable { mutableFloatStateOf(0f) }
 
     // обновляем калорийность при изменении БЖУ
     LaunchedEffect(state.protein, state.fats, state.carbs) {
@@ -122,7 +114,7 @@ fun ProductCreationScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = if (state.name.isNotBlank()) state.name else "Новый продукт",
+                        text = state.name.ifBlank { "Новый продукт" },
                         style = MaterialTheme.typography.titleMedium
                     )
                 },
@@ -304,7 +296,8 @@ fun ProductCreationScreen(
                 onValueChange = { name ->
                     val newState = state.copy(name = name)
                     val validationResult = validator.validateName(name)
-                    val nameError = if (validationResult is ValidationResult.Invalid) validationResult.errorMessage else null
+                    val nameError =
+                        if (validationResult is ValidationResult.Invalid) validationResult.errorMessage else null
                     viewModel.updateProductCreationState(newState.copy(nameError = nameError))
                 },
                 placeholder = "Название",
@@ -323,7 +316,8 @@ fun ProductCreationScreen(
                 onValueChange = { protein ->
                     val newState = state.copy(protein = protein)
                     val validationResult = validator.validateFloatValue(protein, "Белки")
-                    val proteinError = if (validationResult is ValidationResult.Invalid) validationResult.errorMessage else null
+                    val proteinError =
+                        if (validationResult is ValidationResult.Invalid) validationResult.errorMessage else null
                     viewModel.updateProductCreationState(newState.copy(proteinError = proteinError))
                 },
                 isError = state.proteinError != null,
@@ -339,7 +333,8 @@ fun ProductCreationScreen(
                 onValueChange = { fats ->
                     val newState = state.copy(fats = fats)
                     val validationResult = validator.validateFloatValue(fats, "Жиры")
-                    val fatsError = if (validationResult is ValidationResult.Invalid) validationResult.errorMessage else null
+                    val fatsError =
+                        if (validationResult is ValidationResult.Invalid) validationResult.errorMessage else null
                     viewModel.updateProductCreationState(newState.copy(fatsError = fatsError))
                 },
                 isError = state.fatsError != null,
@@ -355,7 +350,8 @@ fun ProductCreationScreen(
                 onValueChange = { carbs ->
                     val newState = state.copy(carbs = carbs)
                     val validationResult = validator.validateFloatValue(carbs, "Углеводы")
-                    val carbsError = if (validationResult is ValidationResult.Invalid) validationResult.errorMessage else null
+                    val carbsError =
+                        if (validationResult is ValidationResult.Invalid) validationResult.errorMessage else null
                     viewModel.updateProductCreationState(newState.copy(carbsError = carbsError))
                 },
                 isError = state.carbsError != null,
@@ -367,7 +363,7 @@ fun ProductCreationScreen(
             LabeledTransparentTextField(
                 label = "Калории кКал, на 100 г.",
                 unit = "",
-                value = "${"%.2f".format(calories)}",
+                value = "%.2f".format(calories),
                 onValueChange = {},
                 enabled = false
             )

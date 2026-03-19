@@ -1,17 +1,13 @@
-package com.example.project_course4
+package com.example.project_course4.viewmodel
 
 import android.util.Log
-import androidx.lifecycle.ViewModel as AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.navigation.NavController
+import com.example.project_course4.SessionManager
 import com.example.project_course4.api.ClientAPI
 import com.example.project_course4.local_db.AppDatabase
-import com.example.project_course4.local_db.MealComponentWithJunction
 import com.example.project_course4.local_db.entities.MealEntity
-import com.example.project_course4.api.MealData
 import com.example.project_course4.utils.DateUtils
-import com.example.project_course4.api.ProfileData
-import com.example.project_course4.SessionManager
 import com.example.project_course4.utils.ErrorHandler
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -21,36 +17,15 @@ class AuthViewModel(
     private val clientAPI: ClientAPI,
     private val sessionManager: SessionManager,
     private val database: AppDatabase
-) : AndroidViewModel() {
-    
+) : ViewModel() {
+
     // Публичный доступ к sessionManager для других ViewModel
     val sessionManagerPublic: SessionManager = sessionManager
-    
+
     // SharedFlow для уведомления об обновлении данных
     private val _dataUpdateEvent = MutableSharedFlow<Unit>()
     val dataUpdateEvent: SharedFlow<Unit> = _dataUpdateEvent
-    
-    fun logoutAndNavigate(
-        navController: NavController,
-        onLoggingOut: (Boolean) -> Unit = {}
-    ) {
-        onLoggingOut(true)
-        logout(
-            onSuccess = { message ->
-                onLoggingOut(false)
-                navController.navigate(Screen.Login.route) {
-                    popUpTo(Screen.Main.route) { inclusive = true }
-                }
-            },
-            onError = { error ->
-                onLoggingOut(false)
-                navController.navigate(Screen.Login.route) {
-                    popUpTo(Screen.Main.route) { inclusive = true }
-                }
-            }
-        )
-    }
-    
+
     fun register(
         username: String,
         password: String,
@@ -89,7 +64,7 @@ class AuthViewModel(
             }
         }
     }
-    
+
     fun verifyEmail(
         email: String,
         code: String,
@@ -103,11 +78,11 @@ class AuthViewModel(
                 result.fold(
                     onSuccess = { message ->
                         Log.d("ViewModel", "Подтверждение email успешно: $message")
-                        
+
                         // Проверяем, сохранился ли токен после верификации
                         val token = sessionManager.fetchAuthToken()
                         Log.d("ViewModel", "Токен после верификации: ${if (token.isNullOrEmpty()) "NULL" else "SAVED"}")
-                        
+
                         if (token.isNullOrEmpty()) {
                             // Если токен не сохранен, сообщаем что нужно войти
                             Log.d("ViewModel", "Токен отсутствует, требуется вход")
@@ -137,10 +112,10 @@ class AuthViewModel(
                     Log.d("AuthViewModel", "Данные на сервере успешно очищены: $message")
                     Result.success(message)
                 },
-                onFailure = { error -> 
+                onFailure = { error ->
                     // Если 401 (Unauthorized), это значит что аккаунт пустой или токен невалидный
                     // Это не критичная ошибка для выхода - продолжаем процесс
-                    if (error.message?.contains("401") == true || 
+                    if (error.message?.contains("401") == true ||
                         error.message?.contains("Unauthorized") == true) {
                         Log.w("AuthViewModel", "Аккаунт пустой или токен невалидный, пропускаем очистку сервера")
                         Result.success("Пропуск очистки - аккаунт пустой")
@@ -161,9 +136,9 @@ class AuthViewModel(
             Log.d("AuthViewModel", "Начало синхронизации данных на сервер")
             val meals = database.mealDao().getAllMeals()
             val components = database.mealDao().getAllMealComponentsWithJunction()
-            
+
             Log.d("AuthViewModel", "Найдено ${meals.size} приёмов пищи и ${components.size} компонентов для синхронизации")
-            
+
             if (meals.isEmpty()) {
                 Log.d("AuthViewModel", "Нет данных для синхронизации")
                 Result.success("Нет данных для синхронизации")
@@ -177,10 +152,10 @@ class AuthViewModel(
                         database.mealDao().fullResetMeals()
                         Result.success(message)
                     },
-                    onFailure = { error -> 
+                    onFailure = { error ->
                         // Если 401 (Unauthorized), это значит что токен невалидный
                         // Это не критичная ошибка для выхода - продолжаем процесс
-                        if (error.message?.contains("401") == true || 
+                        if (error.message?.contains("401") == true ||
                             error.message?.contains("Unauthorized") == true) {
                             Log.w("AuthViewModel", "Токен невалидный, пропускаем синхронизацию")
                             Result.success("Пропуск синхронизации - токен невалидный")
@@ -203,16 +178,16 @@ class AuthViewModel(
             result.fold(
                 onSuccess = { profileData ->
                     Log.d("AuthViewModel", "Данные профиля успешно получены: height=${profileData.height}, weight=${profileData.bodyweight}, age=${profileData.age}")
-                    
+
                     // Сохраняем данные профиля в локальное хранилище
                     sessionManager.saveProfileData(
                         weight = profileData.bodyweight,
                         height = profileData.height,
                         age = profileData.age,
-                        goal = profileData.goal ?: "MAINTAIN",
-                        gender = profileData.gender ?: "MALE"
+                        goal = profileData.goal,
+                        gender = profileData.gender
                     )
-                    
+
                     // Уведомляем об обновлении данных профиля
                     _dataUpdateEvent.emit(Unit)
                     Log.d("AuthViewModel", "Данные профиля сохранены локально")
@@ -232,42 +207,42 @@ class AuthViewModel(
     suspend fun loadMealsFromServer(): Result<String> {
         return try {
             Log.d("AuthViewModel", "Начало загрузки данных с сервера")
-            
+
             // Сначала очищаем локальную БД перед загрузкой новых данных
             Log.d("AuthViewModel", "Очистка локальной БД перед загрузкой данных с сервера")
             database.mealDao().fullResetMeals()
             Log.d("AuthViewModel", "Локальная БД очищена перед загрузкой данных с сервера")
-            
+
             // Очищаем UI состояние, отправляя событие об обновлении
             _dataUpdateEvent.emit(Unit)
             Log.d("AuthViewModel", "Отправлено событие очистки UI состояния")
-            
+
             val result = clientAPI.loadMealsFromServer()
             result.fold(
                 onSuccess = { mealsData ->
                     Log.d("AuthViewModel", "Получено ${mealsData.size} приёмов пищи с сервера")
                     mealsData.forEach { mealData ->
                         Log.d("AuthViewModel", "Получен прием пищи с сервера: ${mealData.name}, время: ${mealData.mealTime}")
-                        
+
                         // Конвертируем строку DATETIME из UTC в миллисекунды локального времени
                         val fullDateTime = DateUtils.parseDateTimeFromServer(mealData.mealTime)
                         val (mealTime, mealDate) = DateUtils.splitDateTime(fullDateTime)
-                        
+
                         Log.d("AuthViewModel", "После конвертации: fullDateTime=$fullDateTime, mealTime=$mealTime, mealDate=$mealDate")
-                        
+
                         val mealEntity = MealEntity(
                             name = mealData.name,
                             mealTime = mealTime,  // Возвращаем смещение от начала дня
                             mealDate = mealDate
                         )
-                        
+
                         val components = mealData.components.map { component ->
                             Pair(component.productId, component.weight.toUShort())
                         }
-                        
+
                         database.mealDao().insertFullMeal(mealEntity, components)
                     }
-                    
+
                     // После загрузки данных в БД, уведомляем ProductViewModel
                     Log.d("AuthViewModel", "Данные загружены в БД, обновляем UI")
                     _dataUpdateEvent.emit(Unit) // Уведомляем об обновлении
@@ -288,30 +263,30 @@ class AuthViewModel(
         viewModelScope.launch {
             try {
                 Log.d("AuthViewModel", "Начало процесса выхода из аккаунта")
-                
+
                 // 1. Сначала очищаем данные на сервере
                 Log.d("AuthViewModel", "Шаг 1: Очистка данных на сервере")
                 val clearResult = clearMealsFromServer()
                 clearResult.fold(
                     onSuccess = { clearMessage ->
                         Log.d("AuthViewModel", "Очистка на сервере успешна: $clearMessage")
-                        
+
                         // 2. Затем синхронизируем локальные данные на сервер
                         Log.d("AuthViewModel", "Шаг 2: Синхронизация локальных данных на сервер")
                         val syncResult = syncMealsToServer()
                         syncResult.fold(
                             onSuccess = { syncMessage ->
                                 Log.d("AuthViewModel", "Синхронизация успешна: $syncMessage")
-                                
+
                                 // 3. Очищаем локальную БД только после успешной синхронизации
                                 Log.d("AuthViewModel", "Шаг 3: Очистка локальной БД")
                                 database.mealDao().fullResetMeals()
                                 Log.d("AuthViewModel", "Локальная БД очищена после синхронизации")
-                                
+
                                 // 4. Очищаем UI состояние перед выходом
                                 _dataUpdateEvent.emit(Unit)
                                 Log.d("AuthViewModel", "Отправлено событие очистки UI состояния при выходе")
-                                
+
                                 // 5. Выполняем обычный выход
                                 Log.d("AuthViewModel", "Шаг 5: Выполнение выхода из системы")
                                 val logoutResult = clientAPI.logout()
@@ -355,6 +330,53 @@ class AuthViewModel(
         }
     }
 
+    fun requestPasswordReset(email: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val result = clientAPI.requestPasswordReset(email)
+                result.fold(onSuccess = { onSuccess() }, onFailure = { onError(it.message ?: "Ошибка") })
+            } catch (e: Exception) {
+                onError(e.message ?: "Ошибка")
+            }
+        }
+    }
+
+    fun verifyPasswordResetCode(email: String, code: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val result = clientAPI.verifyPasswordResetCode(email, code)
+                result.fold(onSuccess = { onSuccess() }, onFailure = { onError(it.message ?: "Неверный код") })
+            } catch (e: Exception) {
+                onError(e.message ?: "Ошибка")
+            }
+        }
+    }
+
+    fun confirmPasswordReset(
+        email: String,
+        code: String,
+        newPassword: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val result = clientAPI.confirmPasswordReset(email, code, newPassword)
+                result.fold(
+                    onSuccess = {
+                        // Загружаем данные профиля после смены пароля
+                        loadProfileDataFromServer()
+                        loadMealsFromServer()
+                        onSuccess()
+                    },
+                    onFailure = { onError(it.message ?: "Ошибка смены пароля") }
+                )
+            } catch (e: Exception) {
+                onError(e.message ?: "Ошибка")
+            }
+        }
+    }
+
     fun login(
         email: String,
         password: String,
@@ -370,7 +392,7 @@ class AuthViewModel(
                     sessionManager.saveAuthToken(token)
                     // Сохраняем email при успешном входе
                     sessionManager.saveEmail(email)
-                    
+
                     // Загружаем данные профиля с сервера после успешного входа
                     Log.d("AuthViewModel", "Начало загрузки данных профиля с сервера после входа")
                     val profileResult = loadProfileDataFromServer()
@@ -383,7 +405,7 @@ class AuthViewModel(
                             // Продолжаем вход даже если профиль не загрузился
                         }
                     )
-                    
+
                     // Загружаем данные с сервера после успешного входа
                     Log.d("AuthViewModel", "Начало загрузки данных с сервера после входа")
                     val loadResult = loadMealsFromServer()
@@ -399,9 +421,9 @@ class AuthViewModel(
                         }
                     )
                 },
-                onFailure = { error -> 
+                onFailure = { error ->
                     Log.e("AuthViewModel", "Ошибка входа: ${error.message}")
-                    onError(error.message ?: "Ошибка") 
+                    onError(error.message ?: "Ошибка")
                 }
             )
         }

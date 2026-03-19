@@ -1,4 +1,4 @@
-package com.example.project_course4.composable_elements
+package com.example.project_course4.composable_elements.dialogs
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -38,20 +38,16 @@ fun WeightInputDialog(
 
     // при инициализации компонента определяем начальный вес
     LaunchedEffect(product) {
-        if (viewModel.isAddingFromList.value) {
-            weightInput = "0"
+        weightInput = if (viewModel.isAddingFromList.value) {
+            "0"
         } else {
             // в режиме редактирования показываем текущий вес продукта
             // Ищем продукт с таким же productId И mealId
             val currentMealId = viewModel.editingMealId.value
-            val existingProduct = viewModel.finalSelection.value.find { 
-                it.product.productId == product.productId && it.mealId == currentMealId 
+            val existingProduct = viewModel.finalSelection.value.find {
+                it.product.productId == product.productId && it.mealId == currentMealId
             }
-            if (existingProduct != null) {
-                weightInput = existingProduct.weight.toString()
-            } else {
-                weightInput = "0"
-            }
+            existingProduct?.weight?.toString() ?: "0"
         }
     }
 

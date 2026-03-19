@@ -5,14 +5,10 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 object DateUtils {
-    private val serverDateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).apply {
+    private val serverDateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
     }
     
-    private val localDateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).apply {
-        timeZone = TimeZone.getDefault()
-    }
-
     /**
      * Конвертирует mealTime (Long) и mealDate (Long) в строку формата "YYYY-MM-DD hh:mm:ss" для отправки на сервер
      * Конвертирует локальное время в UTC
@@ -44,54 +40,20 @@ object DateUtils {
     }
 
     /**
-     * Конвертирует mealTime (Long) и mealDate (Long) в строку формата "YYYY-MM-DD hh:mm:ss" для локального использования
-     */
-    fun combineDateTimeLocal(mealTime: Long, mealDate: Long): String {
-        val fullDateTime = mealDate + mealTime
-        val result = localDateFormat.format(Date(fullDateTime))
-        Log.d("DateUtils","DateUtils.combineDateTimeLocal: mealTime=$mealTime, mealDate=$mealDate, fullDateTime=$fullDateTime, result=$result")
-        return result
-    }
-
-    /**
-     * Конвертирует строку формата "YYYY-MM-DD hh:mm:ss" из UTC в Long (миллисекунды) локального времени
+     * Конвертирует строку формата "YYYY-MM-DD hh:mm:ss" (уже в локальном времени сервера) в Long (миллисекунды).
+     * Сервер возвращает время уже сконвертированным в локальную TZ, поэтому парсим как есть.
      */
     fun parseDateTimeFromServer(dateTimeString: String): Long {
         return try {
-            // Сначала парсим как UTC
-            val utcTime = serverDateFormat.parse(dateTimeString)?.time ?: 0L
-            // Затем конвертируем в локальное время
-            val utcCalendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
-            utcCalendar.timeInMillis = utcTime
-            
-            val localCalendar = Calendar.getInstance()
-            localCalendar.set(
-                utcCalendar.get(Calendar.YEAR),
-                utcCalendar.get(Calendar.MONTH),
-                utcCalendar.get(Calendar.DAY_OF_MONTH),
-                utcCalendar.get(Calendar.HOUR_OF_DAY),
-                utcCalendar.get(Calendar.MINUTE),
-                utcCalendar.get(Calendar.SECOND)
-            )
-            localCalendar.set(Calendar.MILLISECOND, utcCalendar.get(Calendar.MILLISECOND))
-            
-            val localTime = localCalendar.timeInMillis
-            Log.d("DateUtils", "DateUtils.parseDateTimeFromServer: UTC=$dateTimeString, UTC ms=$utcTime, Local ms=$localTime")
+            // Парсим строку как локальное время (сервер уже конвертировал из UTC в локальную TZ)
+            val localFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).apply {
+                timeZone = TimeZone.getDefault()
+            }
+            val localTime = localFormat.parse(dateTimeString)?.time ?: 0L
+            Log.d("DateUtils", "DateUtils.parseDateTimeFromServer: server=$dateTimeString, Local ms=$localTime")
             localTime
         } catch (e: Exception) {
             Log.d("DateUtils", "DateUtils.parseDateTimeFromServer: Ошибка парсинга даты '$dateTimeString': ${e.message}")
-            0L
-        }
-    }
-
-    /**
-     * Конвертирует строку формата "YYYY-MM-DD hh:mm:ss" локального времени в Long (миллисекунды)
-     */
-    fun parseLocalDateTime(dateTimeString: String): Long {
-        return try {
-            localDateFormat.parse(dateTimeString)?.time ?: 0L
-        } catch (e: Exception) {
-            Log.d("DateUtils", "DateUtils.parseLocalDateTime: Ошибка парсинга даты '$dateTimeString': ${e.message}")
             0L
         }
     }
@@ -121,17 +83,4 @@ object DateUtils {
         return Pair(mealTime, mealDate)
     }
 
-    /**
-     * Получает текущую дату и время в UTC для сервера
-     */
-    fun getCurrentServerDateTimeString(): String {
-        return serverDateFormat.format(Date())
-    }
-
-    /**
-     * Получает текущую дату и время в локальном часовом поясе
-     */
-    fun getCurrentLocalDateTimeString(): String {
-        return localDateFormat.format(Date())
-    }
 }

@@ -7,5 +7,12 @@ sealed class Screen(val route: String){
     object Login: Screen("login")
     object Registration: Screen("registration")
     object Verification: Screen("verification")
+    object PasswordReset: Screen("passwordReset")
     object Profile: Screen("profile")
+    object Products: Screen("products")
+    object Recipes: Screen("recipes")
+    object RecipeCreation: Screen("recipeCreation")
+    object SelectProductForRecipe: Screen("selectProductForRecipe")
+    object DishComposition: Screen("dishComposition/{dishName}")
+    object RecipeEdit: Screen("recipeEdit/{dishName}")
 }

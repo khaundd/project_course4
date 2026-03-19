@@ -15,7 +15,7 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE // Если удалим прием пищи, связи удалятся сами
         )
     ],
-    indices = [Index("mealId"),]
+    indices = [Index("mealId")]
 )
 
 data class MealMealComponent(

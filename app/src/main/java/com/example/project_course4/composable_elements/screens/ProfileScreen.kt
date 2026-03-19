@@ -1,4 +1,4 @@
-package com.example.project_course4.composable_elements
+package com.example.project_course4.composable_elements.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -6,11 +6,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Restaurant
-import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.*
@@ -26,15 +27,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
-import com.example.project_course4.AuthViewModel
+import com.example.project_course4.viewmodel.AuthViewModel
 import com.example.project_course4.Screen
-import com.example.project_course4.SessionManager
-import com.example.project_course4.composable_elements.auth.TextButtonRedirect
 import com.example.project_course4.utils.NetworkUtils
 import com.example.project_course4.utils.Validation
 import com.example.project_course4.viewmodel.ProfileViewModel
 import kotlinx.coroutines.launch
 import com.example.project_course4.R
+import com.example.project_course4.composable_elements.Gender
+import com.example.project_course4.composable_elements.NutritionGoal
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,8 +54,12 @@ fun ProfileScreen(
     val profileData by profileViewModel.profileData.collectAsState()
     val dailyCalories by profileViewModel.dailyCalories.collectAsState()
     val userEmail = profileViewModel.getUserEmail() ?: "Email не найден"
+    val useCustomCalories by profileViewModel.useCustomCalories.collectAsState()
+    val customCalories by profileViewModel.customCalories.collectAsState()
     
     var showInfoDialog by remember { mutableStateOf(false) }
+    var isEditingCustomCalories by remember { mutableStateOf(false) }
+    var tempCustomCalories by remember { mutableStateOf("") }
     
     // Состояния для редактирования
     var isEditingWeight by remember { mutableStateOf(false) }
@@ -113,6 +118,17 @@ fun ProfileScreen(
                     label = { Text("Профиль") },
                     selected = currentRoute == Screen.Profile.route,
                     onClick = { scope.launch { drawerState.close() } },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = null) },
+                    label = { Text("Рецепты") },
+                    selected = currentRoute == Screen.Recipes.route,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        navController.navigate(Screen.Recipes.route)
+                    },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
             }
@@ -210,7 +226,7 @@ fun ProfileScreen(
                     value = profileData.goal.displayName,
                     expanded = expandedGoal,
                     onExpandedChange = { expandedGoal = it },
-                    options = NutritionGoal.values(),
+                    options = NutritionGoal.entries.toTypedArray(),
                     onOptionSelected = { goal ->
                         profileViewModel.updateGoal(goal)
                         expandedGoal = false
@@ -224,7 +240,7 @@ fun ProfileScreen(
                     value = profileData.gender.displayName,
                     expanded = expandedGender,
                     onExpandedChange = { expandedGender = it },
-                    options = Gender.values(),
+                    options = Gender.entries.toTypedArray(),
                     onOptionSelected = { gender ->
                         profileViewModel.updateGender(gender)
                         expandedGender = false
@@ -239,33 +255,83 @@ fun ProfileScreen(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "${dailyCalories.toInt()} кКал",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    IconButton(
-                        onClick = { showInfoDialog = true },
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Info,
-                            contentDescription = "Информация",
-                            modifier = Modifier.size(20.dp),
-                            tint = Color.Gray
+                    if (isEditingCustomCalories) {
+                        TextField(
+                            value = tempCustomCalories,
+                            onValueChange = { tempCustomCalories = it },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.width(120.dp),
+                            singleLine = true,
+                            colors = TextFieldDefaults.colors(
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                focusedContainerColor = MaterialTheme.colorScheme.surface
+                            ),
+                            suffix = { Text(" кКал") }
                         )
+                        TextButton(onClick = {
+                            tempCustomCalories.toFloatOrNull()?.let { profileViewModel.setCustomCalories(it) }
+                            isEditingCustomCalories = false
+                        }) { Text("Сохранить") }
+                        TextButton(onClick = { isEditingCustomCalories = false }) { Text("Отмена") }
+                    } else {
+                        Text(
+                            text = "${dailyCalories.toInt()} кКал",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = if (useCustomCalories) Modifier.clickable {
+                                tempCustomCalories = customCalories.toInt().toString()
+                                isEditingCustomCalories = true
+                            } else Modifier
+                        )
+                        IconButton(
+                            onClick = { showInfoDialog = true },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = "Информация",
+                                modifier = Modifier.size(20.dp),
+                                tint = Color.Gray
+                            )
+                        }
                     }
                 }
 
+                if (!useCustomCalories) {
+                    Text(
+                        text = "Рекомендуемое количество калорий",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Своя норма калорий",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Switch(
+                        checked = useCustomCalories,
+                        onCheckedChange = { checked ->
+                            profileViewModel.setUseCustomCalories(checked)
+                            if (checked && customCalories <= 0f) {
+                                profileViewModel.setCustomCalories(dailyCalories)
+                            }
+                        }
+                    )
+                }
+
                 Text(
-                    text = "Рекомендуемое количество калорий",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center
-                )
-                Text(
-                    text = "Каждый организм уникален. Пробуйте и ищите свою оптимальную калорийность",
+                    text = if (useCustomCalories) "Нажмите на значение калорий чтобы изменить"
+                           else "Каждый организм уникален. Пробуйте и ищите свою оптимальную калорийность",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray,
                     modifier = Modifier.fillMaxWidth(),
@@ -285,7 +351,7 @@ fun ProfileScreen(
                         } else {
                             isLogoutInProgress = true
                             authViewModel.logout(
-                                onSuccess = { message ->
+                                onSuccess = { _ ->
                                     navController.navigate(Screen.Login.route) {
                                         popUpTo(Screen.Main.route) { inclusive = true }
                                     }
@@ -301,7 +367,7 @@ fun ProfileScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(
-                        Icons.Default.Logout,
+                        Icons.AutoMirrored.Filled.Logout,
                         contentDescription = null,
                         tint = colorResource(id = R.color.textButtonRedirectColor),
                         modifier = Modifier.size(20.dp)

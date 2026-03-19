@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,10 +35,10 @@ import com.example.project_course4.Product
 import com.example.project_course4.SelectedProduct
 import com.example.project_course4.MealNutrition
 import com.example.project_course4.R
-import com.example.project_course4.composable_elements.auth.TextButtonRedirect
 import java.time.format.DateTimeFormatter
 import com.example.project_course4.composable_elements.dialogs.TimePickerDialog
 import java.time.LocalTime
+import java.util.Locale
 
 @Composable
 fun MealItem(
@@ -54,7 +52,6 @@ fun MealItem(
     onMealOptionsClick: (Meal) -> Unit,
     mealBackgroundColor: Color = Color(0xFFF5F5F5)
 ) {
-    var showOptions by remember { mutableStateOf(false) }
 
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
     var showTimePicker by remember { mutableStateOf(false) }
@@ -192,22 +189,22 @@ fun MealItem(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text(
-                            text = String.format("%.1f", nutrition.protein), 
+                            text = String.format(Locale.getDefault(),"%.1f", nutrition.protein),
                             color = com.example.project_course4.ui.theme.ProteinColor
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = String.format("%.1f", nutrition.fats), 
+                            text = String.format(Locale.getDefault(),"%.1f", nutrition.fats),
                             color = com.example.project_course4.ui.theme.FatColor
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = String.format("%.1f", nutrition.carbs), 
+                            text = String.format(Locale.getDefault(),"%.1f", nutrition.carbs),
                             color = com.example.project_course4.ui.theme.CarbColor
                         )
                     }
                     Text(
-                        text = String.format("%.0f ккал.", nutrition.calories), 
+                        text = String.format(Locale.getDefault(),"%.0f ккал.", nutrition.calories),
                         modifier = Modifier.padding(end = 4.dp)
                     )
                 }

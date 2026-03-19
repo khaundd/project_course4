@@ -50,6 +50,52 @@ data class ProductCreateRequest(
 )
 
 @Serializable
+data class RecipeIngredient(
+    @SerialName("product_id") val productId: Int,
+    val weight: Int
+)
+
+@Serializable
+data class CreateRecipeRequest(
+    @SerialName("dish_name") val dishName: String,
+    val ingredients: List<RecipeIngredient>,
+    @SerialName("after_cooking_weight") val afterCookingWeight: Float,
+    val description: String = ""
+)
+
+@Serializable
+data class CreateRecipeResponse(
+    val result: String? = null,
+    val error: String? = null
+)
+
+@Serializable
+data class DishIngredient(
+    @SerialName("product_id") val productId: Int = 0,
+    @SerialName("product_name") val productName: String = "",
+    @SerialName("proteins") val protein: Float = 0f,
+    val fats: Float = 0f,
+    val carbs: Float = 0f,
+    val calories: Float = 0f,
+    val weight: Int = 0
+)
+
+@Serializable
+data class RecipeResponse(
+    @SerialName("product_name") val productName: String = "",
+    @SerialName("product_id") val productId: Int = 0,
+    @SerialName("dish_composition") val dishComposition: List<DishIngredient> = emptyList()
+) {
+    val name: String get() = productName
+
+    // БЖУ считаем из состава пропорционально весу (на 100г каждого ингредиента)
+    val protein: Float get() = dishComposition.sumOf { it.protein * it.weight / 100.0 }.toFloat()
+    val fats: Float get() = dishComposition.sumOf { it.fats * it.weight / 100.0 }.toFloat()
+    val carbs: Float get() = dishComposition.sumOf { it.carbs * it.weight / 100.0 }.toFloat()
+    val calories: Float get() = dishComposition.sumOf { it.calories * it.weight / 100.0 }.toFloat()
+}
+
+@Serializable
 data class ProductCreateResponse(
     val success: Boolean = true,
     val product: ProductResponse? = null,

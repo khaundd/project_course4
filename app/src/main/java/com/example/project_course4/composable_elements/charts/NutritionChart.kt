@@ -2,8 +2,6 @@ package com.example.project_course4.composable_elements.charts
 
 import android.graphics.Color as AndroidColor
 import android.graphics.Paint as AndroidPaint
-import android.graphics.Path as AndroidPath
-import android.graphics.RectF
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -76,8 +74,7 @@ fun NutritionChart(
         } else {
             // Режим трёх диаграмм БЖУ
             val chartWidth = size.width / 3
-            val spacing = chartWidth * 0.1f
-            
+
             // Белки
             drawNutrientChart(
                 current = protein,

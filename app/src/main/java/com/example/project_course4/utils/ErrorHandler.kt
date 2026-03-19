@@ -1,8 +1,6 @@
 package com.example.project_course4.utils
 
 import android.util.Log
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.HttpStatusCode
 
 /**
  * Централизованный обработчик ошибок сервера
@@ -60,35 +58,4 @@ object ErrorHandler {
         }
     }
     
-    /**
-     * Обрабатывает HTTP коды ошибок
-     */
-    fun handleHttpError(statusCode: Int, responseBody: String? = null): String {
-        Log.e("ErrorHandler", "Обработка HTTP ошибки: $statusCode, тело: $responseBody")
-        
-        return when (statusCode) {
-            400 -> "Неверный формат запроса"
-            401 -> "Требуется авторизация"
-            403 -> "Доступ запрещен"
-            404 -> "Запрашиваемый ресурс не найден"
-            429 -> "Слишком много запросов, попробуйте позже"
-            500 -> "Внутренняя ошибка сервера"
-            502 -> "Сервер недоступен, повторите попытку позднее"
-            503 -> "Сервер недоступен, повторите попытку позднее"
-            504 -> "Шлюз не отвечает, повторите попытку позднее"
-            else -> "Ошибка сервера: $statusCode"
-        }
-    }
-    
-    /**
-     * Проверяет, является ли ошибка ошибкой недоступности сервера
-     */
-    fun isServerUnavailableError(throwable: Throwable): Boolean {
-        val errorMessage = throwable.message ?: ""
-        return errorMessage.contains("502 Bad Gateway", ignoreCase = true) ||
-               errorMessage.contains("503 Service Unavailable", ignoreCase = true) ||
-               errorMessage.contains("ByteBufferChannel", ignoreCase = true) ||
-               errorMessage.contains("Expected response body", ignoreCase = true) ||
-               errorMessage.contains("text/html", ignoreCase = true)
-    }
 }

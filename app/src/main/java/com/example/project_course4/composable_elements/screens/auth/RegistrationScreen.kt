@@ -1,4 +1,4 @@
-package com.example.project_course4.composable_elements.auth
+package com.example.project_course4.composable_elements.screens.auth
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -23,9 +23,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.style.TextDecoration
-import com.example.project_course4.AuthViewModel
+import com.example.project_course4.viewmodel.AuthViewModel
 import com.example.project_course4.R
 import com.example.project_course4.composable_elements.CustomButton
+import com.example.project_course4.composable_elements.TextButtonRedirect
 
 
 @Composable

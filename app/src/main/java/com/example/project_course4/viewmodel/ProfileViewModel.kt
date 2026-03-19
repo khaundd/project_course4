@@ -1,6 +1,5 @@
 package com.example.project_course4.viewmodel
 
-import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -12,11 +11,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.SharedFlow
 
 class ProfileViewModel(
     private val sessionManager: SessionManager,
     private val clientAPI: ClientAPI? = null,
-    private val dataUpdateEvent: kotlinx.coroutines.flow.SharedFlow<Unit>? = null
+    dataUpdateEvent: SharedFlow<Unit>? = null,
 ) : ViewModel() {
     
     private val _profileData = MutableStateFlow(ProfileData())
@@ -27,7 +27,26 @@ class ProfileViewModel(
     
     private val _macroNutrients = MutableStateFlow(MacroNutrients(0f, 0f, 0f))
     val macroNutrients: StateFlow<MacroNutrients> = _macroNutrients.asStateFlow()
-    
+
+    // Пользовательская норма калорий
+    private val _useCustomCalories = MutableStateFlow(sessionManager.getUseCustomCalories())
+    val useCustomCalories: StateFlow<Boolean> = _useCustomCalories.asStateFlow()
+
+    private val _customCalories = MutableStateFlow(sessionManager.getCustomCalories())
+    val customCalories: StateFlow<Float> = _customCalories.asStateFlow()
+
+    fun setUseCustomCalories(use: Boolean) {
+        _useCustomCalories.value = use
+        sessionManager.saveUseCustomCalories(use)
+        calculateNutrition()
+    }
+
+    fun setCustomCalories(calories: Float) {
+        _customCalories.value = calories
+        sessionManager.saveCustomCalories(calories)
+        if (_useCustomCalories.value) calculateNutrition()
+    }
+
     init {
         // Сразу загружаем данные из SharedPreferences для немедленного расчета
         loadLocalProfileData()
@@ -42,11 +61,6 @@ class ProfileViewModel(
             }
         }
         
-        loadProfileData()
-    }
-    
-    fun refreshProfileData() {
-        Log.d("ProfileViewModel", "=== ВЫЗОВ refreshProfileData ===")
         loadProfileData()
     }
     
@@ -207,12 +221,6 @@ class ProfileViewModel(
         saveProfileData()
     }
     
-    fun updateAge(age: Int) {
-        _profileData.value = _profileData.value.copy(age = age)
-        calculateNutrition()
-        saveProfileData()
-    }
-    
     fun updateGoal(goal: NutritionGoal) {
         _profileData.value = _profileData.value.copy(goal = goal)
         calculateNutrition()
@@ -226,7 +234,11 @@ class ProfileViewModel(
     }
     
     private fun calculateNutrition() {
-        val calories = NutritionCalculator.calculateDailyCalories(_profileData.value)
+        val calories = if (_useCustomCalories.value && _customCalories.value > 0f) {
+            _customCalories.value
+        } else {
+            NutritionCalculator.calculateDailyCalories(_profileData.value)
+        }
         val macros = NutritionCalculator.calculateMacroNutrients(calories)
         
         _dailyCalories.value = calories

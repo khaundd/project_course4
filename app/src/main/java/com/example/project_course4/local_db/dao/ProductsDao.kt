@@ -4,7 +4,6 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import com.example.project_course4.Product
 import com.example.project_course4.local_db.entities.Products
 import kotlinx.coroutines.flow.Flow
 
