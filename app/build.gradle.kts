@@ -55,7 +55,6 @@ dependencies {
     implementation (libs.ktor.serialization.kotlinx.json.v237)
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation("androidx.compose.material:material-icons-extended:1.7.0")
-    val room_version = "2.8.4"
     implementation(libs.androidx.room.runtime)
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.room.ktx)
@@ -72,6 +71,7 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
+    implementation("com.google.android.gms:play-services-base:18.5.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
