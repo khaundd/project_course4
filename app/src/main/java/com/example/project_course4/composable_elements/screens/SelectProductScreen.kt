@@ -24,11 +24,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,22 +43,28 @@ import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -67,8 +78,11 @@ import com.example.project_course4.ui.theme.CarbColor
 import com.example.project_course4.ui.theme.FatColor
 import com.example.project_course4.ui.theme.ProteinColor
 import com.example.project_course4.viewmodel.ProductViewModel
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
 @Composable
 fun SelectProductScreen(
     navController: NavController,
@@ -78,14 +92,22 @@ fun SelectProductScreen(
     onConfirmForRecipe: ((List<Product>) -> Unit)? = null,
     existingIngredientIds: Set<Int> = emptySet()
 ) {
-    val products by viewModel.products.collectAsState()
-    val isLoading by viewModel.isLoading    .collectAsState()
+    val displayedProducts by viewModel.displayedProducts.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val isLoadingMore by viewModel.isLoadingMore.collectAsState()
+    val hasMoreProducts by viewModel.hasMoreProducts.collectAsState()
+    val noInternetError by viewModel.noInternetError.collectAsState()
     val currentSelection by viewModel.currentSelection.collectAsState()
     val showProductNotFoundDialog by viewModel.showProductNotFoundDialog.collectAsState()
     val showBarcodeSearchResults by viewModel.showBarcodeSearchResults.collectAsState()
     val databaseSearchResults by viewModel.databaseSearchResults.collectAsState()
     val userSearchResults by viewModel.userSearchResults.collectAsState()
     val scannedBarcode by viewModel.scannedBarcode.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val searchResults by viewModel.searchResults.collectAsState()
+    val isSearching by viewModel.isSearching.collectAsState()
+    val searchNoInternet by viewModel.searchNoInternet.collectAsState()
+
     var isFabMenuExpanded by remember { mutableStateOf(false) }
     var isNavigatingBack by remember { mutableStateOf(false) }
     val rotationAngle by animateFloatAsState(
@@ -93,11 +115,46 @@ fun SelectProductScreen(
         animationSpec = tween(durationMillis = 300),
         label = "fab_rotation"
     )
+    val listState = rememberLazyListState()
+    val focusManager = LocalFocusManager.current
 
-    // Сбрасываем выборку при входе на экран, чтобы предыдущий выбор не переносился
+    // Сбрасываем выборку при входе на экран
     LaunchedEffect(Unit) {
         viewModel.clearCurrentSelection()
+        viewModel.clearSearch()
+        viewModel.refreshRecentProducts()
+        if (viewModel.displayedProducts.value.isEmpty()) {
+            viewModel.loadInitialProductsPage()
+        }
     }
+
+    // Дебаунс поиска
+    LaunchedEffect(Unit) {
+        snapshotFlow { searchQuery }
+            .debounce(400)
+            .distinctUntilChanged()
+            .collect { query ->
+                viewModel.executeSearch(query)
+            }
+    }
+
+    // Подгрузка следующей страницы при достижении конца списка
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val total = listState.layoutInfo.totalItemsCount
+            lastVisible >= total - 3 && total > 0
+        }
+    }
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore && searchQuery.isBlank()) {
+            viewModel.loadNextProductsPage()
+        }
+    }
+
+    val isInSearchMode = searchQuery.isNotBlank()
+    val productsToShow = if (isInSearchMode) searchResults else displayedProducts
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -109,21 +166,18 @@ fun SelectProductScreen(
                                 Log.d("SelectProductScreen", "Нажата кнопка закрытия, вызываем popBackStack")
                                 isNavigatingBack = true
                                 viewModel.clearCurrentSelection()
+                                viewModel.clearSearch()
                                 val navigated = navController.navigateUp()
                                 if (!navigated) {
                                     navController.navigate(Screen.Main.route) {
                                         popUpTo(0) { inclusive = true }
                                     }
                                 }
-                                Log.d("SelectProductScreen", "navigateUp вызван")
                             }
                         },
                         enabled = !isNavigatingBack
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Закрыть"
-                        )
+                        Icon(imageVector = Icons.Default.Close, contentDescription = "Закрыть")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -165,7 +219,42 @@ fun SelectProductScreen(
         },
         floatingActionButtonPosition = FabPosition.Center,
         bottomBar = {
-            BottomNavigationBar(navController = navController, currentScreen = "search")
+            Column {
+                // Строка поиска над навигационной панелью
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { viewModel.searchProducts(it) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    placeholder = { Text("Поиск продуктов...", fontSize = 14.sp) },
+                    leadingIcon = {
+                        if (isSearching) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp))
+                        }
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotBlank()) {
+                            IconButton(onClick = { viewModel.clearSearch() }) {
+                                Icon(Icons.Default.Close, contentDescription = "Очистить", modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(24.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = Color.LightGray,
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
+                    ),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() })
+                )
+                BottomNavigationBar(navController = navController, currentScreen = "search")
+            }
         }
     ) { paddingValues ->
         Column(
@@ -173,6 +262,7 @@ fun SelectProductScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            // Легенда БЖУ
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -183,59 +273,91 @@ fun SelectProductScreen(
                     horizontalArrangement = Arrangement.Start,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Белки",
-                        color = ProteinColor,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 12.sp
-                    )
+                    Text("Белки", color = ProteinColor, fontWeight = FontWeight.Medium, fontSize = 12.sp)
                     Spacer(modifier = Modifier.width(20.dp))
-                    Text(
-                        text = "Жиры",
-                        color = FatColor,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 12.sp
-                    )
+                    Text("Жиры", color = FatColor, fontWeight = FontWeight.Medium, fontSize = 12.sp)
                     Spacer(modifier = Modifier.width(20.dp))
-                    Text(
-                        text = "Углеводы",
-                        color = CarbColor,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 12.sp
-                    )
+                    Text("Углеводы", color = CarbColor, fontWeight = FontWeight.Medium, fontSize = 12.sp)
                 }
             }
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            if (isLoading) {
+            // Уведомление об отсутствии интернета при поиске
+            if (searchNoInternet) {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFFFF3CD))
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
+                    Text(
+                        text = "Отсутствует интернет соединение",
+                        color = Color(0xFF856404),
+                        fontSize = 13.sp
+                    )
+                }
+            }
+
+            if (isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             } else {
                 LazyColumn(
+                    state = listState,
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                     modifier = Modifier.weight(1f)
                 ) {
-                    items(products) { product ->
+                    items(productsToShow) { product ->
                         val alreadyAdded = existingIngredientIds.contains(product.productId)
                         ProductElement(
                             product = product,
-                            isSelected = if (alreadyAdded) false else currentSelection.contains(
-                                product
-                            )
+                            isSelected = if (alreadyAdded) false else currentSelection.contains(product)
                         ) {
                             if (!alreadyAdded) {
                                 viewModel.toggleCurrentSelection(product)
                             }
                         }
                     }
+
+                    // Индикатор подгрузки / конец списка / нет интернета
+                    if (!isInSearchMode) {
+                        if (isLoadingMore) {
+                            item {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.dp)
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text("Загрузка продуктов", fontSize = 13.sp, color = Color.Gray)
+                                }
+                            }
+                        } else if (noInternetError && displayedProducts.isNotEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Отсутствует интернет соединение",
+                                        fontSize = 13.sp,
+                                        color = Color(0xFF856404)
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
+
+        // FAB меню (сканер + создать продукт)
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -249,20 +371,12 @@ fun SelectProductScreen(
             ) {
                 AnimatedVisibility(
                     visible = isFabMenuExpanded,
-                    enter = fadeIn(animationSpec = tween(durationMillis = 300)) + slideInVertically(
-                        initialOffsetY = { fullHeight -> fullHeight },
-                        animationSpec = tween(durationMillis = 300)
-                    ) + scaleIn(
-                        animationSpec = tween(durationMillis = 300),
-                        initialScale = 0.8f
-                    ),
-                    exit = fadeOut(animationSpec = tween(durationMillis = 200)) + slideOutVertically(
-                        targetOffsetY = { fullHeight -> fullHeight },
-                        animationSpec = tween(durationMillis = 200)
-                    ) + scaleOut(
-                        animationSpec = tween(durationMillis = 200),
-                        targetScale = 0.8f
-                    )
+                    enter = fadeIn(animationSpec = tween(300)) + slideInVertically(
+                        initialOffsetY = { it }, animationSpec = tween(300)
+                    ) + scaleIn(animationSpec = tween(300), initialScale = 0.8f),
+                    exit = fadeOut(animationSpec = tween(200)) + slideOutVertically(
+                        targetOffsetY = { it }, animationSpec = tween(200)
+                    ) + scaleOut(animationSpec = tween(200), targetScale = 0.8f)
                 ) {
                     Column(
                         horizontalAlignment = Alignment.End,
@@ -275,11 +389,7 @@ fun SelectProductScreen(
                             },
                             containerColor = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.size(48.dp),
-                            elevation = FloatingActionButtonDefaults.elevation(
-                                defaultElevation = 0.dp,
-                                pressedElevation = 2.dp,
-                                hoveredElevation = 1.dp
-                            )
+                            elevation = FloatingActionButtonDefaults.elevation(0.dp, 2.dp, 1.dp)
                         ) {
                             Icon(
                                 painter = painterResource(id = R.drawable.barcode_scanner_24px),
@@ -295,17 +405,9 @@ fun SelectProductScreen(
                             },
                             containerColor = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.size(48.dp),
-                            elevation = FloatingActionButtonDefaults.elevation(
-                                defaultElevation = 0.dp,
-                                pressedElevation = 2.dp,
-                                hoveredElevation = 1.dp
-                            )
+                            elevation = FloatingActionButtonDefaults.elevation(0.dp, 2.dp, 1.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "Новый продукт",
-                                tint = Color.White
-                            )
+                            Icon(Icons.Default.Add, contentDescription = "Новый продукт", tint = Color.White)
                         }
                     }
                 }
@@ -324,6 +426,7 @@ fun SelectProductScreen(
             }
         }
     }
+
     if (showProductNotFoundDialog) {
         ProductNotFoundDialog(
             barcode = scannedBarcode,
@@ -339,9 +442,7 @@ fun SelectProductScreen(
             databaseProducts = databaseSearchResults,
             userProducts = userSearchResults,
             onDismiss = { viewModel.hideAllBarcodeDialogs() },
-            onProductAccept = { product ->
-                viewModel.acceptProductFromSearchResults(product)
-            },
+            onProductAccept = { product -> viewModel.acceptProductFromSearchResults(product) },
             onAddOwn = {
                 viewModel.addOwnProductFromSearchResults()
                 navController.navigate("productCreation?barcode=$scannedBarcode")

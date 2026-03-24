@@ -48,8 +48,11 @@ class ClientAPI (private val sessionManager: SessionManager){
             }
         }
     }
-    suspend fun getProducts(limit: Int? = null): List<Product> {
-        val url = if (limit != null) "$BASE_URL/products?limit=$limit" else "$BASE_URL/products"
+    suspend fun getProducts(limit: Int? = null, offset: Int = 0): List<Product> {
+        val url = buildString {
+            append("$BASE_URL/products?offset=$offset")
+            if (limit != null) append("&limit=$limit")
+        }
         return withContext(Dispatchers.IO) {
             try {
                 Log.d("api_test", "Запрос продуктов: $url")
@@ -61,7 +64,6 @@ class ClientAPI (private val sessionManager: SessionManager){
                     Log.d("api_test", "Получено ${products.size} продуктов")
                     products
                 } else {
-                    // Для ошибок пытаемся прочитать как ApiResponse
                     try {
                         val errorResponse = response.body<ApiResponse>()
                         Log.e("api_test", "Ошибка сервера: ${errorResponse.message}")
@@ -76,6 +78,19 @@ class ClientAPI (private val sessionManager: SessionManager){
                 val errorMessage = ErrorHandler.handleNetworkException(e)
                 Log.e("api_test", "Обработанное сообщение: $errorMessage")
                 emptyList()
+            }
+        }
+    }
+
+    suspend fun searchProducts(query: String): List<Product> {
+        val url = "$BASE_URL/products/search?q=${java.net.URLEncoder.encode(query, "UTF-8")}"
+        return withContext(Dispatchers.IO) {
+            Log.d("api_test", "Поиск продуктов: $url")
+            val response = client.get(url)
+            if (response.status.value in 200..299) {
+                response.body<List<Product>>()
+            } else {
+                throw Exception("Ошибка сервера: ${response.status.value}")
             }
         }
     }

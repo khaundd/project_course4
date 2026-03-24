@@ -14,7 +14,8 @@ data class Products(
     val barcode: String? = null,
     val isDish: Boolean,
     val createdBy: Int,
-    val isSavedLocally: Boolean = false
+    val isSavedLocally: Boolean = false,
+    val lastUsedAt: Long? = null
 ){
     val calories: Float
         get() = protein * 4 + fat * 9 + carbs * 4

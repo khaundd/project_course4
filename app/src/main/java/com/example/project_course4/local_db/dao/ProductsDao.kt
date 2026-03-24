@@ -15,6 +15,9 @@ interface ProductsDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertProducts(products: Products)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertProduct(product: Products)
+
     @Query("SELECT * FROM products WHERE barcode = :barcode AND (createdBy = :userId OR isSavedLocally = 1) LIMIT 1")
     suspend fun getProductByBarcode(barcode: String, userId: Int): Products?
 
@@ -29,4 +32,24 @@ interface ProductsDao {
 
     @Query("SELECT * FROM products WHERE productId IN (:ids)")
     suspend fun getProductsByIds(ids: List<Int>): List<Products>
+
+    // Пагинация: загрузить страницу продуктов (не пользовательских)
+    @Query("SELECT * FROM products WHERE isSavedLocally = 1 ORDER BY productId ASC LIMIT :limit OFFSET :offset")
+    suspend fun getProductsPaged(limit: Int, offset: Int): List<Products>
+
+    // Недавно использованные продукты (по времени последнего использования)
+    @Query("SELECT * FROM products WHERE lastUsedAt IS NOT NULL ORDER BY lastUsedAt DESC LIMIT :limit")
+    suspend fun getRecentlyUsedProducts(limit: Int): List<Products>
+
+    // Обновить время последнего использования
+    @Query("UPDATE products SET lastUsedAt = :timestamp WHERE productId = :productId")
+    suspend fun updateLastUsedAt(productId: Int, timestamp: Long)
+
+    // Поиск по имени среди локальных продуктов
+    @Query("SELECT * FROM products WHERE productName LIKE '%' || :query || '%'")
+    suspend fun searchLocalProducts(query: String): List<Products>
+
+    // Поиск среди пользовательских продуктов и всех локально сохранённых
+    @Query("SELECT * FROM products WHERE productName LIKE '%' || :query || '%' AND (createdBy = :userId OR isSavedLocally = 1)")
+    suspend fun searchUserProducts(query: String, userId: Int): List<Products>
 }

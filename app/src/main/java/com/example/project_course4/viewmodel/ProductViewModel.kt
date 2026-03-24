@@ -31,6 +31,34 @@ class ProductViewModel(
             initialValue = emptyList()
         )
 
+    // --- Пагинация и отображаемые продукты ---
+    private val _displayedProducts = MutableStateFlow<List<Product>>(emptyList())
+    val displayedProducts: StateFlow<List<Product>> = _displayedProducts.asStateFlow()
+
+    private val _isLoadingMore = MutableStateFlow(false)
+    val isLoadingMore: StateFlow<Boolean> = _isLoadingMore.asStateFlow()
+
+    private val _hasMoreProducts = MutableStateFlow(true)
+    val hasMoreProducts: StateFlow<Boolean> = _hasMoreProducts.asStateFlow()
+
+    private val _noInternetError = MutableStateFlow(false)
+    val noInternetError: StateFlow<Boolean> = _noInternetError.asStateFlow()
+
+    private var currentOffset = 0
+
+    // --- Поиск ---
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val _searchResults = MutableStateFlow<List<Product>>(emptyList())
+    val searchResults: StateFlow<List<Product>> = _searchResults.asStateFlow()
+
+    private val _isSearching = MutableStateFlow(false)
+    val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
+
+    private val _searchNoInternet = MutableStateFlow(false)
+    val searchNoInternet: StateFlow<Boolean> = _searchNoInternet.asStateFlow()
+
     // состояние для создания нового продукта
     private var _productCreationState = MutableStateFlow(ProductCreationState())
     val productCreationState: StateFlow<ProductCreationState> = _productCreationState.asStateFlow()
@@ -114,7 +142,7 @@ class ProductViewModel(
             val token = authViewModel.sessionManagerPublic.fetchAuthToken()
             if (!token.isNullOrEmpty()) {
                 Log.d("ProductViewModel", "Токен найден, загружаем продукты")
-                repository.fetchInitialProducts()
+                loadInitialProductsPage()
             } else {
                 Log.d("ProductViewModel", "Токен отсутствует, пропускаем загрузку продуктов")
             }
@@ -127,11 +155,121 @@ class ProductViewModel(
             }
         }
     }
-    fun loadProductsAfterAuth() {
+
+    fun refreshRecentProducts() {
         viewModelScope.launch {
-            Log.d("ProductViewModel", "Загрузка продуктов после авторизации")
-            repository.fetchInitialProducts()
+            val recent = repository.getRecentlyUsedProducts()
+            val recentIds = recent.map { it.productId }.toSet()
+            val others = _displayedProducts.value.filter { it.productId !in recentIds }
+            _displayedProducts.value = recent + others
         }
+    }
+
+    fun loadInitialProductsPage() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _noInternetError.value = false
+            currentOffset = 0
+            _hasMoreProducts.value = true
+            try {
+                // Сначала показываем недавно использованные
+                val recent = repository.getRecentlyUsedProducts()
+                val recentIds = recent.map { it.productId }.toSet()
+                // Загружаем первую страницу с сервера
+                val page = repository.fetchProductsPage(offset = 0)
+                currentOffset = page.size
+                _hasMoreProducts.value = page.size >= ProductRepository.PAGE_SIZE
+                // Объединяем: недавние сверху, потом остальные без дублей
+                val others = page.filter { it.productId !in recentIds }
+                _displayedProducts.value = recent + others
+            } catch (e: Exception) {
+                Log.e("ProductViewModel", "Ошибка загрузки начальной страницы: ${e.message}")
+                _noInternetError.value = true
+                // Показываем то что есть локально
+                val recent = repository.getRecentlyUsedProducts()
+                val local = repository.getProductsPage(0)
+                val recentIds = recent.map { it.productId }.toSet()
+                _displayedProducts.value = recent + local.filter { it.productId !in recentIds }
+                _hasMoreProducts.value = false
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun loadNextProductsPage() {
+        if (_isLoadingMore.value || !_hasMoreProducts.value) return
+        viewModelScope.launch {
+            _isLoadingMore.value = true
+            _noInternetError.value = false
+            try {
+                val page = repository.fetchProductsPage(offset = currentOffset)
+                currentOffset += page.size
+                _hasMoreProducts.value = page.size >= ProductRepository.PAGE_SIZE
+                val existingIds = _displayedProducts.value.map { it.productId }.toSet()
+                val newItems = page.filter { it.productId !in existingIds }
+                _displayedProducts.value = _displayedProducts.value + newItems
+            } catch (e: Exception) {
+                Log.e("ProductViewModel", "Ошибка загрузки следующей страницы: ${e.message}")
+                _noInternetError.value = true
+            } finally {
+                _isLoadingMore.value = false
+            }
+        }
+    }
+
+    fun searchProducts(query: String) {
+        _searchQuery.value = query
+        if (query.trim().isBlank()) {
+            _searchResults.value = emptyList()
+            _searchNoInternet.value = false
+        }
+    }
+
+    fun executeSearch(query: String) {
+        val trimmedQuery = query.trim()
+        if (trimmedQuery.isBlank()) return
+        viewModelScope.launch {
+            _isSearching.value = true
+            _searchNoInternet.value = false
+            try {
+                _searchResults.value = repository.searchProducts(trimmedQuery)
+            } catch (e: Exception) {
+                if (e.message?.contains("интернет", ignoreCase = true) == true) {
+                    _searchNoInternet.value = true
+                    // Показываем локальные результаты даже без интернета
+                    try {
+                        _searchResults.value = repository.searchLocalProducts(trimmedQuery)
+                    } catch (_: Exception) {
+                        _searchResults.value = emptyList()
+                    }
+                } else {
+                    _searchResults.value = emptyList()
+                }
+            } finally {
+                _isSearching.value = false
+            }
+        }
+    }
+
+    fun clearSearch() {
+        _searchQuery.value = ""
+        _searchResults.value = emptyList()
+        _searchNoInternet.value = false
+    }
+
+    suspend fun markProductsAsUsed(productIds: List<Int>) {
+        productIds.forEachIndexed { index, id ->
+            repository.markProductAsUsed(id, System.currentTimeMillis() + index)
+        }
+        // Обновляем список: недавно использованные поднимаются наверх
+        val recent = repository.getRecentlyUsedProducts()
+        val recentIds = recent.map { it.productId }.toSet()
+        val others = _displayedProducts.value.filter { it.productId !in recentIds }
+        _displayedProducts.value = recent + others
+    }
+    fun loadProductsAfterAuth() {
+        loadInitialProductsPage()
     }
 
     fun loadMealsForDate(date: LocalDate, createDefaultsIfEmpty: Boolean = false) {
@@ -213,6 +351,8 @@ class ProductViewModel(
                 _shouldShowWeightInput.value = true
                 // Устанавливаем флаг, что это добавление из списка
                 _isAddingFromList.value = true
+                // Помечаем продукты как использованные
+                viewModelScope.launch { markProductsAsUsed(productsToAdd.map { it.productId }) }
             } else {
                 // Все выбранные продукты уже есть в приёме пищи
                 _shouldShowWeightInput.value = false
@@ -239,6 +379,8 @@ class ProductViewModel(
 
             // устанавливаем флаг, что это добавление из списка
             _isAddingFromList.value = true
+            // Помечаем продукты как использованные
+            viewModelScope.launch { markProductsAsUsed(productsToAdd.map { it.productId }) }
         } else {
 
             // все выбранные продукты уже есть в приёме пищи

@@ -22,6 +22,11 @@ class ProductRepository(
     private val sessionManager: SessionManager,
     private val mealDao: MealDao
 ) {
+    companion object {
+        const val PAGE_SIZE = 30
+        const val MAX_RECENT = 30
+    }
+
     // наблюдаем за базой данных и конвертируем Entity в UI-модели
     fun getProductsFlow(): Flow<List<Product>> {
         val userId = sessionManager.fetchUserId()
@@ -31,15 +36,66 @@ class ProductRepository(
     }
 
     suspend fun fetchInitialProducts() {
-        try {
+        fetchProductsPage(offset = 0)
+    }
+
+    suspend fun fetchProductsPage(offset: Int): List<Product> {
+        return try {
+            if (!NetworkUtils.isInternetAvailable(context)) {
+                throw Exception("Отсутствует интернет соединение")
+            }
             val currentUserId = sessionManager.fetchUserId()
-            val response = clientAPI.getProducts(limit = 50)
+            val response = clientAPI.getProducts(limit = PAGE_SIZE, offset = offset)
             val entities = response.map { it.toEntity(isSavedLocally = true, currentUserId = currentUserId) }
             productDao.insertProducts(entities)
+            response
         } catch (e: Exception) {
-            Log.e("Repository", "Ошибка синхронизации продуктов", e)
-            val errorMessage = ErrorHandler.handleNetworkException(e)
-            Log.e("Repository", "Обработанное сообщение: $errorMessage")
+            Log.e("Repository", "Ошибка загрузки страницы продуктов offset=$offset", e)
+            throw e
+        }
+    }
+
+    suspend fun getProductsPage(offset: Int): List<Product> {
+        return productDao.getProductsPaged(PAGE_SIZE, offset).map { it.toUiModel() }
+    }
+
+    suspend fun getRecentlyUsedProducts(): List<Product> {
+        return productDao.getRecentlyUsedProducts(MAX_RECENT).map { it.toUiModel() }
+    }
+
+    suspend fun markProductAsUsed(productId: Int, timestamp: Long = System.currentTimeMillis()) {
+        productDao.updateLastUsedAt(productId, timestamp)
+    }
+
+    suspend fun searchLocalProducts(query: String): List<Product> {
+        val currentUserId = sessionManager.fetchUserId()
+        return productDao.searchUserProducts(query, currentUserId).map { it.toUiModel() }
+    }
+
+    suspend fun searchProducts(query: String): List<Product> {
+        val currentUserId = sessionManager.fetchUserId()
+        // Сначала ищем пользовательские продукты локально
+        val userProducts = productDao.searchUserProducts(query, currentUserId).map { it.toUiModel() }
+
+        if (!NetworkUtils.isInternetAvailable(context)) {
+            // Нет интернета — возвращаем только локальные и сигнализируем об этом
+            throw Exception("Отсутствует интернет соединение. Показаны локальные результаты.")
+        }
+
+        return try {
+            // Ищем на сервере
+            val serverProducts = clientAPI.searchProducts(query)
+            // Сохраняем серверные результаты локально
+            val entities = serverProducts.map { it.toEntity(isSavedLocally = true, currentUserId = currentUserId) }
+            productDao.insertProducts(entities)
+            // Объединяем: пользовательские первыми, потом серверные (без дублей)
+            val userIds = userProducts.map { it.productId }.toSet()
+            val otherProducts = serverProducts.filter { it.productId !in userIds }
+            userProducts + otherProducts
+        } catch (e: Exception) {
+            Log.e("Repository", "Ошибка поиска на сервере: ${e.message}")
+            // Если сервер недоступен — возвращаем локальные результаты без исключения
+            userProducts
         }
     }
 
@@ -187,7 +243,7 @@ class ProductRepository(
                     val currentUserId = sessionManager.fetchUserId()
                     val entity = serverProduct.toEntity(isSavedLocally = true, currentUserId = currentUserId)
                     Log.d("ProductRepository", "Entity для БД: productName='${entity.productName}', protein=${entity.protein}")
-                    productDao.insertProducts(entity)
+                    productDao.upsertProduct(entity)
                     Log.d("ProductRepository", "Продукт успешно добавлен на сервер и в локальную БД")
                     Result.success(serverProduct)
                 },
