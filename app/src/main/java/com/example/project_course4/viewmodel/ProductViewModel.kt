@@ -46,6 +46,8 @@ class ProductViewModel(
 
     private var currentOffset = 0
 
+    val currentUserId: Int get() = authViewModel.sessionManagerPublic.fetchUserId()
+
     // --- Поиск ---
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()

@@ -64,7 +64,8 @@ fun BarcodeSearchResultsScreen(
     onDismiss: () -> Unit,
     onProductAccept: (Product) -> Unit,
     onAddOwn: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    currentUserId: Int = -1
 ) {
     var sheetOffset by remember { mutableFloatStateOf(0f) }
     var isDragging by remember { mutableStateOf(false) }
@@ -203,7 +204,8 @@ fun BarcodeSearchResultsScreen(
                                 databaseProducts.forEach { product ->
                                     ProductWithSelection(
                                         product = product,
-                                        onAccept = { onProductAccept(product) }
+                                        onAccept = { onProductAccept(product) },
+                                        currentUserId = currentUserId
                                     )
                                 }
                             }
@@ -243,7 +245,8 @@ fun BarcodeSearchResultsScreen(
                                 userProducts.forEachIndexed { index, product ->
                                     ProductWithSelection(
                                         product = product,
-                                        onAccept = { onProductAccept(product) }
+                                        onAccept = { onProductAccept(product) },
+                                        currentUserId = currentUserId
                                     )
                                     
                                     // Add "Добавить свой" button after the last user product
@@ -269,7 +272,8 @@ fun BarcodeSearchResultsScreen(
 @Composable
 private fun ProductWithSelection(
     product: Product,
-    onAccept: () -> Unit
+    onAccept: () -> Unit,
+    currentUserId: Int = -1
 ) {
     var isSelected by remember { mutableStateOf(false) }
     remember(product) {
@@ -286,7 +290,8 @@ private fun ProductWithSelection(
         ProductElement(
             product = product,
             isSelected = isSelected,
-            onSelect = { isSelected = !isSelected }
+            onSelect = { isSelected = !isSelected },
+            currentUserId = currentUserId
         )
         
         Spacer(modifier = Modifier.width(8.dp))

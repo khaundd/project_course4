@@ -9,11 +9,18 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
@@ -37,7 +44,8 @@ import java.util.Locale
 fun ProductElement(
     product: Product,
     isSelected: Boolean,
-    onSelect: () -> Unit
+    onSelect: () -> Unit,
+    currentUserId: Int = -1
 ) {
     // 1. Привязываем цель анимации к флагу isSelected.
     // Если true — масштаб 1.05 (5%), если false — возвращаемся к 1.0.
@@ -85,7 +93,38 @@ fun ProductElement(
                 fontSize = 15.sp,
                 color = textColor,
             )
-            Row{
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Иконка: только если createdBy == 0 (системный) или createdBy == currentUserId
+                when {
+                    product.createdBy == 0 -> {
+                        Box(
+                            modifier = Modifier
+                                .padding(end = 6.dp)
+                                .size(16.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF4CAF50)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Verified",
+                                tint = Color.White,
+                                modifier = Modifier.size(11.dp)
+                            )
+                        }
+                    }
+                    product.createdBy != null && product.createdBy == currentUserId -> {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "My product",
+                            tint = Color.Gray,
+                            modifier = Modifier
+                                .padding(end = 6.dp)
+                                .size(16.dp)
+                        )
+                    }
+                    else -> {}
+                }
                 Text(
                     text = String.format(Locale.getDefault(),"%.1f", product.protein),
                     fontSize = 12.sp,
@@ -126,11 +165,4 @@ fun ProductElement(
             )
         }
     }
-}
-
-
-@Preview(showBackground = true)
-@Composable
-fun ProductElementPreview(){
-    ProductElement(Product(1,"Филе", 10.56f, 2.34f, 1.78f, 62.5f), false) {}
 }

@@ -313,12 +313,14 @@ fun SelectProductScreen(
                         val alreadyAdded = existingIngredientIds.contains(product.productId)
                         ProductElement(
                             product = product,
-                            isSelected = if (alreadyAdded) false else currentSelection.contains(product)
-                        ) {
-                            if (!alreadyAdded) {
-                                viewModel.toggleCurrentSelection(product)
+                            isSelected = if (alreadyAdded) false else currentSelection.contains(product),
+                            currentUserId = viewModel.currentUserId,
+                            onSelect = {
+                                if (!alreadyAdded) {
+                                    viewModel.toggleCurrentSelection(product)
+                                }
                             }
-                        }
+                        )
                     }
 
                     // Индикатор подгрузки / конец списка / нет интернета
@@ -446,7 +448,8 @@ fun SelectProductScreen(
             onAddOwn = {
                 viewModel.addOwnProductFromSearchResults()
                 navController.navigate("productCreation?barcode=$scannedBarcode")
-            }
+            },
+            currentUserId = viewModel.currentUserId
         )
     }
 }
