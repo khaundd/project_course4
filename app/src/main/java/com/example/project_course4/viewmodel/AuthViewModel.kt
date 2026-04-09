@@ -143,7 +143,17 @@ class AuthViewModel(
                 Log.d("AuthViewModel", "Нет данных для синхронизации")
                 Result.success("Нет данных для синхронизации")
             } else {
-                val result = clientAPI.syncMealsToServer(meals, components)
+                // Синхронизируем только обычные приёмы пищи, не плановые
+                val mealsToSync = meals.filter { it.fromPlanId == null }
+                val mealIdsToSync = mealsToSync.map { it.mealId }.toSet()
+                val componentsToSync = components.filter { it.mealId in mealIdsToSync }
+
+                if (mealsToSync.isEmpty()) {
+                    Log.d("AuthViewModel", "Нет обычных приёмов пищи для синхронизации")
+                    return Result.success("Нет данных для синхронизации")
+                }
+
+                val result = clientAPI.syncMealsToServer(mealsToSync, componentsToSync)
                 result.fold(
                     onSuccess = { message ->
                         Log.d("AuthViewModel", "Синхронизация успешна: $message")
@@ -232,8 +242,9 @@ class AuthViewModel(
 
                         val mealEntity = MealEntity(
                             name = mealData.name,
-                            mealTime = mealTime,  // Возвращаем смещение от начала дня
-                            mealDate = mealDate
+                            mealTime = mealTime,
+                            mealDate = mealDate,
+                            fromPlanId = mealData.fromPlanId
                         )
 
                         val components = mealData.components.map { component ->

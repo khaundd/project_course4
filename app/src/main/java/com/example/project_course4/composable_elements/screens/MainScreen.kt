@@ -12,6 +12,10 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,6 +42,9 @@ import com.example.project_course4.composable_elements.CustomButton
 import com.example.project_course4.composable_elements.MealItem
 import com.example.project_course4.composable_elements.dialogs.WeightInputDialog
 import kotlinx.coroutines.delay
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,35 +56,26 @@ fun MainScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    // Гарантируем, что drawer закрыт при возвращении на MainScreen
-    LaunchedEffect(Unit) {
-        Log.d("MainScreen", "MainScreen создан, текущее состояние drawer: ${drawerState.currentValue}")
-        if (drawerState.currentValue != DrawerValue.Closed) {
-            scope.launch {
-                drawerState.close()
-                Log.d("MainScreen", "Drawer принудительно закрыт")
-            }
-        }
-    }
-
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // Отслеживаем получение фокуса экраном
-    LaunchedEffect(currentRoute) {
-        Log.d("MainScreen", "MainScreen получил фокус, currentRoute: $currentRoute")
-        if (currentRoute == Screen.Main.route) {
-            scope.launch {
-                if (drawerState.currentValue != DrawerValue.Closed) {
-                    drawerState.close()
-                    Log.d("MainScreen", "Drawer закрыт при получении фокуса")
-                }
+    // Закрываем drawer каждый раз, когда MainScreen становится активным (ON_RESUME)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                scope.launch { drawerState.snapTo(DrawerValue.Closed) }
             }
         }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     val macroNutrients by profileViewModel.macroNutrients.collectAsState()
     val dailyCalories by profileViewModel.dailyCalories.collectAsState()
+
+    val meals by viewModel.meals.collectAsState()
+    val dayClipboard by viewModel.dayClipboard.collectAsState()
 
     var showCustomCalendar by remember { mutableStateOf(false) }
     var selectedLocalDate by remember { mutableStateOf(LocalDate.now()) }
@@ -125,6 +123,18 @@ fun MainScreen(
                 Text("Меню", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleLarge)
 
                 NavigationDrawerItem(
+                    icon = { Icon(Icons.Outlined.Person, contentDescription = null) },
+                    label = { Text("Профиль") },
+                    selected = currentRoute == Screen.Profile.route,
+                    onClick = {
+                        Log.d("MainScreen", "Нажат пункт 'Профиль'")
+                        scope.launch { drawerState.close() }
+                        navController.navigate(Screen.Profile.route)
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+
+                NavigationDrawerItem(
                     icon = { Icon(Icons.Default.Restaurant, contentDescription = null) },
                     label = { Text("Дневник питания") },
                     selected = currentRoute == Screen.Main.route,
@@ -148,18 +158,6 @@ fun MainScreen(
                 )
 
                 NavigationDrawerItem(
-                    icon = { Icon(Icons.Outlined.Person, contentDescription = null) },
-                    label = { Text("Профиль") },
-                    selected = currentRoute == Screen.Profile.route,
-                    onClick = {
-                        Log.d("MainScreen", "Нажат пункт 'Профиль'")
-                        scope.launch { drawerState.close() }
-                        navController.navigate(Screen.Profile.route)
-                    },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                )
-
-                NavigationDrawerItem(
                     icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = null) },
                     label = { Text("Рецепты") },
                     selected = currentRoute == Screen.Recipes.route,
@@ -167,6 +165,17 @@ fun MainScreen(
                         Log.d("MainScreen", "Нажат пункт 'Рецепты'")
                         scope.launch { drawerState.close() }
                         navController.navigate(Screen.Recipes.route)
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Filled.EditNote, contentDescription = null) },
+                    label = { Text("Планы питания") },
+                    selected = currentRoute == Screen.MealPlans.route,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        navController.navigate(Screen.MealPlans.route)
                     },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
@@ -200,6 +209,42 @@ fun MainScreen(
                         }) {
                             Icon(Icons.Default.Menu, contentDescription = null)
                         }
+                    },
+                    actions = {
+                        var menuExpanded by remember { mutableStateOf(false) }
+                        Box {
+                            IconButton(onClick = { menuExpanded = true }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "Меню")
+                            }
+                            DropdownMenu(
+                                expanded = menuExpanded,
+                                onDismissRequest = { menuExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Копировать день") },
+                                    leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
+                                    enabled = meals.isNotEmpty(),
+                                    onClick = {
+                                        viewModel.copyDayToClipboard()
+                                        menuExpanded = false
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            if (dayClipboard.isNotEmpty()) "Вставить день (${dayClipboard.size})"
+                                            else "Вставить день"
+                                        )
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.ContentPaste, contentDescription = null) },
+                                    enabled = dayClipboard.isNotEmpty(),
+                                    onClick = {
+                                        viewModel.pasteDayFromClipboard(selectedLocalDate)
+                                        menuExpanded = false
+                                    }
+                                )
+                            }
+                        }
                     }
                 )
             }
@@ -211,10 +256,10 @@ fun MainScreen(
                     .background(Color.White)
             ) {
                 // Приёмы пищи уже инициализируются в ProductViewModel.init()
-                val meals by viewModel.meals.collectAsState()
                 val finalSelection by viewModel.finalSelection.collectAsState()
                 val currentProductForWeight by viewModel.currentProductForWeight.collectAsState()
                 val shouldShowWeightInput by viewModel.shouldShowWeightInput.collectAsState()
+                val mealClipboard by viewModel.mealClipboard.collectAsState()
 
                 LaunchedEffect(shouldShowWeightInput) {
                     if (shouldShowWeightInput) viewModel.checkAndStartWeightInput()
@@ -298,11 +343,11 @@ fun MainScreen(
                             products = products,
                             nutrition = nutrition,
                             onTimeClick = { _, newTime ->
-                                viewModel.updateMealTime(
-                                    meal.id,
-                                    newTime
-                                )
+                                viewModel.updateMealTime(meal.id, newTime)
                             },
+                            onCopyMeal = { m -> viewModel.copyMealToClipboard(m.id) },
+                            onPasteMeal = { m -> viewModel.pasteMealFromClipboard(m.id) },
+                            canPaste = mealClipboard.isNotEmpty(),
                             onAddProductClick = { m ->
                                 if (!isNavigatingToAddProduct) {
                                     isNavigatingToAddProduct = true

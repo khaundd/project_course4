@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Icon
 import androidx.compose.material3.HorizontalDivider
@@ -50,6 +52,9 @@ fun MealItem(
     onEditProduct: (Product, Meal) -> Unit,
     onDeleteProduct: (Product, Meal) -> Unit,
     onMealOptionsClick: (Meal) -> Unit,
+    onCopyMeal: ((Meal) -> Unit)? = null,
+    onPasteMeal: ((Meal) -> Unit)? = null,
+    canPaste: Boolean = false,
     mealBackgroundColor: Color = Color(0xFFF5F5F5)
 ) {
 
@@ -70,7 +75,6 @@ fun MealItem(
             TimePickerDialog(
                 initialTime = meal.time,
                 onTimeSelected = { newTime ->
-                    // Вызываем onTimeClick с новым временем
                     onTimeClick(meal.id, newTime)
                     showTimePicker = false
                 },
@@ -88,16 +92,40 @@ fun MealItem(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.clickable { showTimePicker = true }
             )
-            
-            Icon(
-                imageVector = Icons.Default.Delete,
-                contentDescription = "Удалить приём пищи",
-                tint = Color.Red,
-                modifier = Modifier
-                    .clickable { onMealOptionsClick(meal) }
-                    .padding(8.dp)
-                    .size(24.dp)
-            )
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (onCopyMeal != null && products.isNotEmpty()) {
+                    Icon(
+                        imageVector = Icons.Default.ContentCopy,
+                        contentDescription = "Копировать приём пищи",
+                        tint = Color(0xFF4CAF50),
+                        modifier = Modifier
+                            .clickable { onCopyMeal(meal) }
+                            .padding(8.dp)
+                            .size(20.dp)
+                    )
+                }
+                if (onPasteMeal != null && canPaste) {
+                    Icon(
+                        imageVector = Icons.Default.ContentPaste,
+                        contentDescription = "Вставить приём пищи",
+                        tint = Color(0xFF2196F3),
+                        modifier = Modifier
+                            .clickable { onPasteMeal(meal) }
+                            .padding(8.dp)
+                            .size(20.dp)
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Удалить приём пищи",
+                    tint = Color.Red,
+                    modifier = Modifier
+                        .clickable { onMealOptionsClick(meal) }
+                        .padding(8.dp)
+                        .size(24.dp)
+                )
+            }
         }
         
         HorizontalDivider(

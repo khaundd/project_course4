@@ -11,6 +11,7 @@ import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.post
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
@@ -650,6 +651,65 @@ class ClientAPI (private val sessionManager: SessionManager){
         }
     }
 
+    suspend fun generateRecipeLink(recipeId: Int): Result<String> {
+        val url = "$BASE_URL/recipes/$recipeId/share"
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = client.post(url)
+                val body = response.body<RecipeShareResponse>()
+                if (response.status.value in 200..299) {
+                    Result.success(body.link ?: "")
+                } else {
+                    Result.failure(Exception(body.error ?: "Ошибка генерации ссылки"))
+                }
+            } catch (e: Exception) {
+                Log.e("api_test", "Ошибка в generateRecipeLink: ${e.message}", e)
+                Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+            }
+        }
+    }
+
+    suspend fun setRecipeVisibility(recipeId: Int, isPublic: Boolean): Result<RecipeVisibilityResponse> {
+        val url = "$BASE_URL/recipes/$recipeId/visibility"
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = client.post(url) {
+                    contentType(ContentType.Application.Json)
+                    setBody(RecipeVisibilityRequest(isPublic))
+                }
+                val body = response.body<RecipeVisibilityResponse>()
+                if (response.status.value in 200..299) {
+                    Result.success(body)
+                } else {
+                    Result.failure(Exception(body.error ?: "Ошибка изменения доступа"))
+                }
+            } catch (e: Exception) {
+                Log.e("api_test", "Ошибка в setRecipeVisibility: ${e.message}", e)
+                Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+            }
+        }
+    }
+
+    suspend fun getSharedRecipe(token: String): Result<RecipeResponse> {
+        val url = "$BASE_URL/recipes/shared/$token"
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = client.get(url) {
+                    headers.append("Accept", "application/json")
+                }
+                if (response.status.value in 200..299) {
+                    Result.success(response.body<RecipeResponse>())
+                } else {
+                    val body = response.body<ApiResponse>()
+                    Result.failure(Exception(body.error ?: "Рецепт не найден"))
+                }
+            } catch (e: Exception) {
+                Log.e("api_test", "Ошибка в getSharedRecipe: ${e.message}", e)
+                Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+            }
+        }
+    }
+
     suspend fun getProductByBarcode(barcode: String): Result<Product?> {
         val url = "$BASE_URL/products/by-barcode?barcode=$barcode"
         return withContext(Dispatchers.IO) {
@@ -772,4 +832,147 @@ class ClientAPI (private val sessionManager: SessionManager){
             }
         }
     }
+
+    // ─── Meal Plans ──────────────────────────────────────────────────────────
+
+    suspend fun getMealPlans(): Result<List<MealPlanData>> {
+        val url = "$BASE_URL/meal-plans"
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = client.get(url)
+                if (response.status.value in 200..299) {
+                    val body = response.body<MealPlanListResponse>()
+                    if (body.success) Result.success(body.plans)
+                    else Result.failure(Exception(body.message ?: "Ошибка загрузки планов"))
+                } else {
+                    Result.failure(Exception("Ошибка сервера: ${response.status.value}"))
+                }
+            } catch (e: Exception) {
+                Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+            }
+        }
+    }
+
+    suspend fun createMealPlan(request: MealPlanSaveRequest): Result<MealPlanSaveResponse> {
+        val url = "$BASE_URL/meal-plans"
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = client.post(url) {
+                    contentType(ContentType.Application.Json)
+                    setBody(request)
+                }
+                val body = response.body<MealPlanSaveResponse>()
+                if (response.status.value in 200..299 && body.success) Result.success(body)
+                else Result.failure(Exception(body.message ?: "Ошибка создания плана"))
+            } catch (e: Exception) {
+                Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+            }
+        }
+    }
+
+    suspend fun updateMealPlan(planId: Int, request: MealPlanSaveRequest): Result<String> {
+        val url = "$BASE_URL/meal-plans/$planId"
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = client.put(url) {
+                    contentType(ContentType.Application.Json)
+                    setBody(request)
+                }
+                val body = response.body<MealPlanSaveResponse>()
+                if (response.status.value in 200..299 && body.success) Result.success(body.message ?: "Обновлено")
+                else Result.failure(Exception(body.message ?: "Ошибка обновления плана"))
+            } catch (e: Exception) {
+                Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+            }
+        }
+    }
+
+    suspend fun deleteMealPlan(planId: Int): Result<String> {
+        val url = "$BASE_URL/meal-plans/$planId"
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = client.delete(url)
+                val body = response.body<MealPlanSaveResponse>()
+                if (response.status.value in 200..299 && body.success) Result.success(body.message ?: "Удалено")
+                else Result.failure(Exception(body.message ?: "Ошибка удаления плана"))
+            } catch (e: Exception) {
+                Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+            }
+        }
+    }
+
+    suspend fun getPublicMealPlans(): Result<List<MealPlanData>> {
+        val url = "$BASE_URL/meal-plans/public"
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = client.get(url)
+                if (response.status.value in 200..299) {
+                    val body = response.body<MealPlanListResponse>()
+                    if (body.success) Result.success(body.plans)
+                    else Result.failure(Exception(body.message ?: "Ошибка загрузки публичных планов"))
+                } else {
+                    Result.failure(Exception("Ошибка сервера: ${response.status.value}"))
+                }
+            } catch (e: Exception) {
+                Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+            }
+        }
+    }
+
+    suspend fun assignMealPlan(planId: Int): Result<MealPlanAssignResponse> {
+        val url = "$BASE_URL/meal-plans/$planId/assign"
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = client.post(url)
+                val body = response.body<MealPlanAssignResponse>()
+                if (response.status.value in 200..299 && body.success) Result.success(body)
+                else Result.failure(Exception(body.message ?: "Ошибка"))
+            } catch (e: Exception) {
+                Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+            }
+        }
+    }
+
+    suspend fun finishMealPlan(planId: Int): Result<String> {
+        val url = "$BASE_URL/meal-plans/$planId/finish"
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = client.post(url)
+                val body = response.body<MealPlanSaveResponse>()
+                if (response.status.value in 200..299 && body.success) Result.success(body.message ?: "Завершено")
+                else Result.failure(Exception(body.message ?: "Ошибка завершения плана"))
+            } catch (e: Exception) {
+                Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+            }
+        }
+    }
+
+    suspend fun finishMealPlanAuto(planId: Int): Result<String> {
+        val url = "$BASE_URL/meal-plans/$planId/finish-auto"
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = client.post(url)
+                val body = response.body<MealPlanSaveResponse>()
+                if (response.status.value in 200..299 && body.success) Result.success(body.message ?: "Завершено")
+                else Result.failure(Exception(body.message ?: "Ошибка завершения плана"))
+            } catch (e: Exception) {
+                Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+            }
+        }
+    }
+
+    suspend fun getMealPlanSharedUsers(planId: Int): Result<List<MealPlanSharedUser>> {
+        val url = "$BASE_URL/meal-plans/$planId/share-users"
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = client.get(url)
+                val body = response.body<MealPlanSharedUsersResponse>()
+                if (response.status.value in 200..299 && body.success) Result.success(body.users)
+                else Result.failure(Exception(body.message ?: "Ошибка"))
+            } catch (e: Exception) {
+                Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+            }
+        }
+    }
 }
+

@@ -61,7 +61,8 @@ private fun DrawScope.drawFillAnimation(
 @Composable
 fun CustomButton(
     modifier: Modifier = Modifier,
-    text: String,
+    text: String = "",
+    icon: (@Composable (tint: Color) -> Unit)? = null,
     isLoading: Boolean = false,
     enabled: Boolean = true,
     backgroundColor: Color,
@@ -70,6 +71,7 @@ fun CustomButton(
     onClick: () -> Unit,
 ) {
     var isPressed by remember { mutableStateOf(false) }
+    val currentOnClick by rememberUpdatedState(onClick)
     val buttonAnimationProgress by animateFloatAsState(
         targetValue = if (isPressed) 1f else 0f,
         animationSpec = tween(durationMillis = 300, easing = EaseOutCubic),
@@ -82,31 +84,21 @@ fun CustomButton(
             .height(48.dp)
             .clip(RoundedCornerShape(cornerRadius))
             .drawBehind {
-                // Рисуем фон кнопки
                 val fillColor = when {
                     isLoading -> Color.White
                     !enabled -> Color.Gray
                     else -> backgroundColor
                 }
-                drawRect(
-                    color = fillColor,
-                    size = size
-                )
-                
-                // Рисуем рамку для состояния загрузки
+                drawRect(color = fillColor, size = size)
                 if (isLoading) {
                     drawRoundRect(
                         color = backgroundColor,
                         size = size,
                         topLeft = Offset.Zero,
                         cornerRadius = CornerRadius(cornerRadius.toPx()),
-                        style = Stroke(
-                            width = 2.dp.toPx()
-                        )
+                        style = Stroke(width = 2.dp.toPx())
                     )
-                }
-                // Рисуем анимацию заполнения только если не загружается и кнопка активна
-                else if (enabled) {
+                } else if (enabled) {
                     drawFillAnimation(
                         progress = buttonAnimationProgress,
                         fillColor = textColor,
@@ -120,34 +112,20 @@ fun CustomButton(
                 detectTapGestures(
                     onPress = {
                         if (!enabled || isLoading) return@detectTapGestures
-
                         isPressed = true
-                        try {
-                            awaitRelease()
-                        } catch (_: Exception) {
-                            isPressed = false
-                            return@detectTapGestures
-                        }
-
+                        try { awaitRelease() } catch (_: Exception) { isPressed = false; return@detectTapGestures }
                         isPressed = false
-                        onClick()
+                        currentOnClick()
                     }
                 )
             },
         contentAlignment = Alignment.Center
     ) {
-        if (isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(20.dp),
-                color = backgroundColor,
-                strokeWidth = 2.dp,
-            )
-        } else {
-            Text(
-                text = text,
-                color = if (buttonAnimationProgress > 0.5f) backgroundColor else textColor,
-                fontWeight = FontWeight.Medium
-            )
+        val contentColor = if (buttonAnimationProgress > 0.5f) backgroundColor else textColor
+        when {
+            isLoading -> CircularProgressIndicator(modifier = Modifier.size(20.dp), color = backgroundColor, strokeWidth = 2.dp)
+            icon != null -> icon(contentColor)
+            else -> Text(text = text, color = contentColor, fontWeight = FontWeight.Medium)
         }
     }
 }

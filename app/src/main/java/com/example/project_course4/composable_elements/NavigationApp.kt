@@ -1,6 +1,7 @@
 package com.example.project_course4.composable_elements
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -13,6 +14,8 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -28,6 +31,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.navigation.navDeepLink
 import com.example.project_course4.ProductRepository
 import com.example.project_course4.Screen
 import com.example.project_course4.SessionManager
@@ -52,10 +56,15 @@ import com.example.project_course4.utils.NetworkUtils
 import com.example.project_course4.utils.Validation
 import com.example.project_course4.viewmodel.ProductViewModel
 import com.example.project_course4.viewmodel.ProfileViewModel
+import com.example.project_course4.composable_elements.screens.recipe.SharedRecipeScreen
+import com.example.project_course4.composable_elements.screens.mealplan.MealPlanScreen
+import com.example.project_course4.composable_elements.screens.mealplan.MealPlanEditorScreen
+import com.example.project_course4.composable_elements.screens.mealplan.MealPlanDetailScreen
+import com.example.project_course4.viewmodel.MealPlanViewModel
 import com.example.project_course4.viewmodel.RecipeCreationViewModel
 import com.example.project_course4.viewmodel.RecipeViewModel
 @Composable
-fun NavigationApp() {
+fun NavigationApp(intentState: State<Intent?>) {
     val context = LocalContext.current
     val navController = rememberNavController()
     val scannerManager = remember { BarcodeScannerManager(context) }
@@ -151,6 +160,8 @@ fun NavigationApp() {
     val recipeCreationViewModel = remember { RecipeCreationViewModel(clientAPI) }
     val recipeCreationState by recipeCreationViewModel.state.collectAsState()
     val recipeViewModel: RecipeViewModel = viewModel(factory = factory)
+    val mealPlanViewModel = remember { MealPlanViewModel(clientAPI) }
+    val allProducts by productViewModel.products.collectAsState()
     val profileViewModel: ProfileViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
@@ -211,13 +222,26 @@ fun NavigationApp() {
         Screen.Login.route
     }
 
+    // Обработка deep link при старте и при onNewIntent
+    val currentIntent by intentState
+    LaunchedEffect(currentIntent) {
+        val data = currentIntent?.data ?: return@LaunchedEffect
+        val path = data.path ?: return@LaunchedEffect
+        if (path.startsWith("/recipes/shared/")) {
+            val token = path.removePrefix("/recipes/shared/")
+            if (token.isNotBlank()) {
+                navController.navigate("sharedRecipe/$token")
+            }
+        }
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         contentWindowInsets = WindowInsets(0)
     ) { paddingValues ->
         NavHost(
             navController = navController,
-            startDestination = startDestination, // используем вычисленный путь
+            startDestination = startDestination,
             modifier = Modifier.padding(paddingValues)
         ) {
 
@@ -427,6 +451,75 @@ fun NavigationApp() {
                         recipeViewModel.refreshRecipes()
                         navController.popBackStack(Screen.Recipes.route, false)
                     }
+                )
+            }
+
+            composable(
+                route = Screen.SharedRecipe.route,
+                arguments = listOf(navArgument("token") { type = NavType.StringType }),
+                deepLinks = listOf(
+                    navDeepLink {
+                        uriPattern = "https://loftily-adequate-urchin.cloudpub.ru/recipes/shared/{token}"
+                    }
+                )
+            ) { backStackEntry ->
+                val token = backStackEntry.arguments?.getString("token") ?: ""
+                SharedRecipeScreen(
+                    navController = navController,
+                    token = token,
+                    viewModel = recipeViewModel
+                )
+            }
+
+            composable(Screen.MealPlans.route) {
+                MealPlanScreen(
+                    navController = navController,
+                    viewModel = mealPlanViewModel
+                )
+            }
+
+            composable(Screen.MealPlanEditor.route) {
+                MealPlanEditorScreen(
+                    navController = navController,
+                    viewModel = mealPlanViewModel,
+                    allProducts = allProducts
+                )
+            }
+
+            composable(
+                route = "selectProductForMealPlan/{dayIndex}/{mealIndex}",
+                arguments = listOf(
+                    navArgument("dayIndex") { type = NavType.IntType },
+                    navArgument("mealIndex") { type = NavType.IntType }
+                )
+            ) { backStackEntry ->
+                val dayIndex = backStackEntry.arguments?.getInt("dayIndex") ?: 0
+                val mealIndex = backStackEntry.arguments?.getInt("mealIndex") ?: 0
+                SelectProductScreen(
+                    navController = navController,
+                    viewModel = productViewModel,
+                    mealId = null,
+                    onBarcodeScan = { handleScanning(navController) },
+                    onConfirmForRecipe = { selectedProducts ->
+                        mealPlanViewModel.setPendingMealTarget(dayIndex, mealIndex)
+                        mealPlanViewModel.setPendingProductsForWeight(selectedProducts)
+                        navController.popBackStack()
+                    }
+                )
+            }
+
+            composable(
+                route = "mealPlanDetail/{planId}",
+                arguments = listOf(navArgument("planId") { type = NavType.IntType })
+            ) { backStackEntry ->
+                val planId = backStackEntry.arguments?.getInt("planId") ?: return@composable
+                val plan = (mealPlanViewModel.plans.value + mealPlanViewModel.publicPlans.value)
+                    .find { it.planId == planId } ?: return@composable
+                MealPlanDetailScreen(
+                    navController = navController,
+                    plan = plan,
+                    allProducts = allProducts,
+                    productViewModel = productViewModel
                 )
             }
         }

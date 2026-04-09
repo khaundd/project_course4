@@ -9,4 +9,5 @@ data class MealEntity(
     val name: String,
     val mealTime: Long,
     val mealDate: Long, // дата в миллисекундах (начало дня)
+    val fromPlanId: Int? = null // ID плана питания, если приём создан планом
 )

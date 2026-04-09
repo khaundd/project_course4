@@ -9,6 +9,8 @@ import com.example.project_course4.Product
 import com.example.project_course4.ProductCreationState
 import com.example.project_course4.ProductRepository
 import com.example.project_course4.SelectedProduct
+import com.example.project_course4.api.MealPlanDayData
+import com.example.project_course4.api.MealPlanMealData
 import com.example.project_course4.local_db.entities.MealEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -88,6 +90,15 @@ class ProductViewModel(
     // окончательный выбор на главном экране
     private var _finalSelection = MutableStateFlow<List<SelectedProduct>>(emptyList())
     var finalSelection: StateFlow<List<SelectedProduct>> = _finalSelection.asStateFlow()
+
+    // буфер копирования приёма пищи (продукты без привязки к mealId)
+    private val _mealClipboard = MutableStateFlow<List<SelectedProduct>>(emptyList())
+    val mealClipboard: StateFlow<List<SelectedProduct>> = _mealClipboard.asStateFlow()
+
+    // буфер копирования целого дня
+    data class DayClipboardEntry(val name: String, val time: LocalTime, val products: List<SelectedProduct>)
+    private val _dayClipboard = MutableStateFlow<List<DayClipboardEntry>>(emptyList())
+    val dayClipboard: StateFlow<List<DayClipboardEntry>> = _dayClipboard.asStateFlow()
 
     // список приёмов пищи
     private var _meals = MutableStateFlow<List<Meal>>(emptyList())
@@ -506,6 +517,136 @@ class ProductViewModel(
         _isAddingFromList.value = false
     }
 
+    // ─── Копирование/вставка приёма пищи ─────────────────────────────────
+
+    fun copyMealToClipboard(mealId: Int) {
+        val products = _finalSelection.value.filter { it.mealId == mealId }
+        _mealClipboard.value = products
+    }
+
+    fun pasteMealFromClipboard(targetMealId: Int) {
+        val clipboard = _mealClipboard.value
+        if (clipboard.isEmpty()) return
+        viewModelScope.launch {
+            val updatedSelection = _finalSelection.value.toMutableList()
+            clipboard.forEach { item ->
+                val existingIdx = updatedSelection.indexOfFirst {
+                    it.product.productId == item.product.productId && it.mealId == targetMealId
+                }
+                if (existingIdx != -1) {
+                    // Дубликат — пропускаем
+                } else {
+                    // Новый продукт — junctionId = null, saveCurrentMeal добавит через toInsert
+                    updatedSelection.add(item.copy(mealId = targetMealId, junctionId = null))
+                }
+            }
+            _finalSelection.value = updatedSelection
+            // saveCurrentMeal сохраняет в БД и вызывает syncStateAfterSave — перезагрузка не нужна
+            saveCurrentMeal(targetMealId)
+        }
+    }
+
+    fun copyDayToClipboard() {
+        val meals = _meals.value
+        val selection = _finalSelection.value
+        _dayClipboard.value = meals.map { meal ->
+            DayClipboardEntry(
+                name = meal.name,
+                time = meal.time,
+                products = selection.filter { it.mealId == meal.id }
+            )
+        }
+    }
+
+    fun pasteDayFromClipboard(targetDate: LocalDate) {
+        val clipboard = _dayClipboard.value
+        if (clipboard.isEmpty()) return
+        _dayClipboard.value = emptyList() // очищаем сразу, чтобы нельзя было вставить повторно
+        viewModelScope.launch {
+            clipboard.forEach { entry ->
+                val startOfDay = targetDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                val timeOnly = entry.time.atDate(targetDate).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() - startOfDay
+                val mealEntity = MealEntity(
+                    name = entry.name,
+                    mealTime = timeOnly,
+                    mealDate = startOfDay
+                )
+                val components = entry.products.map { it.product.productId to it.weight.toUShort() }
+                repository.saveFullMeal(mealEntity, components)
+            }
+            if (targetDate == _selectedDate.value) {
+                loadMealsForDate(targetDate)
+            }
+        }
+    }
+
+    // ─── Копирование из плана питания ─────────────────────────────────────
+
+    // Кладёт приём пищи из плана в mealClipboard (без немедленной вставки)
+    fun copyPlanMealToClipboard(planMeal: MealPlanMealData, allProducts: List<com.example.project_course4.Product>) {
+        val items = planMeal.components.mapNotNull { comp ->
+            val product = allProducts.find { it.productId == comp.productId } ?: return@mapNotNull null
+            SelectedProduct(product = product, weight = comp.weight, mealId = -1)
+        }
+        _mealClipboard.value = items
+    }
+
+    // Кладёт весь день из плана в dayClipboard (без немедленной вставки)
+    fun copyPlanDayToClipboard(planDay: com.example.project_course4.api.MealPlanDayData, allProducts: List<com.example.project_course4.Product>) {
+        val timeParts = { time: String ->
+            val parts = time.split(":").map { it.toIntOrNull() ?: 0 }
+            LocalTime.of(parts.getOrElse(0) { 12 }.coerceIn(0, 23), parts.getOrElse(1) { 0 }.coerceIn(0, 59))
+        }
+        _dayClipboard.value = planDay.meals.map { meal ->
+            DayClipboardEntry(
+                name = meal.name.ifBlank { "Приём пищи" },
+                time = timeParts(meal.mealTime),
+                products = meal.components.mapNotNull { comp ->
+                    val product = allProducts.find { it.productId == comp.productId } ?: return@mapNotNull null
+                    SelectedProduct(product = product, weight = comp.weight, mealId = -1)
+                }
+            )
+        }
+    }
+
+    fun copyPlanMealToDate(planMeal: MealPlanMealData, date: LocalDate) {
+        viewModelScope.launch {
+            try {
+                val timeParts = planMeal.mealTime.split(":").map { it.toIntOrNull() ?: 0 }
+                val mealTime = LocalTime.of(
+                    timeParts.getOrElse(0) { 12 }.coerceIn(0, 23),
+                    timeParts.getOrElse(1) { 0 }.coerceIn(0, 59)
+                )
+                val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                val timeOnly = mealTime.atDate(date).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() - startOfDay
+
+                val mealEntity = MealEntity(
+                    name = planMeal.name.ifBlank { "Приём пищи" },
+                    mealTime = timeOnly,
+                    mealDate = startOfDay
+                )
+                val components = planMeal.components.map { it.productId to it.weight.toUShort() }
+                val (newMealId, junctionIds) = repository.saveFullMeal(mealEntity, components)
+
+                // Если копируем на текущую выбранную дату — обновляем UI
+                if (date == _selectedDate.value) {
+                    loadMealsForDate(date)
+                }
+                Log.d("CopyPlanMeal", "Скопирован приём '${planMeal.name}' на $date, mealId=$newMealId")
+            } catch (e: Exception) {
+                Log.e("CopyPlanMeal", "Ошибка копирования: ${e.message}")
+            }
+        }
+    }
+
+    fun copyPlanDayToDate(planDay: MealPlanDayData, date: LocalDate) {
+        viewModelScope.launch {
+            planDay.meals.forEach { meal ->
+                copyPlanMealToDate(meal, date)
+            }
+        }
+    }
+
     private fun createDefaultMealsForDate(date: LocalDate) {
         Log.d("ProductViewModel", "Создание стандартных приёмов пищи для даты $date")
 
@@ -526,7 +667,7 @@ class ProductViewModel(
             time = LocalTime.now(),
             name = name
         )
-        _meals.value += newMeal
+        _meals.value = (_meals.value + newMeal).sortedBy { it.time }
 
         // Сразу сохраняем приём пищи в БД
         viewModelScope.launch {

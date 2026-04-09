@@ -48,7 +48,7 @@ fun NumberPicker(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = 56.dp, bottom = 56.dp),
+            contentPadding = PaddingValues(top = 40.dp, bottom = 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {

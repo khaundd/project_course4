@@ -34,6 +34,7 @@ import com.example.project_course4.R.drawable.ic_check_24px
 import com.example.project_course4.composable_elements.CustomButton
 import com.example.project_course4.composable_elements.LabeledTransparentTextField
 import com.example.project_course4.composable_elements.TransparentTextField
+import com.example.project_course4.composable_elements.dialogs.StandaloneWeightInputDialog
 
 data class RecipeIngredientItem(
     val product: Product,
@@ -56,22 +57,25 @@ fun RecipeCreationScreen(
 
     // Диалог редактирования веса существующего ингредиента
     editingIngredient?.let { (index, item) ->
-        RecipeWeightInputDialog(
+        StandaloneWeightInputDialog(
             product = item.product,
             initialWeight = item.weight,
+            showDelete = true,
             onConfirm = { weight ->
                 viewModel.updateIngredientWeightAt(index, weight)
                 editingIngredient = null
             },
+            onDelete = { viewModel.removeIngredientAt(index) },
             onDismiss = { editingIngredient = null }
         )
     }
 
     // Диалог ввода веса нового продукта
     if (pendingProduct != null) {
-        RecipeWeightInputDialog(
+        StandaloneWeightInputDialog(
             product = pendingProduct!!,
-            initialWeight = null,
+            initialWeight = 0,
+            showDelete = false,
             onConfirm = { weight -> viewModel.confirmProductWeight(weight) },
             onDismiss = { viewModel.cancelPendingProduct() }
         )
@@ -264,15 +268,6 @@ fun RecipeCreationScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Кнопка Поделиться
-            CustomButton(
-                text = "⇧ Поделиться рецептом",
-                backgroundColor = Color.White,
-                textColor = colorResource(id = R.color.buttonColor),
-                cornerRadius = 50.dp,
-                onClick = { /* TODO */ }
-            )
-
             Spacer(modifier = Modifier.height(16.dp))
 
             // Ошибка
@@ -413,51 +408,4 @@ private fun RecipeIngredientRow(
     }
 }
 
-@Composable
-fun RecipeWeightInputDialog(
-    product: Product,
-    initialWeight: Int?,
-    onConfirm: (Int) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var weightInput by remember { mutableStateOf(initialWeight?.toString() ?: "") }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Вес продукта") },
-        text = {
-            Column {
-                Text(product.name)
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = weightInput,
-                    onValueChange = { v ->
-                        if (v.all { it.isDigit() } && v.length <= 4) weightInput = v
-                    },
-                    label = { Text("Вес (г)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "На 100г: ${product.calories} ккал, Б: ${product.protein}г, Ж: ${product.fats}г, У: ${product.carbs}г",
-                    fontSize = 12.sp,
-                    color = Color.Gray
-                )
-            }
-        },
-        confirmButton = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = onDismiss) { Text("Отмена") }
-                Spacer(modifier = Modifier.width(8.dp))
-                Button(onClick = {
-                    onConfirm(weightInput.toIntOrNull() ?: 0)
-                }) { Text(if (initialWeight != null) "Сохранить" else "+") }
-            }
-        }
-    )
-}

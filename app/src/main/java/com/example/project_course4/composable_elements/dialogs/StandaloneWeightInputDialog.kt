@@ -21,8 +21,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,32 +40,28 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.project_course4.Product
 import com.example.project_course4.R
 import com.example.project_course4.composable_elements.CustomButton
-import com.example.project_course4.viewmodel.ProductViewModel
 
+/**
+ * Standalone-версия WeightInputDialog без зависимости от ProductViewModel.
+ * Используется в редакторе плана питания.
+ *
+ * @param product продукт для отображения
+ * @param initialWeight начальный вес (0 для добавления, текущий для редактирования)
+ * @param showDelete показывать ли кнопку удаления (только в режиме редактирования)
+ * @param onConfirm вызывается с введённым весом при подтверждении
+ * @param onDelete вызывается при нажатии на корзину (только если showDelete = true)
+ * @param onDismiss вызывается при закрытии диалога
+ */
 @Composable
-fun WeightInputDialog(
+fun StandaloneWeightInputDialog(
     product: Product,
-    viewModel: ProductViewModel,
+    initialWeight: Int = 0,
+    showDelete: Boolean = false,
+    onConfirm: (Int) -> Unit,
+    onDelete: (() -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
-    var weightInput by remember { mutableStateOf("0") }
-
-    LaunchedEffect(product) {
-        weightInput = if (viewModel.isAddingFromList.value) {
-            "0"
-        } else {
-            val currentMealId = viewModel.editingMealId.value
-            val existingProduct = viewModel.finalSelection.value.find {
-                it.product.productId == product.productId && it.mealId == currentMealId
-            }
-            existingProduct?.weight?.toString() ?: "0"
-        }
-    }
-
-    val shouldShowWeightInput by viewModel.shouldShowWeightInput.collectAsState()
-    LaunchedEffect(shouldShowWeightInput) {
-        if (!shouldShowWeightInput) onDismiss()
-    }
+    var weightInput by remember(product.productId) { mutableStateOf(if (initialWeight > 0) initialWeight.toString() else "0") }
 
     val weight = weightInput.toIntOrNull() ?: 0
     val displayCalories = product.calories * weight / 100f
@@ -78,11 +72,7 @@ fun WeightInputDialog(
     val primaryColor = colorResource(id = R.color.buttonColor)
 
     Dialog(
-        onDismissRequest = {
-            if (viewModel.currentProductForWeight.value != null) {
-                viewModel.skipCurrentProduct()
-            }
-        },
+        onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Surface(
@@ -96,7 +86,6 @@ fun WeightInputDialog(
                 modifier = Modifier.padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Заголовок — только название продукта
                 Text(
                     text = product.name,
                     fontSize = 20.sp,
@@ -106,31 +95,28 @@ fun WeightInputDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // КБЖУ таблица
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    NutrientColumn("Белки", displayProtein, Color(0xFF4CAF50))
-                    NutrientColumn("Жиры", displayFats, Color(0xFFFFC107))
-                    NutrientColumn("Углево...", displayCarbs, Color(0xFFFF5722))
-                    NutrientColumn("кКал", displayCalories, Color.Black, bold = true)
+                    StandaloneNutrientColumn("Белки", displayProtein, Color(0xFF4CAF50))
+                    StandaloneNutrientColumn("Жиры", displayFats, Color(0xFFFFC107))
+                    StandaloneNutrientColumn("Углево...", displayCarbs, Color(0xFFFF5722))
+                    StandaloneNutrientColumn("кКал", displayCalories, Color.Black, bold = true)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Кнопки -10/-50/-100 | поле ввода | +10/+50/+100
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Кнопки минус
                     Column(
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier.weight(1f)
                     ) {
                         listOf(-10, -50, -100).forEach { delta ->
-                            StepButton(
+                            StandaloneStepButton(
                                 label = "$delta",
                                 borderColor = Color.Red,
                                 textColor = Color.Red,
@@ -142,7 +128,6 @@ fun WeightInputDialog(
                         }
                     }
 
-                    // Поле ввода веса
                     Box(
                         modifier = Modifier
                             .weight(1.5f)
@@ -170,13 +155,12 @@ fun WeightInputDialog(
                         )
                     }
 
-                    // Кнопки плюс
                     Column(
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier.weight(1f)
                     ) {
                         listOf(10, 50, 100).forEach { delta ->
-                            StepButton(
+                            StandaloneStepButton(
                                 label = "+$delta",
                                 borderColor = primaryColor,
                                 textColor = primaryColor,
@@ -191,26 +175,25 @@ fun WeightInputDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Нижняя строка: корзина | 0 | галочка
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Кнопка удаления — занимает weight(1f) как и правая кнопка
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                        CustomButton(
-                            modifier = Modifier.size(48.dp),
-                            icon = { tint ->
-                                Icon(imageVector = Icons.Default.Delete, contentDescription = "Удалить", tint = tint)
-                            },
-                            backgroundColor = Color.White,
-                            textColor = Color.Red,
-                            cornerRadius = 24.dp,
-                            onClick = {
-                                viewModel.removeProductFromMeal(product, viewModel.editingMealId.value ?: 0)
-                                onDismiss()
-                            }
-                        )
+                        if (showDelete && onDelete != null) {
+                            CustomButton(
+                                modifier = Modifier.size(48.dp),
+                                icon = { tint ->
+                                    Icon(imageVector = Icons.Default.Delete, contentDescription = "Удалить", tint = tint)
+                                },
+                                backgroundColor = Color.White,
+                                textColor = Color.Red,
+                                cornerRadius = 24.dp,
+                                onClick = { onDelete(); onDismiss() }
+                            )
+                        } else {
+                            Spacer(modifier = Modifier.size(48.dp))
+                        }
                     }
 
                     // Кнопка "0" — центрирована относительно поля ввода (weight 1.5f)
@@ -237,7 +220,6 @@ fun WeightInputDialog(
                         }
                     }
 
-                    // Кнопка подтверждения — занимает weight(1f) симметрично
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
                         CustomButton(
                             modifier = Modifier
@@ -248,12 +230,7 @@ fun WeightInputDialog(
                             textColor = Color.White,
                             cornerRadius = 24.dp,
                             onClick = {
-                                val w = weightInput.toIntOrNull() ?: 0
-                                viewModel.addProductWithWeight(w)
-                                weightInput = "0"
-                                if (viewModel.pendingProducts.value.isEmpty()) {
-                                    onDismiss()
-                                }
+                                onConfirm(weightInput.toIntOrNull() ?: 0)
                             }
                         )
                     }
@@ -264,7 +241,7 @@ fun WeightInputDialog(
 }
 
 @Composable
-private fun NutrientColumn(label: String, value: Float, color: Color, bold: Boolean = false) {
+private fun StandaloneNutrientColumn(label: String, value: Float, color: Color, bold: Boolean = false) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(text = label, fontSize = 11.sp, color = Color.Gray)
         Text(
@@ -277,7 +254,7 @@ private fun NutrientColumn(label: String, value: Float, color: Color, bold: Bool
 }
 
 @Composable
-private fun StepButton(
+private fun StandaloneStepButton(
     label: String,
     borderColor: Color,
     textColor: Color,

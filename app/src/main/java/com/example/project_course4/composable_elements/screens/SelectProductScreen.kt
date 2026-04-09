@@ -19,6 +19,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -218,50 +221,24 @@ fun SelectProductScreen(
             }
         },
         floatingActionButtonPosition = FabPosition.Center,
+        contentWindowInsets = WindowInsets(0),
         bottomBar = {
-            Column {
-                // Строка поиска над навигационной панелью
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { viewModel.searchProducts(it) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                    placeholder = { Text("Поиск продуктов...", fontSize = 14.sp) },
-                    leadingIcon = {
-                        if (isSearching) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                        } else {
-                            Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp))
-                        }
-                    },
-                    trailingIcon = {
-                        if (searchQuery.isNotBlank()) {
-                            IconButton(onClick = { viewModel.clearSearch() }) {
-                                Icon(Icons.Default.Close, contentDescription = "Очистить", modifier = Modifier.size(18.dp))
-                            }
-                        }
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(24.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = Color.LightGray,
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White
-                    ),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() })
-                )
+            val imeVisible = WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current) > 0
+            if (!imeVisible && onConfirmForRecipe == null && mealId == null) {
                 BottomNavigationBar(navController = navController, currentScreen = "search")
             }
         }
     ) { paddingValues ->
-        Column(
+        val searchBarHeight = 64.dp // высота строки поиска с padding
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
             // Легенда БЖУ
             Box(
                 modifier = Modifier
@@ -307,7 +284,9 @@ fun SelectProductScreen(
                 LazyColumn(
                     state = listState,
                     verticalArrangement = Arrangement.spacedBy(2.dp),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(bottom = searchBarHeight)
                 ) {
                     items(productsToShow) { product ->
                         val alreadyAdded = existingIngredientIds.contains(product.productId)
@@ -356,6 +335,50 @@ fun SelectProductScreen(
                         }
                     }
                 }
+            }
+        }
+
+            // Строка поиска — поднимается над клавиатурой через imePadding
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .imePadding()
+                    .padding(bottom = paddingValues.calculateBottomPadding())
+                    .background(Color.White)
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { viewModel.searchProducts(it) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    placeholder = { Text("Поиск продуктов...", fontSize = 14.sp) },
+                    leadingIcon = {
+                        if (isSearching) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp))
+                        }
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotBlank()) {
+                            IconButton(onClick = { viewModel.clearSearch() }) {
+                                Icon(Icons.Default.Close, contentDescription = "Очистить", modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(24.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = Color.LightGray,
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
+                    ),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() })
+                )
             }
         }
 

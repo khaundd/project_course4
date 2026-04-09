@@ -26,7 +26,7 @@ import com.example.project_course4.local_db.entities.*
         Products::class,
         UserMealPlan::class
     ],
-    version = 4
+    version = 5
 )
 @TypeConverters(DatabaseConverters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -37,6 +37,12 @@ abstract class AppDatabase : RoomDatabase() {
 val MIGRATION_3_4 = object : Migration(3, 4) {
     override fun migrate(database: SupportSQLiteDatabase) {
         database.execSQL("ALTER TABLE products ADD COLUMN lastUsedAt INTEGER")
+    }
+}
+
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL("ALTER TABLE meal ADD COLUMN fromPlanId INTEGER")
     }
 }
 
@@ -51,7 +57,7 @@ object DatabaseProvider {
                 AppDatabase::class.java,
                 "app_db"
             )
-                .addMigrations(MIGRATION_3_4)
+                .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
                 .build()
             INSTANCE = instance
             Log.d("DatabaseProvider", "Экземпляр базы данных создан/получен")

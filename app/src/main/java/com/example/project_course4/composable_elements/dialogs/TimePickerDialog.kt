@@ -1,9 +1,14 @@
 package com.example.project_course4.composable_elements.dialogs
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -12,8 +17,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import java.time.LocalTime
 import java.util.Locale
@@ -27,48 +35,61 @@ fun TimePickerDialog(
 ) {
     var selectedHour by remember { mutableIntStateOf(initialTime.hour) }
     var selectedMinute by remember { mutableIntStateOf(initialTime.minute) }
-    
-    val selectedTime by remember(selectedHour, selectedMinute) {
-        mutableStateOf(initialTime.withHour(selectedHour).withMinute(selectedMinute))
-    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(
-                text = "Выберите время",
-                fontWeight = FontWeight.Bold
-            )
+            Text(text = "Выберите время", fontWeight = FontWeight.Bold)
         },
         text = {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(32.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(16.dp)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center
             ) {
-                // часы
                 Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    modifier = Modifier
+                        .width(200.dp)
+                        .height(120.dp),
+                    verticalArrangement = Arrangement.Top
                 ) {
-                    NumberPicker(
-                        value = selectedHour,
-                        onValueChange = { hour ->
-                            selectedHour = hour
-                        },
-                        range = 0..23,
-                        label = { String.format(Locale.getDefault(), "%02d", it) }
+                    Spacer(Modifier.height(42.dp))
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.primary,
+                        thickness = 1.5.dp,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                    Spacer(Modifier.height(34.dp))
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.primary,
+                        thickness = 1.5.dp,
+                        modifier = Modifier.padding(horizontal = 8.dp)
                     )
                 }
 
-                // минуты
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.width(200.dp)
                 ) {
                     NumberPicker(
+                        value = selectedHour,
+                        onValueChange = { selectedHour = it },
+                        range = 0..23,
+                        label = { String.format(Locale.getDefault(), "%02d", it) }
+                    )
+
+                    Text(
+                        text = ":",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+
+                    NumberPicker(
                         value = selectedMinute,
-                        onValueChange = { minute ->
-                            selectedMinute = minute
-                        },
+                        onValueChange = { selectedMinute = it },
                         range = 0..59,
                         label = { String.format(Locale.getDefault(), "%02d", it) }
                     )
@@ -78,7 +99,7 @@ fun TimePickerDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    onTimeSelected(selectedTime)
+                    onTimeSelected(LocalTime.of(selectedHour, selectedMinute))
                     onDismiss()
                 }
             ) {
@@ -86,13 +107,10 @@ fun TimePickerDialog(
             }
         },
         dismissButton = {
-            Button(
-                onClick = onDismiss
-            ) {
+            TextButton(onClick = onDismiss) {
                 Text("Отмена")
             }
         },
-
         properties = DialogProperties(usePlatformDefaultWidth = false)
     )
 }

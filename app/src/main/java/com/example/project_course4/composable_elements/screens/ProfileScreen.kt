@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Restaurant
@@ -92,6 +93,14 @@ fun ProfileScreen(
                 Text("Меню", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleLarge)
 
                 NavigationDrawerItem(
+                    icon = { Icon(Icons.Outlined.Person, contentDescription = null) },
+                    label = { Text("Профиль") },
+                    selected = currentRoute == Screen.Profile.route,
+                    onClick = { scope.launch { drawerState.close() } },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+
+                NavigationDrawerItem(
                     icon = { Icon(Icons.Default.Restaurant, contentDescription = null) },
                     label = { Text("Дневник питания") },
                     selected = currentRoute == Screen.Main.route,
@@ -114,20 +123,23 @@ fun ProfileScreen(
                 )
 
                 NavigationDrawerItem(
-                    icon = { Icon(Icons.Outlined.Person, contentDescription = null) },
-                    label = { Text("Профиль") },
-                    selected = currentRoute == Screen.Profile.route,
-                    onClick = { scope.launch { drawerState.close() } },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                )
-
-                NavigationDrawerItem(
                     icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = null) },
                     label = { Text("Рецепты") },
                     selected = currentRoute == Screen.Recipes.route,
                     onClick = {
                         scope.launch { drawerState.close() }
                         navController.navigate(Screen.Recipes.route)
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Filled.EditNote, contentDescription = null) },
+                    label = { Text("Планы питания") },
+                    selected = currentRoute == Screen.MealPlans.route,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        navController.navigate(Screen.MealPlans.route)
                     },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )

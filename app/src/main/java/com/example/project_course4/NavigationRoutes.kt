@@ -15,4 +15,8 @@ sealed class Screen(val route: String){
     object SelectProductForRecipe: Screen("selectProductForRecipe")
     object DishComposition: Screen("dishComposition/{dishName}")
     object RecipeEdit: Screen("recipeEdit/{dishName}")
+    object SharedRecipe: Screen("sharedRecipe/{token}")
+    object MealPlans: Screen("mealPlans")
+    object MealPlanEditor: Screen("mealPlanEditor")
+    object SelectProductForMealPlan: Screen("selectProductForMealPlan/{dayIndex}/{mealIndex}")
 }
