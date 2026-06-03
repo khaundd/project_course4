@@ -24,8 +24,7 @@ fun BottomNavigationBar(
     currentScreen: String
 ) {
     Surface(
-        modifier = Modifier
-            .fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         color = Color.White,
         shadowElevation = 16.dp,
         tonalElevation = 4.dp
@@ -53,7 +52,7 @@ fun BottomNavigationBar(
                     }
                 }
             )
-            
+
             NavigationItem(
                 icon = Icons.Default.RiceBowl,
                 label = "Продукты",
@@ -68,7 +67,7 @@ fun BottomNavigationBar(
                     }
                 }
             )
-            
+
             NavigationItem(
                 icon = Icons.AutoMirrored.Filled.List,
                 label = "Рецепты",
@@ -108,9 +107,9 @@ fun NavigationItem(
             tint = if (isSelected) Color(0xFF4CAF50) else Color.Gray,
             modifier = Modifier.size(24.dp)
         )
-        
+
         Spacer(modifier = Modifier.height(4.dp))
-        
+
         Text(
             text = label,
             fontSize = 12.sp,

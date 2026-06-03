@@ -33,8 +33,9 @@ fun TimePickerDialog(
     onTimeSelected: (LocalTime) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var selectedHour by remember { mutableIntStateOf(initialTime.hour) }
-    var selectedMinute by remember { mutableIntStateOf(initialTime.minute) }
+    // Интерпретируем как mm:ss (минуты:секунды), а не HH:mm
+    var selectedMinute by remember { mutableIntStateOf(initialTime.hour) }   // hour slot → минуты
+    var selectedSecond by remember { mutableIntStateOf(initialTime.minute) } // minute slot → секунды
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -74,9 +75,9 @@ fun TimePickerDialog(
                     modifier = Modifier.width(200.dp)
                 ) {
                     NumberPicker(
-                        value = selectedHour,
-                        onValueChange = { selectedHour = it },
-                        range = 0..23,
+                        value = selectedMinute,
+                        onValueChange = { selectedMinute = it },
+                        range = 0..99,
                         label = { String.format(Locale.getDefault(), "%02d", it) }
                     )
 
@@ -88,8 +89,8 @@ fun TimePickerDialog(
                     )
 
                     NumberPicker(
-                        value = selectedMinute,
-                        onValueChange = { selectedMinute = it },
+                        value = selectedSecond,
+                        onValueChange = { selectedSecond = it },
                         range = 0..59,
                         label = { String.format(Locale.getDefault(), "%02d", it) }
                     )
@@ -99,7 +100,8 @@ fun TimePickerDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    onTimeSelected(LocalTime.of(selectedHour, selectedMinute))
+                    // Возвращаем как LocalTime(hour=минуты, minute=секунды) — соглашение с редактором
+                    onTimeSelected(LocalTime.of(selectedMinute, selectedSecond))
                     onDismiss()
                 }
             ) {

@@ -8,6 +8,8 @@ import com.example.project_course4.api.MealPlanData
 import com.example.project_course4.api.MealPlanDayData
 import com.example.project_course4.api.MealPlanMealData
 import com.example.project_course4.api.MealPlanSaveRequest
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -62,6 +64,9 @@ class MealPlanViewModel(private val api: ClientAPI) : ViewModel() {
     private val _editor = MutableStateFlow(MealPlanEditorState())
     val editor: StateFlow<MealPlanEditorState> = _editor.asStateFlow()
 
+    // Отслеживаем in-flight jobs для замочка — отменяем при быстрых повторных кликах
+    private val _toggleJobs = mutableMapOf<Int, Job>()
+
     // ─── Load ──────────────────────────────────────────────────────────────
 
     fun loadPlans() {
@@ -95,6 +100,38 @@ class MealPlanViewModel(private val api: ClientAPI) : ViewModel() {
                 onSuccess = { _plans.value = _plans.value.filter { it.planId != planId } },
                 onFailure = { _error.value = it.message }
             )
+        }
+    }
+
+    // ─── Toggle public ─────────────────────────────────────────────────────
+
+    fun togglePlanPublic(planId: Int) {
+        val current = _plans.value.find { it.planId == planId } ?: return
+        val newPublic = !current.isPublic
+        // Оптимистичное обновление — UI реагирует сразу
+        _plans.value = _plans.value.map {
+            if (it.planId == planId) it.copy(isPublicRaw = if (newPublic) 1 else 0) else it
+        }
+        // Отменяем предыдущий запрос для этого плана (дебаунс)
+        _toggleJobs[planId]?.cancel()
+        _toggleJobs[planId] = viewModelScope.launch {
+            delay(600L) // ждём 600мс — если будет ещё клик, этот job отменится
+            val request = MealPlanSaveRequest(
+                name = current.name,
+                description = current.description,
+                isPublic = newPublic,
+                targetCalories = current.targetCalories,
+                proteinPct = current.proteinPct,
+                fatsPct = current.fatsPct,
+                carbsPct = current.carbsPct,
+                days = current.days
+            )
+            api.updateMealPlan(planId, request).onFailure {
+                // Откат при ошибке
+                _plans.value = _plans.value.map { p ->
+                    if (p.planId == planId) p.copy(isPublicRaw = if (current.isPublic) 1 else 0) else p
+                }
+            }
         }
     }
 

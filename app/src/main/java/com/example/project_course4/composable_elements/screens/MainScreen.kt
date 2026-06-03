@@ -15,6 +15,9 @@ import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
@@ -80,7 +83,12 @@ fun MainScreen(
     var showCustomCalendar by remember { mutableStateOf(false) }
     var selectedLocalDate by remember { mutableStateOf(LocalDate.now()) }
     var isNavigatingToAddProduct by remember { mutableStateOf(false) }
-            
+
+    // Состояния раскрытия секций меню (только один раздел открыт одновременно)
+    var expandedSection by remember { mutableStateOf<String?>(null) }
+    val nutritionExpanded = expandedSection == "nutrition"
+    val activityExpanded = expandedSection == "activity"
+
     // Следим за изменением даты в ViewModel
     LaunchedEffect(Unit) {
         viewModel.selectedDate.collect { date ->
@@ -91,7 +99,7 @@ fun MainScreen(
     LaunchedEffect(selectedLocalDate) {
         viewModel.loadMealsForDate(selectedLocalDate, createDefaultsIfEmpty = true)
     }
-    
+
     // Проверяем и загружаем продукты при старте, если они еще не загружены
     LaunchedEffect(Unit) {
         val products = viewModel.products.value
@@ -122,63 +130,141 @@ fun MainScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Меню", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleLarge)
 
+                // Профиль
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Outlined.Person, contentDescription = null) },
                     label = { Text("Профиль") },
                     selected = currentRoute == Screen.Profile.route,
                     onClick = {
-                        Log.d("MainScreen", "Нажат пункт 'Профиль'")
-                        scope.launch { drawerState.close() }
-                        navController.navigate(Screen.Profile.route)
+                        scope.launch {
+                            drawerState.close()
+                            navController.navigate(Screen.Profile.route)
+                        }
                     },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
 
+                // Питание (раскрывающаяся секция)
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Default.Restaurant, contentDescription = null) },
-                    label = { Text("Дневник питания") },
-                    selected = currentRoute == Screen.Main.route,
-                    onClick = { 
-                        Log.d("MainScreen", "Нажат пункт 'Дневник питания'")
-                        scope.launch { drawerState.close() } 
+                    label = { Text("Питание") },
+                    selected = false,
+                    badge = {
+                        Icon(
+                            if (nutritionExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = null
+                        )
                     },
+                    onClick = { expandedSection = if (nutritionExpanded) null else "nutrition" },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
+                if (nutritionExpanded) {
+                    NavigationDrawerItem(
+                        icon = { Icon(Icons.Default.Restaurant, contentDescription = null) },
+                        label = { Text("Дневник питания") },
+                        selected = currentRoute == Screen.Main.route,
+                        onClick = {
+                            scope.launch {
+                                drawerState.close()
+                                navController.navigate(Screen.Main.route) {
+                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                        },
+                        modifier = Modifier.padding(start = 28.dp, end = 8.dp, top = 0.dp, bottom = 0.dp)
+                    )
+                    NavigationDrawerItem(
+                        icon = { Icon(Icons.Default.AddCircle, contentDescription = null) },
+                        label = { Text("Создать продукт") },
+                        selected = currentRoute?.startsWith(Screen.ProductCreation.route) == true,
+                        onClick = {
+                            scope.launch {
+                                drawerState.close()
+                                navController.navigate("productCreation?barcode=")
+                            }
+                        },
+                        modifier = Modifier.padding(start = 28.dp, end = 8.dp, top = 0.dp, bottom = 0.dp)
+                    )
+                    NavigationDrawerItem(
+                        icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = null) },
+                        label = { Text("Рецепты") },
+                        selected = currentRoute == Screen.Recipes.route,
+                        onClick = {
+                            scope.launch {
+                                drawerState.close()
+                                navController.navigate(Screen.Recipes.route)
+                            }
+                        },
+                        modifier = Modifier.padding(start = 28.dp, end = 8.dp, top = 0.dp, bottom = 0.dp)
+                    )
+                    NavigationDrawerItem(
+                        icon = { Icon(Icons.Filled.EditNote, contentDescription = null) },
+                        label = { Text("Планы питания") },
+                        selected = currentRoute == Screen.MealPlans.route,
+                        onClick = {
+                            scope.launch {
+                                drawerState.close()
+                                navController.navigate(Screen.MealPlans.route)
+                            }
+                        },
+                        modifier = Modifier.padding(start = 28.dp, end = 8.dp, top = 0.dp, bottom = 0.dp)
+                    )
+                }
 
+                // Активность (раскрывающаяся секция)
                 NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.AddCircle, contentDescription = null) },
-                    label = { Text("Создать продукт") },
-                    selected = currentRoute?.startsWith(Screen.ProductCreation.route) == true,
-                    onClick = {
-                        Log.d("MainScreen", "Нажат пункт 'Создать продукт'")
-                        scope.launch { drawerState.close() }
-                        navController.navigate("productCreation?barcode=")
+                    icon = { Icon(Icons.Default.FitnessCenter, contentDescription = null) },
+                    label = { Text("Активность") },
+                    selected = false,
+                    badge = {
+                        Icon(
+                            if (activityExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = null
+                        )
                     },
+                    onClick = { expandedSection = if (activityExpanded) null else "activity" },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
-
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = null) },
-                    label = { Text("Рецепты") },
-                    selected = currentRoute == Screen.Recipes.route,
-                    onClick = {
-                        Log.d("MainScreen", "Нажат пункт 'Рецепты'")
-                        scope.launch { drawerState.close() }
-                        navController.navigate(Screen.Recipes.route)
-                    },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                )
-
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Filled.EditNote, contentDescription = null) },
-                    label = { Text("Планы питания") },
-                    selected = currentRoute == Screen.MealPlans.route,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        navController.navigate(Screen.MealPlans.route)
-                    },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                )
+                if (activityExpanded) {
+                    NavigationDrawerItem(
+                        icon = { Icon(Icons.Default.FitnessCenter, contentDescription = null) },
+                        label = { Text("Каталог упражнений") },
+                        selected = currentRoute == Screen.ExerciseCatalog.route,
+                        onClick = {
+                            scope.launch {
+                                drawerState.close()
+                                navController.navigate(Screen.ExerciseCatalog.route)
+                            }
+                        },
+                        modifier = Modifier.padding(start = 28.dp, end = 8.dp, top = 0.dp, bottom = 0.dp)
+                    )
+                    NavigationDrawerItem(
+                        icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = null) },
+                        label = { Text("Дневник тренировок") },
+                        selected = currentRoute == Screen.TrainingLog.route,
+                        onClick = {
+                            scope.launch {
+                                drawerState.close()
+                                navController.navigate(Screen.TrainingLog.route)
+                            }
+                        },
+                        modifier = Modifier.padding(start = 28.dp, end = 8.dp, top = 0.dp, bottom = 0.dp)
+                    )
+                    NavigationDrawerItem(
+                        icon = { Icon(Icons.Filled.EditNote, contentDescription = null) },
+                        label = { Text("Планы тренировок") },
+                        selected = currentRoute == Screen.TrainingPlans.route,
+                        onClick = {
+                            scope.launch {
+                                drawerState.close()
+                                navController.navigate(Screen.TrainingPlans.route)
+                            }
+                        },
+                        modifier = Modifier.padding(start = 28.dp, end = 8.dp, top = 0.dp, bottom = 0.dp)
+                    )
+                }
             }
         }
     ) {
@@ -196,17 +282,14 @@ fun MainScreen(
                         }
                     },
                     navigationIcon = {
-                        IconButton(onClick = { 
-                            Log.d("MainScreen", "Нажата кнопка меню, текущее состояние drawer: ${drawerState.currentValue}")
-                            scope.launch { 
-                                try {
-                                    drawerState.open()
-                                    Log.d("MainScreen", "Drawer успешно открыт")
-                                } catch (e: Exception) {
-                                    Log.e("MainScreen", "Ошибка при открытии drawer: ${e.message}", e)
+                        IconButton(
+                            onClick = {
+                                if (!drawerState.isOpen) {
+                                    scope.launch { drawerState.open() }
                                 }
-                            } 
-                        }) {
+                            },
+                            enabled = !drawerState.isOpen
+                        ) {
                             Icon(Icons.Default.Menu, contentDescription = null)
                         }
                     },
@@ -255,7 +338,6 @@ fun MainScreen(
                     .padding(paddingValues)
                     .background(Color.White)
             ) {
-                // Приёмы пищи уже инициализируются в ProductViewModel.init()
                 val finalSelection by viewModel.finalSelection.collectAsState()
                 val currentProductForWeight by viewModel.currentProductForWeight.collectAsState()
                 val shouldShowWeightInput by viewModel.shouldShowWeightInput.collectAsState()
@@ -273,51 +355,27 @@ fun MainScreen(
                     )
                 }
 
-                // Вспомогательная функция для расчета нутриентов приёма пищи
                 fun getMealNutrition(products: List<SelectedProduct>): MealNutrition {
-                    val totalCalories = products.sumOf {
-                        (it.product.calories.toDouble() * it.weight / 100)
-                    }.toFloat()
-
-                    val totalProtein = products.sumOf {
-                        (it.product.protein.toDouble() * it.weight / 100)
-                    }.toFloat()
-
-                    val totalFats = products.sumOf {
-                        (it.product.fats.toDouble() * it.weight / 100)
-                    }.toFloat()
-
-                    val totalCarbs = products.sumOf {
-                        (it.product.carbs.toDouble() * it.weight / 100)
-                    }.toFloat()
-                    
+                    val totalCalories = products.sumOf { (it.product.calories.toDouble() * it.weight / 100) }.toFloat()
+                    val totalProtein = products.sumOf { (it.product.protein.toDouble() * it.weight / 100) }.toFloat()
+                    val totalFats = products.sumOf { (it.product.fats.toDouble() * it.weight / 100) }.toFloat()
+                    val totalCarbs = products.sumOf { (it.product.carbs.toDouble() * it.weight / 100) }.toFloat()
                     return MealNutrition(totalProtein, totalFats, totalCarbs, totalCalories)
                 }
 
-                // Расчет totals с использованием finalSelection для правильного отслеживания изменений
-                // Фильтруем только продукты из приёмов пищи текущего дня
                 val currentMealIds = meals.map { it.id }
                 val currentDayProducts = finalSelection.filter { it.mealId in currentMealIds }
-                
-                val totalCalories = currentDayProducts.sumOf {
-                    (it.product.calories.toDouble() * it.weight / 100)
-                }.toFloat()
-                val totalProtein = currentDayProducts.sumOf {
-                    (it.product.protein.toDouble() * it.weight / 100)
-                }.toFloat()
-                val totalFats = currentDayProducts.sumOf {
-                    (it.product.fats.toDouble() * it.weight / 100)
-                }.toFloat()
-                val totalCarbs = currentDayProducts.sumOf {
-                    (it.product.carbs.toDouble() * it.weight / 100)
-                }.toFloat()
+
+                val totalCalories = currentDayProducts.sumOf { (it.product.calories.toDouble() * it.weight / 100) }.toFloat()
+                val totalProtein = currentDayProducts.sumOf { (it.product.protein.toDouble() * it.weight / 100) }.toFloat()
+                val totalFats = currentDayProducts.sumOf { (it.product.fats.toDouble() * it.weight / 100) }.toFloat()
+                val totalCarbs = currentDayProducts.sumOf { (it.product.carbs.toDouble() * it.weight / 100) }.toFloat()
 
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 8.dp)
                 ) {
-                    // Диаграмма как первый элемент в LazyColumn
                     item {
                         NutritionChart(
                             protein = totalProtein,
@@ -342,55 +400,32 @@ fun MainScreen(
                             meal = meal,
                             products = products,
                             nutrition = nutrition,
-                            onTimeClick = { _, newTime ->
-                                viewModel.updateMealTime(meal.id, newTime)
-                            },
+                            onTimeClick = { _, newTime -> viewModel.updateMealTime(meal.id, newTime) },
                             onCopyMeal = { m -> viewModel.copyMealToClipboard(m.id) },
                             onPasteMeal = { m -> viewModel.pasteMealFromClipboard(m.id) },
                             canPaste = mealClipboard.isNotEmpty(),
                             onAddProductClick = { m ->
                                 if (!isNavigatingToAddProduct) {
                                     isNavigatingToAddProduct = true
-                                    Log.d(
-                                        "MainScreen",
-                                        "Начинаем навигацию на SelectProductScreen для mealId: ${m.id}"
-                                    )
                                     if (shouldShowWeightInput) {
                                         scope.launch { viewModel.saveCurrentMeal(meal.id) }
                                     }
                                     viewModel.setEditingMealId(m.id)
                                     navController.navigate("selectProductWithMeal/${m.id}")
-
-                                    // Сбрасываем флаг через 500мс, чтобы предотвратить множественные нажатия
                                     scope.launch {
                                         delay(500)
                                         isNavigatingToAddProduct = false
-                                        Log.d("MainScreen", "Флаг навигации сброшен")
                                     }
-                                } else {
-                                    Log.d(
-                                        "MainScreen",
-                                        "Навигация уже выполняется, игнорируем нажатие"
-                                    )
                                 }
                             },
-                            onEditProduct = { p, m ->
-                                viewModel.editProductWeightInMeal(
-                                    p,
-                                    m.id
-                                )
-                            },
+                            onEditProduct = { p, m -> viewModel.editProductWeightInMeal(p, m.id) },
                             onDeleteProduct = { p, m ->
-                                Log.d(
-                                    "DeleteProduct",
-                                    "Удаляемый продукт: $p, id приема пищи: ${m.id}"
-                                )
+                                Log.d("DeleteProduct", "Удаляемый продукт: $p, id приема пищи: ${m.id}")
                                 viewModel.removeProductFromMeal(p, m.id)
                             },
                             onMealOptionsClick = { m -> viewModel.removeMeal(m.id) }
                         )
 
-                        // Добавляем кнопку "Добавить приём пищи" после последнего приёма пищи
                         if (meal == meals.last()) {
                             Spacer(modifier = Modifier.height(16.dp))
                             CustomButton(
@@ -408,7 +443,6 @@ fun MainScreen(
                         }
                     }
 
-                    // Если нет приёмов пищи, добавляем кнопку сразу после диаграммы
                     if (meals.isEmpty()) {
                         item {
                             Spacer(modifier = Modifier.height(32.dp))
@@ -429,12 +463,11 @@ fun MainScreen(
         }
     }
 
-    // окно календаря
     if (showCustomCalendar) {
         CustomCalendarDialog(
             initialDate = selectedLocalDate,
             viewModel = viewModel,
-            onDateSelected = { newDate -> 
+            onDateSelected = { newDate ->
                 viewModel.setSelectedDate(newDate)
             },
             onDismiss = { showCustomCalendar = false }

@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -92,16 +93,13 @@ fun MealPlanScreen(
                                 color = Color.Gray
                             )
                         } else {
-                            // Храним id раскрытой карточки
-                            var expandedPlanId by remember { mutableStateOf<Int?>(null) }
                             LazyColumn(
                                 modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(0.dp)
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 itemsIndexed(plans) { _, plan ->
                                     var showDeleteDialog by remember { mutableStateOf(false) }
-                                    val isExpanded = expandedPlanId == plan.planId
 
                                     if (showDeleteDialog) {
                                         AlertDialog(
@@ -121,16 +119,11 @@ fun MealPlanScreen(
 
                                     MyMealPlanCard(
                                         plan = plan,
-                                        isExpanded = isExpanded,
-                                        onCardClick = {
-                                            expandedPlanId = if (isExpanded) null else plan.planId
-                                        },
-                                        onView = { navController.navigate("mealPlanDetail/${plan.planId}") },
+                                        onClick = { navController.navigate("mealPlanDetail/${plan.planId}") },
                                         onEdit = { viewModel.startEditPlan(plan); navController.navigate("mealPlanEditor") },
-                                        onDelete = { showDeleteDialog = true }
+                                        onDelete = { showDeleteDialog = true },
+                                        onTogglePublic = { viewModel.togglePlanPublic(plan.planId) }
                                     )
-                                    // Отступ между карточками — фиксированный, панель кнопок уже внутри карточки
-                                    Spacer(Modifier.height(12.dp))
                                 }
                             }
                         }
@@ -166,63 +159,31 @@ fun MealPlanScreen(
 @Composable
 private fun MyMealPlanCard(
     plan: MealPlanData,
-    isExpanded: Boolean,
-    onCardClick: () -> Unit,
-    onView: () -> Unit,
+    onClick: () -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onTogglePublic: () -> Unit
 ) {
-    val cardShape = RoundedCornerShape(12.dp)
-    val borderColor = MaterialTheme.colorScheme.outlineVariant
+    var showMenu by remember { mutableStateOf(false) }
 
+    val shape = RoundedCornerShape(12.dp)
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(cardShape)
-            .border(1.dp, borderColor, cardShape),
-        shape = cardShape,
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp
+        modifier = Modifier.fillMaxWidth().clip(shape).clickable { onClick() },
+        shape = shape,
+        tonalElevation = 1.dp,
+        shadowElevation = 1.dp
     ) {
-        Column {
-            // Основная часть карточки
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onCardClick() }
-                    .padding(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = plan.name,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp,
-                        modifier = Modifier.weight(1f)
-                    )
-                    val days = plan.days.size.takeIf { it > 0 } ?: (plan.dayCount ?: 0)
-                    Text(
-                        text = "$days ${dayWord(days)}",
-                        fontSize = 14.sp,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
-                    Icon(
-                        imageVector = if (plan.isPublic) Icons.Default.LockOpen else Icons.Default.Lock,
-                        contentDescription = if (plan.isPublic) "Публичный" else "Непубличный",
-                        tint = Color.Gray,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(plan.name, fontWeight = FontWeight.Bold, fontSize = 17.sp)
                 if (plan.description.isNotBlank()) {
-                    Spacer(Modifier.height(6.dp))
-                    Text(plan.description, fontSize = 14.sp, color = Color.Gray)
+                    Spacer(Modifier.height(4.dp))
+                    Text(plan.description, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(6.dp))
                 Text(
                     "${plan.targetCalories.roundToInt()} ккал  ·  " +
                     "Б ${plan.targetProteinG.roundToInt()}г  ·  " +
@@ -232,33 +193,32 @@ private fun MyMealPlanCard(
                     color = Color(0xFF4CAF50)
                 )
             }
-
-            // Выезжающая панель кнопок внутри той же карточки
-            AnimatedVisibility(
-                visible = isExpanded,
-                enter = expandVertically(expandFrom = Alignment.Top),
-                exit = shrinkVertically(shrinkTowards = Alignment.Top)
-            ) {
-                Column {
-                    HorizontalDivider(color = borderColor)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(onClick = onDelete) {
-                            Icon(Icons.Default.Delete, contentDescription = "Удалить", tint = Color.Red, modifier = Modifier.size(28.dp))
-                        }
-                        IconButton(onClick = onEdit) {
-                            Icon(Icons.Default.Edit, contentDescription = "Редактировать", tint = Color(0xFF4CAF50), modifier = Modifier.size(28.dp))
-                        }
-                        IconButton(onClick = onView) {
-                            Icon(Icons.Default.Visibility, contentDescription = "Просмотр", tint = Color(0xFF2196F3), modifier = Modifier.size(28.dp))
-                        }
-                    }
+            // Троеточие — меню
+            Box {
+                IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "Опции", modifier = Modifier.size(20.dp))
                 }
+                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Редактировать") },
+                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                        onClick = { showMenu = false; onEdit() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Удалить", color = Color.Red) },
+                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red) },
+                        onClick = { showMenu = false; onDelete() }
+                    )
+                }
+            }
+            // Замок — переключение публичности
+            IconButton(onClick = onTogglePublic, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    imageVector = if (plan.isPublic) Icons.Default.LockOpen else Icons.Default.Lock,
+                    contentDescription = if (plan.isPublic) "Сделать приватным" else "Сделать публичным",
+                    tint = if (plan.isPublic) Color(0xFF4CAF50) else Color.Gray,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }
@@ -271,79 +231,42 @@ private fun PublicMealPlanCard(
 ) {
     val shape = RoundedCornerShape(12.dp)
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape),
+        modifier = Modifier.fillMaxWidth().clip(shape).clickable { onView() },
         shape = shape,
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp
+        tonalElevation = 1.dp,
+        shadowElevation = 1.dp
     ) {
-        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-            // Левая часть — информация о плане
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(16.dp)
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = plan.name,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp,
-                        modifier = Modifier.weight(1f)
-                    )
-                    val days = plan.dayCount ?: plan.days.size
-                    Text(
-                        text = "$days ${dayWord(days)}",
-                        fontSize = 14.sp,
-                        color = Color.Gray
-                    )
-                }
-
-                if (plan.description.isNotBlank()) {
-                    Spacer(Modifier.height(6.dp))
-                    Text(plan.description, fontSize = 14.sp, color = Color.Gray)
-                }
-
-                Spacer(Modifier.height(8.dp))
                 Text(
-                    "${plan.targetCalories.roundToInt()} ккал  ·  " +
-                    "Б ${plan.targetProteinG.roundToInt()}г  ·  " +
-                    "Ж ${plan.targetFatsG.roundToInt()}г  ·  " +
-                    "У ${plan.targetCarbsG.roundToInt()}г",
+                    text = plan.name,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 17.sp,
+                    modifier = Modifier.weight(1f)
+                )
+                val days = plan.dayCount ?: plan.days.size
+                Text(
+                    text = "$days ${dayWord(days)}",
                     fontSize = 13.sp,
-                    color = Color(0xFF4CAF50)
+                    color = Color.Gray
                 )
             }
-
-            // Вертикальный разделитель
-            Box(
-                modifier = Modifier
-                    .width(1.dp)
-                    .fillMaxHeight()
-                    .padding(vertical = 12.dp)
-                    .background(MaterialTheme.colorScheme.outlineVariant)
+            if (plan.description.isNotBlank()) {
+                Spacer(Modifier.height(4.dp))
+                Text(plan.description, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "${plan.targetCalories.roundToInt()} ккал  ·  " +
+                "Б ${plan.targetProteinG.roundToInt()}г  ·  " +
+                "Ж ${plan.targetFatsG.roundToInt()}г  ·  " +
+                "У ${plan.targetCarbsG.roundToInt()}г",
+                fontSize = 13.sp,
+                color = Color(0xFF4CAF50)
             )
-
-            // Правая часть — кликабельная область с иконкой глаза
-            Box(
-                modifier = Modifier
-                    .width(64.dp)
-                    .fillMaxHeight()
-                    .clickable { onView() },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Visibility,
-                    contentDescription = "Просмотреть",
-                    tint = Color(0xFF2196F3),
-                    modifier = Modifier.size(28.dp)
-                )
-            }
         }
     }
 }

@@ -34,6 +34,7 @@ class ClientAPI (private val sessionManager: SessionManager){
                 Json {
                     ignoreUnknownKeys = true // поможет не падать, если сервер прислал лишние поля
                     coerceInputValues = true
+                    encodeDefaults = true
                 }
             )
         }
@@ -972,6 +973,224 @@ class ClientAPI (private val sessionManager: SessionManager){
             } catch (e: Exception) {
                 Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
             }
+        }
+    }
+
+    // ─── Fitness: Exercises ───────────────────────────────────────────────────
+
+    suspend fun getExercises(
+        muscleIds: List<Int>? = null,
+        equipments: List<String>? = null,
+        levels: List<String>? = null,
+        category: String? = null,
+        search: String? = null,
+        limit: Int = 30,
+        offset: Int = 0
+    ): Result<ExerciseListResponse> = withContext(Dispatchers.IO) {
+        try {
+            val url = buildString {
+                append("$BASE_URL/exercises?limit=$limit&offset=$offset")
+                muscleIds?.forEach { append("&muscle_id=$it") }
+                equipments?.forEach { append("&equipment=${java.net.URLEncoder.encode(it, "UTF-8")}") }
+                levels?.forEach { append("&level=${java.net.URLEncoder.encode(it, "UTF-8")}") }
+                category?.let { append("&category=${java.net.URLEncoder.encode(it, "UTF-8")}") }
+                search?.let { append("&search=${java.net.URLEncoder.encode(it, "UTF-8")}") }
+            }
+            val response = client.get(url)
+            if (response.status.value in 200..299) Result.success(response.body<ExerciseListResponse>())
+            else Result.failure(Exception("Ошибка сервера: ${response.status.value}"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun getExerciseById(id: Int): Result<ExerciseResponse> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.get("$BASE_URL/exercises/$id")
+            if (response.status.value in 200..299) Result.success(response.body<ExerciseResponse>())
+            else Result.failure(Exception("Упражнение не найдено"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun getMuscles(): Result<List<MuscleResponse>> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.get("$BASE_URL/muscles")
+            if (response.status.value in 200..299) Result.success(response.body<List<MuscleResponse>>())
+            else Result.failure(Exception("Ошибка загрузки мышц"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun getEquipmentList(): Result<List<String>> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.get("$BASE_URL/exercises/equipment")
+            if (response.status.value in 200..299) Result.success(response.body<List<String>>())
+            else Result.failure(Exception("Ошибка загрузки оборудования"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    // ─── Fitness: Trainings ───────────────────────────────────────────────────
+
+    suspend fun getTrainings(): Result<List<TrainingData>> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.get("$BASE_URL/trainings")
+            if (response.status.value in 200..299) Result.success(response.body<TrainingListResponse>().trainings)
+            else Result.failure(Exception("Ошибка загрузки тренировок"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun createTraining(request: TrainingSaveRequest): Result<TrainingSaveResponse> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.post("$BASE_URL/trainings") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+            if (response.status.value in 200..299) Result.success(response.body<TrainingSaveResponse>())
+            else Result.failure(Exception("Ошибка сохранения тренировки"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun createTrainingWithSets(request: TrainingWithSetsSaveRequest): Result<TrainingSaveResponse> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.post("$BASE_URL/trainings/with-sets") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+            if (response.status.value in 200..299) Result.success(response.body<TrainingSaveResponse>())
+            else Result.failure(Exception("Ошибка сохранения тренировки"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun updateTrainingWithSets(id: Int, request: TrainingWithSetsSaveRequest): Result<TrainingSaveResponse> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.put("$BASE_URL/trainings/$id/with-sets") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+            if (response.status.value in 200..299) Result.success(response.body<TrainingSaveResponse>())
+            else Result.failure(Exception("Ошибка обновления тренировки"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun updateTraining(id: Int, request: TrainingSaveRequest): Result<TrainingSaveResponse> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.put("$BASE_URL/trainings/$id") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+            if (response.status.value in 200..299) Result.success(response.body<TrainingSaveResponse>())
+            else Result.failure(Exception("Ошибка обновления тренировки"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun deleteTraining(id: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.delete("$BASE_URL/trainings/$id")
+            if (response.status.value in 200..299) Result.success(Unit)
+            else Result.failure(Exception("Ошибка удаления тренировки"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    // ─── Fitness: Training Plans ──────────────────────────────────────────────
+
+    suspend fun getTrainingPlans(): Result<List<TrainingPlanData>> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.get("$BASE_URL/training-plans")
+            if (response.status.value in 200..299) Result.success(response.body<TrainingPlanListResponse>().plans)
+            else Result.failure(Exception("Ошибка загрузки планов тренировок"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun getPublicTrainingPlans(): Result<List<TrainingPlanData>> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.get("$BASE_URL/training-plans/public")
+            if (response.status.value in 200..299) Result.success(response.body<TrainingPlanListResponse>().plans)
+            else Result.failure(Exception("Ошибка загрузки публичных планов"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun getTrainingPlanById(id: Int): Result<TrainingPlanData> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.get("$BASE_URL/training-plans/$id")
+            if (response.status.value in 200..299) Result.success(response.body<TrainingPlanData>())
+            else Result.failure(Exception("План не найден"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun createTrainingPlan(request: TrainingPlanSaveRequest): Result<TrainingPlanSaveResponse> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.post("$BASE_URL/training-plans") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+            if (response.status.value in 200..299) Result.success(response.body<TrainingPlanSaveResponse>())
+            else Result.failure(Exception("Ошибка создания плана"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun updateTrainingPlan(id: Int, request: TrainingPlanSaveRequest): Result<TrainingPlanSaveResponse> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.put("$BASE_URL/training-plans/$id") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+            if (response.status.value in 200..299) Result.success(response.body<TrainingPlanSaveResponse>())
+            else Result.failure(Exception("Ошибка обновления плана"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun deleteTrainingPlan(id: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.delete("$BASE_URL/training-plans/$id")
+            if (response.status.value in 200..299) Result.success(Unit)
+            else Result.failure(Exception("Ошибка удаления плана"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun toggleTrainingPlanPublic(id: Int, isPublic: Boolean): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.put("$BASE_URL/training-plans/$id") {
+                contentType(ContentType.Application.Json)
+                // We send a minimal update — only is_public changes; name/description/days are preserved server-side
+                // The server PUT endpoint replaces the whole plan, so we need to fetch first.
+                // Instead, we use a dedicated visibility endpoint if available, or fall back to a full update.
+                // Since the API doesn't have a dedicated visibility endpoint for training plans,
+                // we'll handle this in the ViewModel by fetching the plan first.
+                setBody(TrainingPlanVisibilityRequest(isPublic = isPublic))
+            }
+            if (response.status.value in 200..299) Result.success(Unit)
+            else Result.failure(Exception("Ошибка изменения видимости плана"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
         }
     }
 }

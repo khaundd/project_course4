@@ -19,4 +19,20 @@ sealed class Screen(val route: String){
     object MealPlans: Screen("mealPlans")
     object MealPlanEditor: Screen("mealPlanEditor")
     object SelectProductForMealPlan: Screen("selectProductForMealPlan/{dayIndex}/{mealIndex}")
+    // Fitness
+    object Fitness: Screen("fitness")
+    object ExerciseCatalog: Screen("exerciseCatalog")
+    object ExerciseCatalogSelect: Screen("exerciseCatalogSelect")
+    object ExerciseCatalogSelectPlan: Screen("exerciseCatalogSelectPlan/{dayIndex}")
+    object ExerciseDetail: Screen("exerciseDetail/{exerciseId}")
+    object TrainingLog: Screen("trainingLog")
+    object TrainingEditor: Screen("trainingEditor")
+    object TrainingPlans: Screen("trainingPlans")
+    object TrainingPlanEditor: Screen("trainingPlanEditor")
+    object TrainingPlanDetail: Screen("trainingPlanDetail/{planId}")
+    object TrainingDetail: Screen("trainingDetail/{trainingId}")
+    // Active workout
+    object ActiveWorkout: Screen("activeWorkout")
+    object WorkoutSummary: Screen("workoutSummary")
+    object ExerciseCatalogSelectActive: Screen("exerciseCatalogSelectActive")
 }

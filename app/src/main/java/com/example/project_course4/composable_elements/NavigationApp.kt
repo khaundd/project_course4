@@ -63,6 +63,19 @@ import com.example.project_course4.composable_elements.screens.mealplan.MealPlan
 import com.example.project_course4.viewmodel.MealPlanViewModel
 import com.example.project_course4.viewmodel.RecipeCreationViewModel
 import com.example.project_course4.viewmodel.RecipeViewModel
+import com.example.project_course4.composable_elements.screens.fitness.FitnessScreen
+import com.example.project_course4.composable_elements.screens.fitness.ExerciseCatalogScreen
+import com.example.project_course4.composable_elements.screens.fitness.ExerciseDetailScreen
+import com.example.project_course4.composable_elements.screens.fitness.TrainingLogScreen
+import com.example.project_course4.composable_elements.screens.fitness.TrainingEditorScreen
+import com.example.project_course4.composable_elements.screens.fitness.TrainingPlanScreen
+import com.example.project_course4.composable_elements.screens.fitness.TrainingPlanEditorScreen
+import com.example.project_course4.composable_elements.screens.fitness.TrainingPlanDetailScreen
+import com.example.project_course4.composable_elements.screens.fitness.TrainingDetailScreen
+import com.example.project_course4.composable_elements.screens.fitness.ActiveWorkoutScreen
+import com.example.project_course4.composable_elements.screens.fitness.WorkoutSummaryScreen
+import com.example.project_course4.viewmodel.FitnessViewModel
+import com.example.project_course4.viewmodel.ActiveWorkoutViewModel
 @Composable
 fun NavigationApp(intentState: State<Intent?>) {
     val context = LocalContext.current
@@ -161,6 +174,13 @@ fun NavigationApp(intentState: State<Intent?>) {
     val recipeCreationState by recipeCreationViewModel.state.collectAsState()
     val recipeViewModel: RecipeViewModel = viewModel(factory = factory)
     val mealPlanViewModel = remember { MealPlanViewModel(clientAPI) }
+    val fitnessViewModel = remember { FitnessViewModel(clientAPI, sessionManager.fetchUserId()) }
+    val activeWorkoutViewModel = remember { ActiveWorkoutViewModel(database.activeWorkoutDao(), clientAPI) }
+
+    // Восстанавливаем незавершённую тренировку при старте приложения
+    LaunchedEffect(Unit) {
+        activeWorkoutViewModel.resumeIfActive()
+    }
     val allProducts by productViewModel.products.collectAsState()
     val profileViewModel: ProfileViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
@@ -520,6 +540,141 @@ fun NavigationApp(intentState: State<Intent?>) {
                     plan = plan,
                     allProducts = allProducts,
                     productViewModel = productViewModel
+                )
+            }
+
+            // ─── Fitness routes ───────────────────────────────────────────────
+
+            composable(Screen.Fitness.route) {
+                FitnessScreen(
+                    navController = navController,
+                    onStartEmptyWorkout = {
+                        activeWorkoutViewModel.startEmptyWorkout()
+                        navController.navigate(Screen.ActiveWorkout.route)
+                    }
+                )
+            }
+
+            composable(Screen.ExerciseCatalog.route) {
+                ExerciseCatalogScreen(navController = navController, viewModel = fitnessViewModel)
+            }
+
+            // Selection mode for training editor
+            composable(Screen.ExerciseCatalogSelect.route) {
+                ExerciseCatalogScreen(
+                    navController = navController,
+                    viewModel = fitnessViewModel,
+                    selectionMode = true,
+                    onExercisesSelected = { exercises ->
+                        fitnessViewModel.addExercisesToTraining(exercises)
+                    }
+                )
+            }
+
+            // Selection mode for plan editor day
+            composable(
+                route = Screen.ExerciseCatalogSelectPlan.route,
+                arguments = listOf(navArgument("dayIndex") { type = NavType.IntType })
+            ) { backStackEntry ->
+                val dayIndex = backStackEntry.arguments?.getInt("dayIndex") ?: 0
+                ExerciseCatalogScreen(
+                    navController = navController,
+                    viewModel = fitnessViewModel,
+                    selectionMode = true,
+                    onExercisesSelected = { exercises ->
+                        fitnessViewModel.addExercisesToPlanDay(dayIndex, exercises)
+                    }
+                )
+            }
+
+            composable(
+                route = Screen.ExerciseDetail.route,
+                arguments = listOf(navArgument("exerciseId") { type = NavType.IntType })
+            ) { backStackEntry ->
+                val exerciseId = backStackEntry.arguments?.getInt("exerciseId") ?: return@composable
+                ExerciseDetailScreen(navController = navController, viewModel = fitnessViewModel, exerciseId = exerciseId)
+            }
+
+            composable(Screen.TrainingLog.route) {
+                val activeState by activeWorkoutViewModel.state.collectAsState()
+                val activeWorkoutName = if (activeState.workoutId != 0) activeState.name else null
+                TrainingLogScreen(
+                    navController = navController,
+                    viewModel = fitnessViewModel,
+                    onStartActiveWorkout = {
+                        activeWorkoutViewModel.startEmptyWorkout()
+                        navController.navigate(Screen.ActiveWorkout.route)
+                    },
+                    activeWorkoutName = activeWorkoutName,
+                    onResumeWorkout = {
+                        navController.navigate(Screen.ActiveWorkout.route)
+                    }
+                )
+            }
+
+            composable(Screen.TrainingEditor.route) {
+                TrainingEditorScreen(navController = navController, viewModel = fitnessViewModel)
+            }
+
+            composable(Screen.TrainingPlans.route) {
+                TrainingPlanScreen(navController = navController, viewModel = fitnessViewModel)
+            }
+
+            composable(Screen.TrainingPlanEditor.route) {
+                TrainingPlanEditorScreen(navController = navController, viewModel = fitnessViewModel)
+            }
+
+            composable(
+                route = Screen.TrainingPlanDetail.route,
+                arguments = listOf(navArgument("planId") { type = NavType.IntType })
+            ) { backStackEntry ->
+                val planId = backStackEntry.arguments?.getInt("planId") ?: return@composable
+                TrainingPlanDetailScreen(navController = navController, viewModel = fitnessViewModel, planId = planId)
+            }
+
+            composable(
+                route = Screen.TrainingDetail.route,
+                arguments = listOf(navArgument("trainingId") { type = NavType.IntType })
+            ) { backStackEntry ->
+                val trainingId = backStackEntry.arguments?.getInt("trainingId") ?: return@composable
+                TrainingDetailScreen(
+                    navController = navController,
+                    viewModel = fitnessViewModel,
+                    trainingId = trainingId,
+                    onStartActiveWorkout = { training ->
+                        activeWorkoutViewModel.startFromTemplate(training)
+                        navController.navigate(Screen.ActiveWorkout.route)
+                    }
+                )
+            }
+
+            composable(Screen.ActiveWorkout.route) {
+                ActiveWorkoutScreen(
+                    navController = navController,
+                    viewModel = activeWorkoutViewModel,
+                    onAddExercise = {
+                        navController.navigate(Screen.ExerciseCatalogSelectActive.route)
+                    }
+                )
+            }
+
+            composable(Screen.ExerciseCatalogSelectActive.route) {
+                ExerciseCatalogScreen(
+                    navController = navController,
+                    viewModel = fitnessViewModel,
+                    selectionMode = true,
+                    onExercisesSelected = { exercises ->
+                        exercises.forEach { ex ->
+                            activeWorkoutViewModel.addExercise(ex.id, ex.nameRu ?: ex.name, ex.category)
+                        }
+                    }
+                )
+            }
+
+            composable(Screen.WorkoutSummary.route) {
+                WorkoutSummaryScreen(
+                    navController = navController,
+                    viewModel = activeWorkoutViewModel
                 )
             }
         }
