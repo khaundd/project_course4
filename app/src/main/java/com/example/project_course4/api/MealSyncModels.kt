@@ -22,6 +22,27 @@ data class MealComponentData(
     val weight: Int
 )
 
+// Used when receiving meal data from the trainer's client nutrition log endpoint
+// where the server uses snake_case field names
+@Serializable
+data class MealComponentDataReceive(
+    @SerialName("product_id") val productId: Int = 0,
+    val weight: Int = 0,
+    @SerialName("product_name") val productName: String? = null,
+    @SerialName("proteins") val protein: Float = 0f,
+    val fats: Float = 0f,
+    val carbs: Float = 0f,
+    val calories: Float = 0f
+)
+
+@Serializable
+data class MealDataReceive(
+    val name: String,
+    val mealTime: String,
+    val components: List<MealComponentDataReceive> = emptyList(),
+    @SerialName("from_plan_id") val fromPlanId: Int? = null
+)
+
 @Serializable
 data class MealSyncResponse(
     val success: Boolean,
@@ -156,10 +177,11 @@ data class MealPlanData(
     @SerialName("target_calories") val targetCalories: Float = 2000f,
     @SerialName("protein_pct") val proteinPct: Float = 30f,
     @SerialName("fats_pct") val fatsPct: Float = 30f,
-    @SerialName("carbs_pct") val carbsPct: Float = 40f
+    @SerialName("carbs_pct") val carbsPct: Float = 40f,
+    @SerialName("assigned_by_trainer_id") val assignedByTrainerId: Int? = null
 ) {
     val isPublic: Boolean get() = isPublicRaw != 0
-    // Граммы БЖУ из процентов и калорийности
+    val isAssignedByTrainer: Boolean get() = assignedByTrainerId != null
     val targetProteinG: Float get() = targetCalories * proteinPct / 100f / 4f
     val targetFatsG: Float get() = targetCalories * fatsPct / 100f / 9f
     val targetCarbsG: Float get() = targetCalories * carbsPct / 100f / 4f

@@ -175,9 +175,11 @@ class ClientAPI (private val sessionManager: SessionManager){
                 if (response.status.value in 200..299 && body.token != null) {
                     Log.d("api_test", "body: $body")
                     val userId = body.userId ?: -1
+                    val userRole = body.userRole ?: 1
 
                     if (userId != -1) {
                         sessionManager.saveUserId(userId)
+                        sessionManager.saveUserRole(userRole)
                         Result.success(body.token)// Возвращаем токен в случае успеха
                     } else {
                         Result.failure(Exception("Сервер не вернул ID пользователя"))
@@ -214,6 +216,52 @@ class ClientAPI (private val sessionManager: SessionManager){
                 val errorMessage = ErrorHandler.handleNetworkException(e)
                 Result.failure(Exception(errorMessage))
             }
+        }
+    }
+
+    suspend fun getAdminUsers(): Result<List<AdminUserData>> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.get("$BASE_URL/admin/users")
+            if (response.status.value in 200..299) {
+                Result.success(response.body<AdminUsersResponse>().users)
+            } else {
+                Result.failure(Exception("Ошибка загрузки списка пользователей"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun updateUserRole(userId: Int, roleId: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.put("$BASE_URL/admin/users/$userId/role") {
+                contentType(ContentType.Application.Json)
+                setBody(AdminUserRoleUpdateRequest(userRole = roleId))
+            }
+            if (response.status.value in 200..299) Result.success(Unit)
+            else Result.failure(Exception("Ошибка обновления роли пользователя"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun getAdminStats(): Result<AdminStats> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.get("$BASE_URL/admin/stats")
+            if (response.status.value in 200..299) Result.success(response.body<AdminStats>())
+            else Result.failure(Exception("Ошибка загрузки статистики"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun getTrainerStats(): Result<TrainerStats> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.get("$BASE_URL/trainer/stats")
+            if (response.status.value in 200..299) Result.success(response.body<TrainerStats>())
+            else Result.failure(Exception("Ошибка загрузки статистики тренера"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
         }
     }
 
@@ -1189,6 +1237,144 @@ class ClientAPI (private val sessionManager: SessionManager){
             }
             if (response.status.value in 200..299) Result.success(Unit)
             else Result.failure(Exception("Ошибка изменения видимости плана"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    // ─── Trainer: clients and requests ───────────────────────────────────────
+
+    suspend fun getTrainerClients(): Result<List<TrainerClientData>> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.get("$BASE_URL/trainer/clients")
+            if (response.status.value in 200..299) Result.success(response.body<TrainerClientsResponse>().clients)
+            else Result.failure(Exception("Ошибка загрузки списка клиентов тренера"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun getTrainerRequests(): Result<List<TrainerRequestData>> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.get("$BASE_URL/trainer/requests")
+            if (response.status.value in 200..299) Result.success(response.body<TrainerRequestsResponse>().requests)
+            else Result.failure(Exception("Ошибка загрузки заявок тренера"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun acceptRequest(requestId: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.post("$BASE_URL/trainer/requests/$requestId/accept")
+            if (response.status.value in 200..299) Result.success(Unit)
+            else Result.failure(Exception("Ошибка принятия заявки"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun rejectRequest(requestId: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.post("$BASE_URL/trainer/requests/$requestId/reject")
+            if (response.status.value in 200..299) Result.success(Unit)
+            else Result.failure(Exception("Ошибка отклонения заявки"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    // ─── Trainer: assign plans and view client stats ──────────────────────────
+
+    suspend fun assignTrainingPlan(clientId: Int, planId: Int, mode: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.post("$BASE_URL/trainer/clients/$clientId/assign-training-plan") {
+                contentType(ContentType.Application.Json)
+                setBody(AssignPlanRequest(planId = planId, mode = mode))
+            }
+            if (response.status.value in 200..299) Result.success(Unit)
+            else Result.failure(Exception("Ошибка назначения тренировочного плана"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun assignMealPlan(clientId: Int, planId: Int, mode: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.post("$BASE_URL/trainer/clients/$clientId/assign-meal-plan") {
+                contentType(ContentType.Application.Json)
+                setBody(AssignPlanRequest(planId = planId, mode = mode))
+            }
+            if (response.status.value in 200..299) Result.success(Unit)
+            else Result.failure(Exception("Ошибка назначения плана питания"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun getClientTrainingLog(clientId: Int): Result<List<TrainingData>> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.get("$BASE_URL/trainer/clients/$clientId/training-log")
+            if (response.status.value in 200..299) Result.success(response.body<TrainingListResponse>().trainings)
+            else Result.failure(Exception("Ошибка загрузки журнала тренировок клиента"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun getClientNutritionLog(clientId: Int): Result<ClientNutritionLog> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.get("$BASE_URL/trainer/clients/$clientId/nutrition-log")
+            if (response.status.value in 200..299) Result.success(response.body<ClientNutritionLog>())
+            else Result.failure(Exception("Ошибка загрузки журнала питания клиента"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    // ─── User: FCM token and trainer request ──────────────────────────────────
+
+    suspend fun sendFcmToken(fcmToken: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.post("$BASE_URL/user/fcm-token") {
+                contentType(ContentType.Application.Json)
+                setBody(FcmTokenRequest(fcmToken = fcmToken))
+            }
+            if (response.status.value in 200..299) Result.success(Unit)
+            else Result.failure(Exception("Ошибка отправки FCM-токена"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun sendTrainerRequest(trainerId: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.post("$BASE_URL/user/trainer-request") {
+                contentType(ContentType.Application.Json)
+                setBody(TrainerRequestRequest(trainerId = trainerId))
+            }
+            if (response.status.value in 200..299) Result.success(Unit)
+            else Result.failure(Exception("Ошибка отправки заявки тренеру"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun removeClient(clientId: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.delete("$BASE_URL/trainer/clients/$clientId")
+            if (response.status.value in 200..299) Result.success(Unit)
+            else Result.failure(Exception("Ошибка удаления клиента"))
+        } catch (e: Exception) {
+            Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
+        }
+    }
+
+    suspend fun getTrainers(): Result<List<TrainerPublicData>> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.get("$BASE_URL/trainers")
+            if (response.status.value in 200..299) Result.success(response.body<TrainersListResponse>().trainers)
+            else Result.failure(Exception("Ошибка загрузки списка тренеров"))
         } catch (e: Exception) {
             Result.failure(Exception(ErrorHandler.handleNetworkException(e)))
         }

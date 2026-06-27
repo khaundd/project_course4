@@ -9,9 +9,11 @@ import com.example.project_course4.local_db.AppDatabase
 import com.example.project_course4.local_db.entities.MealEntity
 import com.example.project_course4.utils.DateUtils
 import com.example.project_course4.utils.ErrorHandler
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 class AuthViewModel(
     private val clientAPI: ClientAPI,
@@ -403,6 +405,18 @@ class AuthViewModel(
                     sessionManager.saveAuthToken(token)
                     // Сохраняем email при успешном входе
                     sessionManager.saveEmail(email)
+
+                    // Отправляем FCM-токен на сервер после успешного входа (Requirements: 8.1, 8.6)
+                    try {
+                        val fcmToken = FirebaseMessaging.getInstance().token.await()
+                        sessionManager.saveFcmToken(fcmToken)
+                        clientAPI.sendFcmToken(fcmToken)
+                            .onSuccess { Log.d("AuthViewModel", "FCM токен отправлен после входа") }
+                            .onFailure { Log.w("AuthViewModel", "Не удалось отправить FCM токен: ${it.message}") }
+                    } catch (e: Exception) {
+                        Log.w("AuthViewModel", "Ошибка получения FCM токена: ${e.message}")
+                        // Не прерываем вход при ошибке FCM
+                    }
 
                     // Загружаем данные профиля с сервера после успешного входа
                     Log.d("AuthViewModel", "Начало загрузки данных профиля с сервера после входа")

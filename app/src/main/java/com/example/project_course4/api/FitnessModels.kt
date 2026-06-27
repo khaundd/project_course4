@@ -147,9 +147,11 @@ data class TrainingPlanData(
     @SerialName("is_public") val isPublicRaw: Int = 0,
     @SerialName("creator_id") val creatorId: Int = 0,
     val days: List<TrainingPlanDayData> = emptyList(),
-    @SerialName("day_count") val dayCount: Int? = null
+    @SerialName("day_count") val dayCount: Int? = null,
+    @SerialName("assigned_by_trainer_id") val assignedByTrainerId: Int? = null
 ) {
     val isPublic: Boolean get() = isPublicRaw != 0
+    val isAssignedByTrainer: Boolean get() = assignedByTrainerId != null
 }
 
 @Serializable

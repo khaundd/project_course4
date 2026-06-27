@@ -35,12 +35,16 @@ import androidx.navigation.navDeepLink
 import com.example.project_course4.ProductRepository
 import com.example.project_course4.Screen
 import com.example.project_course4.SessionManager
+import com.example.project_course4.UserRole
 import com.example.project_course4.viewmodel.AuthViewModel
 import com.example.project_course4.api.ClientAPI
+import com.example.project_course4.composable_elements.screens.RoleFeatureScreen
 import com.example.project_course4.composable_elements.screens.auth.LoginScreen
 import com.example.project_course4.composable_elements.screens.auth.RegistrationScreen
 import com.example.project_course4.composable_elements.screens.auth.verification.VerificationScreen
 import com.example.project_course4.composable_elements.scanner.BarcodeScannerManager
+import kotlinx.coroutines.tasks.await
+import android.os.Build
 import com.example.project_course4.composable_elements.screens.recipe.DishCompositionScreen
 import com.example.project_course4.composable_elements.screens.MainScreen
 import com.example.project_course4.composable_elements.screens.product.ProductCreationScreen
@@ -76,6 +80,10 @@ import com.example.project_course4.composable_elements.screens.fitness.ActiveWor
 import com.example.project_course4.composable_elements.screens.fitness.WorkoutSummaryScreen
 import com.example.project_course4.viewmodel.FitnessViewModel
 import com.example.project_course4.viewmodel.ActiveWorkoutViewModel
+import com.example.project_course4.composable_elements.screens.trainer.ClientStatsScreen
+import com.example.project_course4.composable_elements.screens.trainer.SelectTrainerScreen
+import com.example.project_course4.composable_elements.screens.StatisticsScreen
+import androidx.navigation.compose.currentBackStackEntryAsState
 @Composable
 fun NavigationApp(intentState: State<Intent?>) {
     val context = LocalContext.current
@@ -87,6 +95,24 @@ fun NavigationApp(intentState: State<Intent?>) {
     val snackbarHostState = remember { SnackbarHostState() }
     val database = remember {
         DatabaseProvider.getDatabase(context)
+    }
+
+    // Запрос разрешения на уведомления (Android 13+)
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        Log.d("NavigationApp", "POST_NOTIFICATIONS permission: $isGranted")
+    }
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    context,
+                    android.Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
     }
 
     val productRepository = remember {
@@ -181,6 +207,25 @@ fun NavigationApp(intentState: State<Intent?>) {
     LaunchedEffect(Unit) {
         activeWorkoutViewModel.resumeIfActive()
     }
+
+    // Отправляем FCM-токен при каждом запуске если пользователь авторизован
+    // Это гарантирует актуальность токена после смены аккаунтов или переустановки
+    LaunchedEffect(Unit) {
+        val token = sessionManager.fetchAuthToken() ?: return@LaunchedEffect
+        if (token.isBlank()) return@LaunchedEffect
+        try {
+            val fcmToken = com.google.firebase.messaging.FirebaseMessaging.getInstance().token
+                .await()
+            if (fcmToken.isNotBlank()) {
+                sessionManager.saveFcmToken(fcmToken)
+                clientAPI.sendFcmToken(fcmToken)
+                    .onSuccess { android.util.Log.d("NavigationApp", "FCM token refreshed on startup") }
+                    .onFailure { android.util.Log.w("NavigationApp", "FCM token refresh failed: ${it.message}") }
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("NavigationApp", "FCM token unavailable: ${e.message}")
+        }
+    }
     val allProducts by productViewModel.products.collectAsState()
     val profileViewModel: ProfileViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
@@ -247,17 +292,81 @@ fun NavigationApp(intentState: State<Intent?>) {
     LaunchedEffect(currentIntent) {
         val data = currentIntent?.data ?: return@LaunchedEffect
         val path = data.path ?: return@LaunchedEffect
-        if (path.startsWith("/recipes/shared/")) {
-            val token = path.removePrefix("/recipes/shared/")
-            if (token.isNotBlank()) {
-                navController.navigate("sharedRecipe/$token")
+
+        when {
+            // Стандартные shared-recipe ссылки
+            path.startsWith("/recipes/shared/") -> {
+                val token = path.removePrefix("/recipes/shared/")
+                if (token.isNotBlank()) navController.navigate("sharedRecipe/$token")
+            }
+
+            // FCM deep links через app://navigate/{route}
+            data.scheme == "app" && data.host == "navigate" -> {
+                val route = path.removePrefix("/")
+                if (route.isNotBlank()) {
+                    navController.navigate(route) {
+                        launchSingleTop = true
+                    }
+                }
+            }
+
+            // app://plans/training/{id} или app://plans/meal/{id}
+            data.scheme == "app" && data.host == "plans" -> {
+                val segments = data.pathSegments
+                if (segments.size >= 2) {
+                    val planId = segments[1].toIntOrNull()
+                    if (planId != null) {
+                        when (segments[0]) {
+                            "training" -> navController.navigate("trainingPlanDetail/$planId")
+                            "meal"     -> navController.navigate("mealPlanDetail/$planId")
+                        }
+                    }
+                }
+            }
+
+            // app://trainer/request/accepted → профиль
+            // app://trainer/request/rejected → выбор тренера
+            // app://trainer/removed          → выбор тренера
+            data.scheme == "app" && data.host == "trainer" -> {
+                when (path) {
+                    "/request/accepted" -> navController.navigate(Screen.Profile.route) {
+                        launchSingleTop = true
+                    }
+                    "/request/rejected", "/removed" -> navController.navigate(Screen.SelectTrainer.route) {
+                        launchSingleTop = true
+                    }
+                }
             }
         }
     }
 
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    // Routes where the bottom bar should be hidden
+    val hideBottomBarRoutes = setOf(
+        Screen.Login.route,
+        Screen.Registration.route,
+        Screen.PasswordReset.route,
+        Screen.ActiveWorkout.route,
+        Screen.WorkoutSummary.route
+    )
+    val showBottomBar = currentRoute != null &&
+        !hideBottomBarRoutes.contains(currentRoute) &&
+        !currentRoute.startsWith("verification") &&
+        !currentRoute.startsWith("sharedRecipe")
+
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        contentWindowInsets = WindowInsets(0)
+        contentWindowInsets = WindowInsets(0),
+        bottomBar = {
+            if (showBottomBar) {
+                BottomNavigationBar(
+                    navController = navController,
+                    currentRoute = currentRoute
+                )
+            }
+        }
     ) { paddingValues ->
         NavHost(
             navController = navController,
@@ -270,6 +379,7 @@ fun NavigationApp(intentState: State<Intent?>) {
                     navController = navController,
                     viewModel = productViewModel,
                     profileViewModel = profileViewModel,
+                    userRole = UserRole.fromId(sessionManager.fetchUserRole())
                 )
             }
 
@@ -277,7 +387,8 @@ fun NavigationApp(intentState: State<Intent?>) {
                 ProfileScreen(
                     navController = navController,
                     authViewModel = authViewModel,
-                    profileViewModel = profileViewModel
+                    profileViewModel = profileViewModel,
+                    userRole = UserRole.fromId(sessionManager.fetchUserRole())
                 )
             }
 
@@ -388,6 +499,20 @@ fun NavigationApp(intentState: State<Intent?>) {
                 LoginScreen(
                     navController = navController,
                     viewModel = authViewModel
+                )
+            }
+
+            composable(
+                route = Screen.RoleFeature.route,
+                arguments = listOf(navArgument("roleId") { type = NavType.IntType })
+            ) { backStackEntry ->
+                val roleId = backStackEntry.arguments?.getInt("roleId")
+                RoleFeatureScreen(
+                    navController = navController,
+                    role = UserRole.fromId(roleId),
+                    currentUserRole = UserRole.fromId(sessionManager.fetchUserRole()),
+                    currentUserId = sessionManager.fetchUserId(),
+                    clientAPI = clientAPI
                 )
             }
 
@@ -675,6 +800,34 @@ fun NavigationApp(intentState: State<Intent?>) {
                 WorkoutSummaryScreen(
                     navController = navController,
                     viewModel = activeWorkoutViewModel
+                )
+            }
+
+            // ─── Trainer routes ───────────────────────────────────────────────
+
+            composable(
+                route = Screen.ClientStats.route,
+                arguments = listOf(navArgument("clientId") { type = NavType.IntType })
+            ) { backStackEntry ->
+                val clientId = backStackEntry.arguments?.getInt("clientId") ?: -1
+                ClientStatsScreen(
+                    navController = navController,
+                    clientId = clientId,
+                    clientAPI = clientAPI
+                )
+            }
+
+            composable(Screen.SelectTrainer.route) {
+                SelectTrainerScreen(
+                    navController = navController,
+                    clientAPI = clientAPI
+                )
+            }
+
+            composable(Screen.Statistics.route) {
+                StatisticsScreen(
+                    productViewModel = productViewModel,
+                    profileViewModel = profileViewModel
                 )
             }
         }

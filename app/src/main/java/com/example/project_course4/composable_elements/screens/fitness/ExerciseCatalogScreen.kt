@@ -11,7 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
@@ -50,13 +50,17 @@ fun ExerciseCatalogScreen(
     val searchQuery by viewModel.searchQuery.collectAsState()
     val equipmentList by viewModel.equipmentList.collectAsState()
 
-    var showSearch by remember { mutableStateOf(false) }
     var localSearch by remember { mutableStateOf(searchQuery) }
     var showFilterDialog by remember { mutableStateOf(false) }
     val selected = remember { mutableStateListOf<ExerciseResponse>() }
-    var isNavigatingBack by remember { mutableStateOf(false) }
 
     val listState = rememberLazyListState()
+
+    val fitnessChips = listOf(
+        "Дневник"    to Screen.TrainingLog.route,
+        "Упражнения" to Screen.ExerciseCatalog.route,
+        "Планы"      to Screen.TrainingPlans.route
+    )
 
     LaunchedEffect(Unit) {
         if (muscles.isEmpty()) viewModel.loadMuscles()
@@ -74,147 +78,160 @@ fun ExerciseCatalogScreen(
     val hasActiveFilters = filterMuscleIds.isNotEmpty() || filterLevels.isNotEmpty() || filterEquipments.isNotEmpty()
 
     Scaffold(
-        topBar = {
-            if (showSearch) {
-                TopAppBar(
-                    title = {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedTextField(
-                                value = localSearch,
-                                onValueChange = { localSearch = it; viewModel.setSearchQuery(it) },
-                                placeholder = { Text("Поиск упражнений") },
-                                singleLine = true,
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(24.dp),
-                                leadingIcon = {
-                                    Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp))
-                                }
-                            )
-                            TextButton(onClick = {
-                                showSearch = false
-                                localSearch = ""
-                                viewModel.setSearchQuery("")
-                            }) {
-                                Text("Закрыть", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
-                            }
-                        }
+        floatingActionButton = {
+            if (selectionMode && selected.isNotEmpty()) {
+                FloatingActionButton(
+                    onClick = {
+                        onExercisesSelected?.invoke(selected.toList())
+                        navController.popBackStack()
                     },
-                    navigationIcon = {}
-                )
-            } else {
-                TopAppBar(
-                    title = {
-                        Text(
-                            text = if (selectionMode) "Выбор упражнений" else "Упражнения",
-                            fontWeight = FontWeight.ExtraBold,
-                            fontSize = 22.sp,
-                            letterSpacing = 1.sp
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = {
-                            if (!isNavigatingBack) {
-                                isNavigatingBack = true
-                                val navigated = navController.navigateUp()
-                                if (!navigated) navController.navigate(Screen.Main.route) { popUpTo(0) { inclusive = true } }
-                            }
-                        }, enabled = !isNavigatingBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
-                        }
-                    },
-                    actions = {
-                        if (selectionMode && selected.isNotEmpty()) {
-                            TextButton(onClick = {
-                                onExercisesSelected?.invoke(selected.toList())
-                                navController.popBackStack()
-                            }) {
-                                Text("Добавить (${selected.size})", color = Color(0xFF4CAF50))
-                            }
-                        }
-                        IconButton(onClick = { showSearch = true }) {
-                            Icon(Icons.Default.Search, contentDescription = "Поиск")
-                        }
-                    }
-                )
+                    containerColor = Color(0xFF4CAF50)
+                ) {
+                    Icon(Icons.Default.Check, contentDescription = "Добавить", tint = Color.White)
+                }
             }
         }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            // Filter button row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            LazyColumn(
+                state = listState,
+                contentPadding = PaddingValues(bottom = 16.dp)
             ) {
-                val filterLabel = if (hasActiveFilters) "Отобрано ($exercisesTotal)" else "Все ($exercisesTotal)"
-                Surface(
-                    modifier = Modifier.clip(RoundedCornerShape(20.dp)).clickable { showFilterDialog = true },
-                    shape = RoundedCornerShape(20.dp),
-                    color = if (hasActiveFilters) Color(0xFF3D5AFE) else Color(0xFF5C6BC0)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                // ── Заголовок + чипсы + поиск ───────────────────────────────
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .padding(top = 16.dp, bottom = 4.dp)
                     ) {
-                        Icon(
-                            Icons.Default.FilterList,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = Color.White
+                        // Заголовок
+                        Text(
+                            text = if (selectionMode) "Выбор упражнений" else "Активность",
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 26.sp
                         )
-                        Text(filterLabel, fontSize = 14.sp, color = Color.White, fontWeight = FontWeight.Medium)
+
+                        Spacer(Modifier.height(12.dp))
+
+                        // Section chips (только не в режиме выбора)
+                        if (!selectionMode) {
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                contentPadding = PaddingValues(end = 4.dp)
+                            ) {
+                                items(fitnessChips) { (label, route) ->
+                                    val isSelected = route == Screen.ExerciseCatalog.route
+                                    FilterChip(
+                                        selected = isSelected,
+                                        onClick = {
+                                            if (!isSelected) {
+                                                navController.navigate(route) { launchSingleTop = true }
+                                            }
+                                        },
+                                        label = { Text(label) },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = Color(0xFF4CAF50),
+                                            selectedLabelColor = Color.White
+                                        )
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(10.dp))
+                        }
+
+                        // Строка поиска
+                        OutlinedTextField(
+                            value = localSearch,
+                            onValueChange = { localSearch = it; viewModel.setSearchQuery(it) },
+                            placeholder = { Text("Поиск упражнений...") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(24.dp),
+                            leadingIcon = {
+                                Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp))
+                            },
+                            trailingIcon = {
+                                if (localSearch.isNotEmpty()) {
+                                    IconButton(onClick = { localSearch = ""; viewModel.setSearchQuery("") }) {
+                                        Icon(Icons.Default.Close, contentDescription = "Очистить", modifier = Modifier.size(18.dp))
+                                    }
+                                }
+                            }
+                        )
+
+                        Spacer(Modifier.height(10.dp))
+
+                        // Кнопка фильтра
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val filterLabel = if (hasActiveFilters) "Отобрано ($exercisesTotal)" else "Все ($exercisesTotal)"
+                            Surface(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .clickable { showFilterDialog = true },
+                                shape = RoundedCornerShape(20.dp),
+                                color = if (hasActiveFilters) Color(0xFF3D5AFE) else Color(0xFF5C6BC0)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.FilterList,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = Color.White
+                                    )
+                                    Text(filterLabel, fontSize = 14.sp, color = Color.White, fontWeight = FontWeight.Medium)
+                                }
+                            }
+                            if (hasActiveFilters) {
+                                Spacer(Modifier.weight(1f))
+                                TextButton(onClick = {
+                                    viewModel.applyFilters(emptyList(), emptyList(), emptyList())
+                                }) {
+                                    Text("Очистить", color = Color(0xFF3D5AFE), fontSize = 14.sp)
+                                }
+                            }
+                        }
                     }
                 }
+
+                // ── Активные чипсы фильтра ───────────────────────────────────
                 if (hasActiveFilters) {
-                    Spacer(Modifier.weight(1f))
-                    TextButton(onClick = {
-                        viewModel.applyFilters(emptyList(), emptyList(), emptyList())
-                    }) {
-                        Text("Очистить", color = Color(0xFF3D5AFE), fontSize = 14.sp)
+                    item {
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        ) {
+                            items(filterMuscleIds) { id ->
+                                val muscleName = muscles.find { it.id == id }?.name ?: id.toString()
+                                ActiveFilterChip(label = muscleName, onRemove = {
+                                    viewModel.applyFilters(filterMuscleIds - id, filterLevels, filterEquipments)
+                                })
+                            }
+                            items(filterEquipments) { eq ->
+                                ActiveFilterChip(label = eq, onRemove = {
+                                    viewModel.applyFilters(filterMuscleIds, filterLevels, filterEquipments - eq)
+                                })
+                            }
+                            items(filterLevels) { level ->
+                                ActiveFilterChip(label = levelLabel(level), onRemove = {
+                                    viewModel.applyFilters(filterMuscleIds, filterLevels - level, filterEquipments)
+                                })
+                            }
+                        }
                     }
                 }
-            }
 
-            // Active filter chips
-            if (hasActiveFilters) {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(bottom = 8.dp)
-                ) {
-                    items(filterMuscleIds) { id ->
-                        val muscleName = muscles.find { it.id == id }?.name ?: id.toString()
-                        ActiveFilterChip(label = muscleName, onRemove = {
-                            viewModel.applyFilters(filterMuscleIds - id, filterLevels, filterEquipments)
-                        })
-                    }
-                    items(filterEquipments) { eq ->
-                        ActiveFilterChip(label = eq, onRemove = {
-                            viewModel.applyFilters(filterMuscleIds, filterLevels, filterEquipments - eq)
-                        })
-                    }
-                    items(filterLevels) { level ->
-                        ActiveFilterChip(label = levelLabel(level), onRemove = {
-                            viewModel.applyFilters(filterMuscleIds, filterLevels - level, filterEquipments)
-                        })
-                    }
-                }
-            }
-
-            Box(modifier = Modifier.fillMaxSize()) {
-                LazyColumn(
-                    state = listState,
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(exercises) { exercise ->
-                        val isSelected = selected.any { it.id == exercise.id }
+                // ── Список упражнений ────────────────────────────────────────
+                items(exercises) { exercise ->
+                    val isSelected = selected.any { it.id == exercise.id }
+                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
                         ExerciseCard(
                             exercise = exercise,
                             selectionMode = selectionMode,
@@ -230,17 +247,26 @@ fun ExerciseCatalogScreen(
                             }
                         )
                     }
-                    if (isLoading) {
-                        item {
-                            Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator(modifier = Modifier.size(32.dp))
-                            }
+                }
+
+                if (isLoading) {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(32.dp))
                         }
                     }
                 }
-                if (!isLoading && exercises.isEmpty()) {
-                    Text("Упражнения не найдены", modifier = Modifier.align(Alignment.Center), color = Color.Gray)
-                }
+            }
+
+            if (!isLoading && exercises.isEmpty()) {
+                Text(
+                    "Упражнения не найдены",
+                    modifier = Modifier.align(Alignment.Center),
+                    color = Color.Gray
+                )
             }
         }
     }

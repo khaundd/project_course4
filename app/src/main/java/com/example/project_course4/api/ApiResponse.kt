@@ -8,5 +8,6 @@ data class ApiResponse(
     val message: String? = null,
     val error: String? = null,
     val token: String? = null,
-    val userId: Int? = null
+    val userId: Int? = null,
+    val userRole: Int? = null
 )

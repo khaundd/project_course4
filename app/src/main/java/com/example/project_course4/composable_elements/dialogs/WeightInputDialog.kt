@@ -200,6 +200,7 @@ fun WeightInputDialog(
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                         CustomButton(
                             modifier = Modifier.size(48.dp),
+                            fillMaxWidth = false,
                             icon = { tint ->
                                 Icon(imageVector = Icons.Default.Delete, contentDescription = "Удалить", tint = tint)
                             },
@@ -243,6 +244,7 @@ fun WeightInputDialog(
                             modifier = Modifier
                                 .width(72.dp)
                                 .height(48.dp),
+                            fillMaxWidth = false,
                             text = "✓",
                             backgroundColor = primaryColor,
                             textColor = Color.White,

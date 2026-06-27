@@ -6,17 +6,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.AddCircle
-import androidx.compose.material.icons.filled.EditNote
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Restaurant
-import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -29,10 +22,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.project_course4.viewmodel.AuthViewModel
 import com.example.project_course4.Screen
+import com.example.project_course4.UserRole
 import com.example.project_course4.utils.NetworkUtils
 import com.example.project_course4.utils.Validation
 import com.example.project_course4.viewmodel.ProfileViewModel
@@ -48,9 +42,9 @@ fun ProfileScreen(
     navController: NavController,
     authViewModel: AuthViewModel,
     profileViewModel: ProfileViewModel,
+    userRole: UserRole = UserRole.USER,
 ) {
     val context = LocalContext.current
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val validation = remember { Validation() }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -73,13 +67,7 @@ fun ProfileScreen(
     var expandedGoal by remember { mutableStateOf(false) }
     var expandedGender by remember { mutableStateOf(false) }
     var isLogoutInProgress by remember { mutableStateOf(false) }
-
-    // Только один раздел открыт одновременно; питание раскрыто по умолчанию
-    var expandedSection by remember { mutableStateOf<String?>("nutrition") }
-    val nutritionExpanded = expandedSection == "nutrition"
-    val activityExpanded = expandedSection == "activity"
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
+    var showRoleMenu by remember { mutableStateOf(false) }
 
     LaunchedEffect(validation.toastMessage) {
         validation.toastMessage?.let { message ->
@@ -88,163 +76,86 @@ fun ProfileScreen(
         }
     }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Меню", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleLarge)
-
-                // Профиль
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Outlined.Person, contentDescription = null) },
-                    label = { Text("Профиль") },
-                    selected = currentRoute == Screen.Profile.route,
-                    onClick = { scope.launch { drawerState.close() } },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 16.dp)
+        ) {
+            // Header row with title and role menu button
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Профиль",
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 26.sp
                 )
-
-                // Питание
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Restaurant, contentDescription = null) },
-                    label = { Text("Питание") },
-                    selected = false,
-                    badge = {
-                        Icon(
-                            if (nutritionExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                            contentDescription = null
-                        )
-                    },
-                    onClick = { expandedSection = if (nutritionExpanded) null else "nutrition" },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                )
-                if (nutritionExpanded) {
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.Restaurant, contentDescription = null) },
-                        label = { Text("Дневник питания") },
-                        selected = currentRoute == Screen.Main.route,
-                        onClick = {
-                            navController.navigate(Screen.Main.route) {
-                                popUpTo(Screen.Profile.route) { inclusive = true }
-                                launchSingleTop = true
+                if (userRole.isTrainerOrAbove) {
+                    Box {
+                        IconButton(onClick = { showRoleMenu = true }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "Меню роли"
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showRoleMenu,
+                            onDismissRequest = { showRoleMenu = false }
+                        ) {
+                            if (userRole.isTrainerOrAbove) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Outlined.Person,
+                                                contentDescription = null
+                                            )
+                                            Text("Панель тренера")
+                                        }
+                                    },
+                                    onClick = {
+                                        showRoleMenu = false
+                                        navController.navigate("roleFeature/${UserRole.TRAINER.id}")
+                                    }
+                                )
                             }
-                            scope.launch { drawerState.close() }
-                        },
-                        modifier = Modifier.padding(start = 28.dp, end = 8.dp, top = 0.dp, bottom = 0.dp)
-                    )
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.AddCircle, contentDescription = null) },
-                        label = { Text("Создать продукт") },
-                        selected = currentRoute?.startsWith(Screen.ProductCreation.route) == true,
-                        onClick = {
-                            scope.launch {
-                                drawerState.close()
-                                navController.navigate("productCreation?barcode=")
+                            if (userRole.isAdmin) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.AdminPanelSettings,
+                                                contentDescription = null
+                                            )
+                                            Text("Панель администратора")
+                                        }
+                                    },
+                                    onClick = {
+                                        showRoleMenu = false
+                                        navController.navigate("roleFeature/${UserRole.ADMIN.id}")
+                                    }
+                                )
                             }
-                        },
-                        modifier = Modifier.padding(start = 28.dp, end = 8.dp, top = 0.dp, bottom = 0.dp)
-                    )
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = null) },
-                        label = { Text("Рецепты") },
-                        selected = currentRoute == Screen.Recipes.route,
-                        onClick = {
-                            scope.launch {
-                                drawerState.close()
-                                navController.navigate(Screen.Recipes.route)
-                            }
-                        },
-                        modifier = Modifier.padding(start = 28.dp, end = 8.dp, top = 0.dp, bottom = 0.dp)
-                    )
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Filled.EditNote, contentDescription = null) },
-                        label = { Text("Планы питания") },
-                        selected = currentRoute == Screen.MealPlans.route,
-                        onClick = {
-                            scope.launch {
-                                drawerState.close()
-                                navController.navigate(Screen.MealPlans.route)
-                            }
-                        },
-                        modifier = Modifier.padding(start = 28.dp, end = 8.dp, top = 0.dp, bottom = 0.dp)
-                    )
-                }
-
-                // Активность
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.FitnessCenter, contentDescription = null) },
-                    label = { Text("Активность") },
-                    selected = false,
-                    badge = {
-                        Icon(
-                            if (activityExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                            contentDescription = null
-                        )
-                    },
-                    onClick = { expandedSection = if (activityExpanded) null else "activity" },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                )
-                if (activityExpanded) {
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.FitnessCenter, contentDescription = null) },
-                        label = { Text("Каталог упражнений") },
-                        selected = currentRoute == Screen.ExerciseCatalog.route,
-                        onClick = {
-                            scope.launch {
-                                drawerState.close()
-                                navController.navigate(Screen.ExerciseCatalog.route)
-                            }
-                        },
-                        modifier = Modifier.padding(start = 28.dp, end = 8.dp, top = 0.dp, bottom = 0.dp)
-                    )
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = null) },
-                        label = { Text("Дневник тренировок") },
-                        selected = currentRoute == Screen.TrainingLog.route,
-                        onClick = {
-                            scope.launch {
-                                drawerState.close()
-                                navController.navigate(Screen.TrainingLog.route)
-                            }
-                        },
-                        modifier = Modifier.padding(start = 28.dp, end = 8.dp, top = 0.dp, bottom = 0.dp)
-                    )
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Filled.EditNote, contentDescription = null) },
-                        label = { Text("Планы тренировок") },
-                        selected = currentRoute == Screen.TrainingPlans.route,
-                        onClick = {
-                            scope.launch {
-                                drawerState.close()
-                                navController.navigate(Screen.TrainingPlans.route)
-                            }
-                        },
-                        modifier = Modifier.padding(start = 28.dp, end = 8.dp, top = 0.dp, bottom = 0.dp)
-                    )
-                }
-            }
-        }
-    ) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { },
-                    navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Default.Menu, contentDescription = null)
                         }
                     }
-                )
-            },
-            snackbarHost = { SnackbarHost(snackbarHostState) }
-        ) { paddingValues ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp, vertical = 16.dp)
-            ) {
+                }
+            }
+
                 Text(
                     text = userEmail,
                     style = MaterialTheme.typography.titleLarge,
@@ -406,6 +317,17 @@ fun ProfileScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
+                // Кнопка «Найти тренера» только для обычных пользователей
+                if (userRole == UserRole.USER) {
+                    OutlinedButton(
+                        onClick = { navController.navigate(Screen.SelectTrainer.route) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Найти тренера")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
                 TextButton(
                     onClick = {
                         if (isLogoutInProgress) return@TextButton
@@ -436,14 +358,8 @@ fun ProfileScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                TextButton(onClick = { /* TODO */ }, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Outlined.Delete, contentDescription = null, tint = Color.Red, modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Удалить учётную запись", color = Color.Red)
-                }
             }
         }
-    }
 
     if (showInfoDialog) {
         AlertDialog(

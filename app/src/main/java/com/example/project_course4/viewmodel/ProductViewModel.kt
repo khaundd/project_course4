@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel as AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
 import com.example.project_course4.Meal
+import com.example.project_course4.MealNutrition
 import com.example.project_course4.Product
 import com.example.project_course4.ProductCreationState
 import com.example.project_course4.ProductRepository
@@ -750,6 +751,15 @@ class ProductViewModel(
         } catch (e: Exception) {
             Log.e("Calories", "Ошибка получения калорий за дату $date: ${e.message}")
             0
+        }
+    }
+
+    suspend fun getNutritionForDateRange(from: LocalDate, to: LocalDate): Map<LocalDate, MealNutrition> {
+        return try {
+            repository.getNutritionForDateRange(from, to)
+        } catch (e: Exception) {
+            Log.e("Statistics", "Ошибка получения данных за период: ${e.message}")
+            emptyMap()
         }
     }
     suspend fun saveCurrentMeal(mealIdInUi: Int) {

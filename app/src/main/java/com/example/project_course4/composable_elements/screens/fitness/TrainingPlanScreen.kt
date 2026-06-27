@@ -11,7 +11,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,12 +23,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.project_course4.api.TrainingPlanData
-import com.example.project_course4.composable_elements.AppDrawerContent
 import com.example.project_course4.viewmodel.FitnessViewModel
 import com.example.project_course4.Screen
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,37 +39,19 @@ fun TrainingPlanScreen(
     val isLoading by viewModel.isLoadingPlans.collectAsState()
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
-    val localDrawerState = rememberDrawerState(DrawerValue.Closed)
-    val activeDrawer = drawerState ?: localDrawerState
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
+
+    val fitnessChips = listOf(
+        "Дневник"  to Screen.TrainingLog.route,
+        "Упражнения" to Screen.ExerciseCatalog.route,
+        "Планы"    to Screen.TrainingPlans.route
+    )
 
     LaunchedEffect(Unit) { viewModel.loadTrainingPlans() }
     LaunchedEffect(selectedTab) {
         if (selectedTab == 1) viewModel.loadPublicTrainingPlans()
     }
 
-    ModalNavigationDrawer(
-        drawerState = activeDrawer,
-        drawerContent = {
-            AppDrawerContent(
-                navController = navController,
-                currentRoute = currentRoute,
-                onClose = { scope.launch { activeDrawer.close() } }
-            )
-        }
-    ) {
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Тренировочные планы") },
-                navigationIcon = {
-                    IconButton(onClick = { scope.launch { activeDrawer.open() } }) {
-                        Icon(Icons.Default.Menu, contentDescription = "Меню")
-                    }
-                }
-            )
-        },
         floatingActionButton = {
             if (selectedTab == 0) {
                 FloatingActionButton(
@@ -89,6 +67,38 @@ fun TrainingPlanScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            // Заголовок + чипсы
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 16.dp, bottom = 4.dp)
+            ) {
+                Text(
+                    text = "Активность",
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 26.sp
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    fitnessChips.forEach { (label, route) ->
+                        val isSelected = route == Screen.TrainingPlans.route
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = {
+                                if (!isSelected) navController.navigate(route) { launchSingleTop = true }
+                            },
+                            label = { Text(label) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Color(0xFF4CAF50),
+                                selectedLabelColor = Color.White
+                            )
+                        )
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+            }
+
             TabRow(selectedTabIndex = selectedTab) {
                 Tab(
                     selected = selectedTab == 0,
@@ -158,7 +168,6 @@ fun TrainingPlanScreen(
             }
         }
     }
-    } // end ModalNavigationDrawer
 }
 
 @Composable
@@ -195,43 +204,67 @@ private fun MyTrainingPlanCard(
         tonalElevation = 1.dp,
         shadowElevation = 1.dp
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(plan.name, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                plan.description?.takeIf { it.isNotBlank() }?.let {
-                    Spacer(Modifier.height(4.dp))
-                    Text(it, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    // Лейбл «от тренера» — только текст с иконкой, без фона
+                    if (plan.isAssignedByTrainer) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.padding(bottom = 6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = null,
+                                tint = Color(0xFF7C4DFF),
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Text(
+                                text = "Назначен тренером",
+                                fontSize = 11.sp,
+                                color = Color(0xFF7C4DFF),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                    Text(plan.name, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                    plan.description?.takeIf { it.isNotBlank() }?.let {
+                        Spacer(Modifier.height(4.dp))
+                        Text(it, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
-            }
-            // Options menu
-            Box {
-                IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "Опции", modifier = Modifier.size(20.dp))
+                // Кнопки управления только для своих планов
+                if (!plan.isAssignedByTrainer) {
+                    Box {
+                        IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Опции", modifier = Modifier.size(20.dp))
+                        }
+                        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                            DropdownMenuItem(
+                                text = { Text("Редактировать") },
+                                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                                onClick = { showMenu = false; onEdit() }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Удалить", color = Color.Red) },
+                                leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red) },
+                                onClick = { showMenu = false; showDeleteDialog = true }
+                            )
+                        }
+                    }
+                    IconButton(onClick = onTogglePublic, modifier = Modifier.size(32.dp)) {
+                        Icon(
+                            imageVector = if (plan.isPublic) Icons.Default.LockOpen else Icons.Default.Lock,
+                            contentDescription = if (plan.isPublic) "Сделать приватным" else "Сделать публичным",
+                            tint = if (plan.isPublic) Color(0xFF4CAF50) else Color.Gray,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
-                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                    DropdownMenuItem(
-                        text = { Text("Редактировать") },
-                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
-                        onClick = { showMenu = false; onEdit() }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Удалить", color = Color.Red) },
-                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red) },
-                        onClick = { showMenu = false; showDeleteDialog = true }
-                    )
-                }
-            }
-            // Lock toggle
-            IconButton(onClick = onTogglePublic, modifier = Modifier.size(32.dp)) {
-                Icon(
-                    imageVector = if (plan.isPublic) Icons.Default.LockOpen else Icons.Default.Lock,
-                    contentDescription = if (plan.isPublic) "Сделать приватным" else "Сделать публичным",
-                    tint = if (plan.isPublic) Color(0xFF4CAF50) else Color.Gray,
-                    modifier = Modifier.size(20.dp)
-                )
             }
         }
     }

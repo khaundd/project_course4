@@ -4,17 +4,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,70 +27,87 @@ fun FitnessScreen(
     navController: NavController,
     onStartEmptyWorkout: () -> Unit = {}
 ) {
-    var isNavigatingBack by remember { mutableStateOf(false) }
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Физическая активность") },
-                navigationIcon = {
-                    IconButton(
-                        onClick = {
-                            if (!isNavigatingBack) {
-                                isNavigatingBack = true
-                                val navigated = navController.navigateUp()
-                                if (!navigated) {
-                                    navController.navigate(Screen.Main.route) {
-                                        popUpTo(0) { inclusive = true }
-                                    }
-                                }
-                            }
-                        },
-                        enabled = !isNavigatingBack
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
-                    }
-                }
-            )
-        }
-    ) { padding ->
+    val fitnessChips = listOf(
+        "Дневник"    to Screen.TrainingLog.route,
+        "Упражнения" to Screen.ExerciseCatalog.route,
+        "Планы"      to Screen.TrainingPlans.route
+    )
+
+    Scaffold { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            FitnessMenuCard(
-                icon = Icons.Default.PlayArrow,
-                title = "Начать тренировку",
-                subtitle = "Записывайте подходы, вес и повторения в реальном времени",
-                color = Color(0xFF4CAF50),
-                onClick = onStartEmptyWorkout
-            )
+            // Заголовок + чипсы
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 16.dp, bottom = 4.dp)
+            ) {
+                Text(
+                    text = "Активность",
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 26.sp
+                )
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    fitnessChips.forEach { (label, route) ->
+                        FilterChip(
+                            selected = false,
+                            onClick = { navController.navigate(route) { launchSingleTop = true } },
+                            label = { Text(label) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Color(0xFF4CAF50),
+                                selectedLabelColor = Color.White
+                            )
+                        )
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
 
-            FitnessMenuCard(
-                icon = Icons.Default.FitnessCenter,
-                title = "Каталог упражнений",
-                subtitle = "Просмотр упражнений с фильтрацией по мышцам, оборудованию и уровню",
-                color = Color(0xFF4CAF50),
-                onClick = { navController.navigate("exerciseCatalog") }
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                FitnessMenuCard(
+                    icon = Icons.Default.PlayArrow,
+                    title = "Начать тренировку",
+                    subtitle = "Записывайте подходы, вес и повторения в реальном времени",
+                    color = Color(0xFF4CAF50),
+                    onClick = onStartEmptyWorkout
+                )
 
-            FitnessMenuCard(
-                icon = Icons.AutoMirrored.Filled.List,
-                title = "Дневник тренировок",
-                subtitle = "Записывайте свои тренировки и отслеживайте прогресс",
-                color = Color(0xFF2196F3),
-                onClick = { navController.navigate("trainingLog") }
-            )
+                FitnessMenuCard(
+                    icon = Icons.Default.FitnessCenter,
+                    title = "Каталог упражнений",
+                    subtitle = "Просмотр упражнений с фильтрацией по мышцам, оборудованию и уровню",
+                    color = Color(0xFF4CAF50),
+                    onClick = { navController.navigate(Screen.ExerciseCatalog.route) }
+                )
 
-            FitnessMenuCard(
-                icon = Icons.AutoMirrored.Filled.MenuBook,
-                title = "Планы тренировок",
-                subtitle = "Создавайте и используйте готовые программы тренировок",
-                color = Color(0xFF9C27B0),
-                onClick = { navController.navigate("trainingPlans") }
-            )
+                FitnessMenuCard(
+                    icon = Icons.AutoMirrored.Filled.List,
+                    title = "Дневник тренировок",
+                    subtitle = "Записывайте свои тренировки и отслеживайте прогресс",
+                    color = Color(0xFF2196F3),
+                    onClick = { navController.navigate(Screen.TrainingLog.route) }
+                )
+
+                FitnessMenuCard(
+                    icon = Icons.AutoMirrored.Filled.MenuBook,
+                    title = "Планы тренировок",
+                    subtitle = "Создавайте и используйте готовые программы тренировок",
+                    color = Color(0xFF9C27B0),
+                    onClick = { navController.navigate(Screen.TrainingPlans.route) }
+                )
+            }
         }
     }
 }

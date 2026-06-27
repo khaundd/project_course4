@@ -54,6 +54,12 @@ class SessionManager(context: Context) {
 
     fun fetchUserId(): Int = sharedPreferences.getInt("user_id", -1)
 
+    fun saveUserRole(roleId: Int) {
+        sharedPreferences.edit { putInt("user_role", roleId) }
+    }
+
+    fun fetchUserRole(): Int = sharedPreferences.getInt("user_role", 1)
+
     fun saveEmail(email: String) {
         sharedPreferences.edit { putString("user_email", email) }
     }
@@ -135,4 +141,10 @@ class SessionManager(context: Context) {
     }
 
     fun getUseCustomCalories(): Boolean = sharedPreferences.getBoolean("use_custom_calories", false)
+
+    fun saveFcmToken(token: String) {
+        sharedPreferences.edit { putString("fcm_token", token) }
+    }
+
+    fun fetchFcmToken(): String? = sharedPreferences.getString("fcm_token", null)
 }

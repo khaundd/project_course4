@@ -1,4 +1,4 @@
-package com.example.project_course4.composable_elements.screens.mealplan
+﻿package com.example.project_course4.composable_elements.screens.mealplan
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -8,10 +8,11 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -30,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.project_course4.Screen
 import com.example.project_course4.api.MealPlanData
 import com.example.project_course4.viewmodel.MealPlanViewModel
 import kotlin.math.roundToInt
@@ -45,26 +47,18 @@ fun MealPlanScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
+    val nutritionChips = listOf(
+        "Дневник"       to Screen.Main.route,
+        "Рецепты"       to Screen.Recipes.route,
+        "Планы питания" to Screen.MealPlans.route
+    )
+
     LaunchedEffect(Unit) { viewModel.loadPlans() }
     LaunchedEffect(selectedTab) {
         if (selectedTab == 1) viewModel.loadPublicPlans()
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Планы питания") },
-                navigationIcon = {
-                    var isNavigatingBack by remember { mutableStateOf(false) }
-                    IconButton(
-                        onClick = { if (!isNavigatingBack) { isNavigatingBack = true; navController.popBackStack() } },
-                        enabled = !isNavigatingBack
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
-                    }
-                }
-            )
-        },
         floatingActionButton = {
             if (selectedTab == 0) {
                 FloatingActionButton(
@@ -77,6 +71,43 @@ fun MealPlanScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            // Заголовок + чипсы
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 16.dp, bottom = 4.dp)
+            ) {
+                Text(
+                    text = "Питание",
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 26.sp
+                )
+                Spacer(Modifier.height(8.dp))
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(vertical = 4.dp)
+                ) {
+                    items(nutritionChips) { (label, route) ->
+                        val isSelected = route == Screen.MealPlans.route
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = {
+                                if (!isSelected) navController.navigate(route) {
+                                    launchSingleTop = true; restoreState = true
+                                }
+                            },
+                            label = { Text(label) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Color(0xFF4CAF50),
+                                selectedLabelColor = Color.White
+                            )
+                        )
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+            }
+
             TabRow(selectedTabIndex = selectedTab) {
                 Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("Мои планы") })
                 Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("Публичные") })
@@ -173,52 +204,76 @@ private fun MyMealPlanCard(
         tonalElevation = 1.dp,
         shadowElevation = 1.dp
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(plan.name, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                if (plan.description.isNotBlank()) {
-                    Spacer(Modifier.height(4.dp))
-                    Text(plan.description, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    "${plan.targetCalories.roundToInt()} ккал  ·  " +
-                    "Б ${plan.targetProteinG.roundToInt()}г  ·  " +
-                    "Ж ${plan.targetFatsG.roundToInt()}г  ·  " +
-                    "У ${plan.targetCarbsG.roundToInt()}г",
-                    fontSize = 13.sp,
-                    color = Color(0xFF4CAF50)
-                )
-            }
-            // Троеточие — меню
-            Box {
-                IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "Опции", modifier = Modifier.size(20.dp))
-                }
-                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                    DropdownMenuItem(
-                        text = { Text("Редактировать") },
-                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
-                        onClick = { showMenu = false; onEdit() }
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    // Лейбл «от тренера» — только текст с иконкой, без фона
+                    if (plan.isAssignedByTrainer) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.padding(bottom = 6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = null,
+                                tint = Color(0xFF7C4DFF),
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Text(
+                                text = "Назначен тренером",
+                                fontSize = 11.sp,
+                                color = Color(0xFF7C4DFF),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                    Text(plan.name, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                    if (plan.description.isNotBlank()) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(plan.description, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "${plan.targetCalories.roundToInt()} ккал  ·  " +
+                        "Б ${plan.targetProteinG.roundToInt()}г  ·  " +
+                        "Ж ${plan.targetFatsG.roundToInt()}г  ·  " +
+                        "У ${plan.targetCarbsG.roundToInt()}г",
+                        fontSize = 13.sp,
+                        color = Color(0xFF4CAF50)
                     )
-                    DropdownMenuItem(
-                        text = { Text("Удалить", color = Color.Red) },
-                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red) },
-                        onClick = { showMenu = false; onDelete() }
-                    )
                 }
-            }
-            // Замок — переключение публичности
-            IconButton(onClick = onTogglePublic, modifier = Modifier.size(32.dp)) {
-                Icon(
-                    imageVector = if (plan.isPublic) Icons.Default.LockOpen else Icons.Default.Lock,
-                    contentDescription = if (plan.isPublic) "Сделать приватным" else "Сделать публичным",
-                    tint = if (plan.isPublic) Color(0xFF4CAF50) else Color.Gray,
-                    modifier = Modifier.size(20.dp)
-                )
+                // Кнопки управления только для своих планов
+                if (!plan.isAssignedByTrainer) {
+                    Box {
+                        IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Опции", modifier = Modifier.size(20.dp))
+                        }
+                        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                            DropdownMenuItem(
+                                text = { Text("Редактировать") },
+                                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                                onClick = { showMenu = false; onEdit() }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Удалить", color = Color.Red) },
+                                leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red) },
+                                onClick = { showMenu = false; onDelete() }
+                            )
+                        }
+                    }
+                    IconButton(onClick = onTogglePublic, modifier = Modifier.size(32.dp)) {
+                        Icon(
+                            imageVector = if (plan.isPublic) Icons.Default.LockOpen else Icons.Default.Lock,
+                            contentDescription = if (plan.isPublic) "Сделать приватным" else "Сделать публичным",
+                            tint = if (plan.isPublic) Color(0xFF4CAF50) else Color.Gray,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
             }
         }
     }

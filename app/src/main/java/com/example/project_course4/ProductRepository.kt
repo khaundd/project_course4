@@ -199,6 +199,35 @@ class ProductRepository(
             .sum()
     }
 
+    suspend fun getNutritionForDateRange(from: LocalDate, to: LocalDate): Map<LocalDate, MealNutrition> {
+        val result = mutableMapOf<LocalDate, MealNutrition>()
+        val allComponents = mealDao.getAllMealComponentsWithJunction()
+        val allProductIds = allComponents.map { it.productId }.distinct()
+        val productsMap = if (allProductIds.isEmpty()) emptyMap()
+        else productDao.getProductsByIds(allProductIds).associateBy { it.productId }
+
+        var current = from
+        while (!current.isAfter(to)) {
+            val startOfDay = current.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            val mealEntities = mealDao.getMealsByDate(startOfDay)
+            if (mealEntities.isNotEmpty()) {
+                val mealIds = mealEntities.map { it.mealId }.toSet()
+                var calories = 0f; var protein = 0f; var fats = 0f; var carbs = 0f
+                allComponents.filter { it.mealId in mealIds }.forEach { comp ->
+                    val product = productsMap[comp.productId]?.toUiModel() ?: return@forEach
+                    val w = comp.weight.toInt()
+                    calories += product.calories * w / 100f
+                    protein  += product.protein  * w / 100f
+                    fats     += product.fats     * w / 100f
+                    carbs    += product.carbs    * w / 100f
+                }
+                result[current] = MealNutrition(protein, fats, carbs, calories)
+            }
+            current = current.plusDays(1)
+        }
+        return result
+    }
+
     suspend fun checkProductNameExists(name: String): Result<Boolean> {
         return try {
             // Проверяем интернет-соединение перед запросом к серверу

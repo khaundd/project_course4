@@ -15,7 +15,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,10 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
-import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.project_course4.api.TrainingData
 import com.example.project_course4.api.TrainingPlanData
-import com.example.project_course4.composable_elements.AppDrawerContent
 import com.example.project_course4.composable_elements.dialogs.DateRangePickerDialog
 import com.example.project_course4.viewmodel.FitnessViewModel
 import com.example.project_course4.Screen
@@ -47,7 +44,7 @@ fun TrainingLogScreen(
     viewModel: FitnessViewModel,
     drawerState: DrawerState? = null,
     onStartActiveWorkout: (() -> Unit)? = null,
-    activeWorkoutName: String? = null,   // non-null = there is an ongoing workout
+    activeWorkoutName: String? = null,
     onResumeWorkout: (() -> Unit)? = null
 ) {
     val trainings by viewModel.trainings.collectAsState()
@@ -55,17 +52,18 @@ fun TrainingLogScreen(
     val isDeletingTraining by viewModel.isDeletingTraining.collectAsState()
     val trainingPlans by viewModel.trainingPlans.collectAsState()
     val scope = rememberCoroutineScope()
-    val localDrawerState = rememberDrawerState(DrawerValue.Closed)
-    val activeDrawer = drawerState ?: localDrawerState
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
+
+    val fitnessChips = listOf(
+        "Дневник"  to Screen.TrainingLog.route,
+        "Упражнения" to Screen.ExerciseCatalog.route,
+        "Планы"    to Screen.TrainingPlans.route
+    )
 
     var fabExpanded by remember { mutableStateOf(false) }
     var showPlanPickerDialog by remember { mutableStateOf(false) }
     var isPastingFromPlan by remember { mutableStateOf(false) }
     var pasteResult by remember { mutableStateOf<Boolean?>(null) }
 
-    // Date range filter
     var dateFrom by remember { mutableStateOf<LocalDate?>(null) }
     var dateTo by remember { mutableStateOf<LocalDate?>(null) }
     var showRangePicker by remember { mutableStateOf(false) }
@@ -96,40 +94,13 @@ fun TrainingLogScreen(
         }
     }
 
-    ModalNavigationDrawer(
-        drawerState = activeDrawer,
-        drawerContent = {
-            AppDrawerContent(
-                navController = navController,
-                currentRoute = currentRoute,
-                onClose = { scope.launch { activeDrawer.close() } }
-            )
-        }
-    ) {
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Дневник тренировок") },
-                navigationIcon = {
-                    IconButton(onClick = { scope.launch { activeDrawer.open() } }) {
-                        Icon(Icons.Default.Menu, contentDescription = "Меню")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showRangePicker = true }) {
-                        Icon(Icons.Default.CalendarMonth, contentDescription = "Фильтр по дате")
-                    }
-                }
-            )
-        },
         floatingActionButton = {
             Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Mini FAB options (shown when expanded)
                 if (fabExpanded) {
-                    // Option: Start workout immediately
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -146,16 +117,12 @@ fun TrainingLogScreen(
                             )
                         }
                         SmallFloatingActionButton(
-                            onClick = {
-                                fabExpanded = false
-                                onStartActiveWorkout?.invoke()
-                            },
+                            onClick = { fabExpanded = false; onStartActiveWorkout?.invoke() },
                             containerColor = Color(0xFF4CAF50)
                         ) {
                             Icon(Icons.Default.PlayArrow, contentDescription = "Начать тренировку", tint = Color.White)
                         }
                     }
-                    // Option: Create training record
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -182,7 +149,6 @@ fun TrainingLogScreen(
                             Icon(Icons.Default.Edit, contentDescription = "Создать запись", tint = Color.White)
                         }
                     }
-                    // Option: Paste from training plan
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -199,17 +165,13 @@ fun TrainingLogScreen(
                             )
                         }
                         SmallFloatingActionButton(
-                            onClick = {
-                                fabExpanded = false
-                                showPlanPickerDialog = true
-                            },
+                            onClick = { fabExpanded = false; showPlanPickerDialog = true },
                             containerColor = Color(0xFF9C27B0)
                         ) {
                             Icon(Icons.Default.ContentPaste, contentDescription = "Из плана", tint = Color.White)
                         }
                     }
                 }
-                // Main FAB
                 FloatingActionButton(
                     onClick = { fabExpanded = !fabExpanded },
                     containerColor = Color(0xFF4CAF50)
@@ -224,135 +186,152 @@ fun TrainingLogScreen(
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            // Resume active workout banner
-            if (activeWorkoutName != null) {
-                Surface(
+            Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+                // Заголовок + чипсы
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onResumeWorkout?.invoke() },
-                    color = Color(0xFF4CAF50),
-                    tonalElevation = 4.dp
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 16.dp, bottom = 4.dp)
                 ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
-                            Text(
-                                "Тренировка в процессе",
-                                fontSize = 12.sp,
-                                color = Color.White.copy(alpha = 0.85f)
-                            )
-                            Text(
-                                activeWorkoutName.ifBlank { "Тренировка" },
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
+                        Text(
+                            text = "Активность",
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 26.sp
+                        )
+                        IconButton(onClick = { showRangePicker = true }) {
+                            Icon(Icons.Default.CalendarMonth, contentDescription = "Фильтр по дате")
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        fitnessChips.forEach { (label, route) ->
+                            val isSelected = route == Screen.TrainingLog.route
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = {
+                                    if (!isSelected) navController.navigate(route) { launchSingleTop = true }
+                                },
+                                label = { Text(label) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Color(0xFF4CAF50),
+                                    selectedLabelColor = Color.White
+                                )
                             )
                         }
-                        Icon(
-                            Icons.Default.PlayArrow,
-                            contentDescription = "Продолжить",
-                            tint = Color.White,
-                            modifier = Modifier.size(28.dp)
+                    }
+                }
+
+                // Resume active workout banner
+                if (activeWorkoutName != null) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onResumeWorkout?.invoke() },
+                        color = Color(0xFF4CAF50),
+                        tonalElevation = 4.dp
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text("Тренировка в процессе", fontSize = 12.sp, color = Color.White.copy(alpha = 0.85f))
+                                Text(
+                                    activeWorkoutName.ifBlank { "Тренировка" },
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                            Icon(Icons.Default.PlayArrow, contentDescription = "Продолжить", tint = Color.White, modifier = Modifier.size(28.dp))
+                        }
+                    }
+                }
+
+                // Date range chip
+                if (hasFilter) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        FilterChip(
+                            selected = true,
+                            onClick = { dateFrom = null; dateTo = null },
+                            label = { Text(filterLabel, fontSize = 13.sp) },
+                            trailingIcon = {
+                                Icon(Icons.Default.Close, contentDescription = "Сбросить", modifier = Modifier.size(16.dp))
+                            }
                         )
                     }
                 }
-            }
-            // Date range chip
-            if (hasFilter) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    FilterChip(
-                        selected = true,
-                        onClick = { dateFrom = null; dateTo = null },
-                        label = { Text(filterLabel, fontSize = 13.sp) },
-                        trailingIcon = {
-                            Icon(Icons.Default.Close, contentDescription = "Сбросить", modifier = Modifier.size(16.dp))
-                        }
-                    )
-                }
-            }
 
-            Box(modifier = Modifier.fillMaxSize()) {
-                when {
-                    isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                    filtered.isEmpty() -> Text(
-                        if (hasFilter) "Нет тренировок за выбранный период." else "Нет записей. Нажмите + чтобы добавить тренировку.",
-                        modifier = Modifier.align(Alignment.Center).padding(24.dp),
-                        color = Color.Gray
-                    )
-                    else -> {
-                        LazyColumn(
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            grouped.forEach { (dateStr, dayTrainings) ->
-                                item(key = "header_$dateStr") {
-                                    val label = dateStr.let {
-                                        runCatching {
-                                            LocalDate.parse(it).format(
-                                                DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.forLanguageTag("ru"))
-                                            )
-                                        }.getOrDefault(it)
+                Box(modifier = Modifier.fillMaxSize()) {
+                    when {
+                        isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                        filtered.isEmpty() -> Text(
+                            if (hasFilter) "Нет тренировок за выбранный период." else "Нет записей. Нажмите + чтобы добавить тренировку.",
+                            modifier = Modifier.align(Alignment.Center).padding(24.dp),
+                            color = Color.Gray
+                        )
+                        else -> {
+                            LazyColumn(
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                grouped.forEach { (dateStr, dayTrainings) ->
+                                    item(key = "header_$dateStr") {
+                                        val label = dateStr.let {
+                                            runCatching {
+                                                LocalDate.parse(it).format(
+                                                    DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.forLanguageTag("ru"))
+                                                )
+                                            }.getOrDefault(it)
+                                        }
+                                        Text(label, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
                                     }
-                                    Text(
-                                        label,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 16.sp,
-                                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
-                                    )
-                                }
-                                items(dayTrainings, key = { it.id }) { training ->
-                                    TrainingLogCard(
-                                        training = training,
-                                        onEdit = {
-                                            viewModel.startEditTraining(training)
-                                            navController.navigate(Screen.TrainingEditor.route)
-                                        },
-                                        onDelete = { viewModel.deleteTraining(training.id) },
-                                        onClick = { navController.navigate("trainingDetail/${training.id}") }
-                                    )
+                                    items(dayTrainings, key = { it.id }) { training ->
+                                        TrainingLogCard(
+                                            training = training,
+                                            onEdit = {
+                                                viewModel.startEditTraining(training)
+                                                navController.navigate(Screen.TrainingEditor.route)
+                                            },
+                                            onDelete = { viewModel.deleteTraining(training.id) },
+                                            onClick = { navController.navigate("trainingDetail/${training.id}") }
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
-        }
-        // Overlay loading indicator while deleting
-        if (isDeletingTraining) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.4f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 8.dp
+            if (isDeletingTraining) {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        modifier = Modifier.padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        CircularProgressIndicator(color = Color.Red)
-                        Text("Удаление...", fontSize = 14.sp)
+                    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, tonalElevation = 8.dp) {
+                        Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            CircularProgressIndicator(color = Color.Red)
+                            Text("Удаление...", fontSize = 14.sp)
+                        }
                     }
                 }
             }
         }
-        } // end outer Box
     }
-    } // end ModalNavigationDrawer
 
     // Range picker dialog — custom calendar with visual range selection
     if (showRangePicker) {

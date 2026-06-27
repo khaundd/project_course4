@@ -1,8 +1,9 @@
-package com.example.project_course4.composable_elements.screens.recipe
+﻿package com.example.project_course4.composable_elements.screens.recipe
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -17,8 +18,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.project_course4.Screen
-import com.example.project_course4.composable_elements.BottomNavigationBar
-import com.example.project_course4.composable_elements.SafeCloseTopAppBar
 import com.example.project_course4.composable_elements.charts.BJUCircularChart
 import com.example.project_course4.viewmodel.RecipeViewModel
 
@@ -29,14 +28,17 @@ fun RecipeScreen(navController: NavController, viewModel: RecipeViewModel) {
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
 
+    val nutritionChips = listOf(
+        "Дневник"       to Screen.Main.route,
+        "Рецепты"       to Screen.Recipes.route,
+        "Планы питания" to Screen.MealPlans.route
+    )
+
     LaunchedEffect(Unit) {
         viewModel.loadRecipes()
     }
 
     Scaffold(
-        topBar = {
-            SafeCloseTopAppBar(title = "Рецепты", navController = navController)
-        },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { navController.navigate(Screen.RecipeCreation.route) },
@@ -44,46 +46,82 @@ fun RecipeScreen(navController: NavController, viewModel: RecipeViewModel) {
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Создать рецепт", tint = Color.White)
             }
-        },
-        bottomBar = {
-            BottomNavigationBar(navController = navController, currentScreen = "recipes")
         }
     ) { paddingValues ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            when {
-                isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                error != null -> Text(
-                    text = error ?: "Ошибка",
-                    color = Color.Red,
-                    modifier = Modifier.align(Alignment.Center).padding(16.dp)
+            // Заголовок + чипсы
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 16.dp, bottom = 4.dp)
+            ) {
+                Text(
+                    text = "Питание",
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 26.sp
                 )
-                recipes.isEmpty() -> Text(
-                    text = "Рецептов пока нет",
-                    modifier = Modifier.align(Alignment.Center)
-                )
-                else -> LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                Spacer(Modifier.height(8.dp))
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(vertical = 4.dp)
                 ) {
-                    items(recipes) { recipe ->
-                        RecipeItem(
-                            name = recipe.name,
-                            protein = recipe.protein,
-                            fats = recipe.fats,
-                            carbs = recipe.carbs,
+                    items(nutritionChips) { (label, route) ->
+                        val isSelected = route == Screen.Recipes.route
+                        FilterChip(
+                            selected = isSelected,
                             onClick = {
-                                val safeName = recipe.name
-                                if (safeName.isNotBlank()) {
-                                    navController.navigate("dishComposition/$safeName")
+                                if (!isSelected) navController.navigate(route) {
+                                    launchSingleTop = true; restoreState = true
                                 }
-                            }
+                            },
+                            label = { Text(label) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Color(0xFF4CAF50),
+                                selectedLabelColor = Color.White
+                            )
                         )
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+            }
+
+            Box(modifier = Modifier.fillMaxSize()) {
+                when {
+                    isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    error != null -> Text(
+                        text = error ?: "Ошибка",
+                        color = Color.Red,
+                        modifier = Modifier.align(Alignment.Center).padding(16.dp)
+                    )
+                    recipes.isEmpty() -> Text(
+                        text = "Рецептов пока нет",
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                    else -> LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(recipes) { recipe ->
+                            RecipeItem(
+                                name = recipe.name,
+                                protein = recipe.protein,
+                                fats = recipe.fats,
+                                carbs = recipe.carbs,
+                                onClick = {
+                                    val safeName = recipe.name
+                                    if (safeName.isNotBlank()) {
+                                        navController.navigate("dishComposition/$safeName")
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }

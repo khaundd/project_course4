@@ -225,7 +225,7 @@ fun SelectProductScreen(
         bottomBar = {
             val imeVisible = WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current) > 0
             if (!imeVisible && onConfirmForRecipe == null && mealId == null) {
-                BottomNavigationBar(navController = navController, currentScreen = "search")
+                BottomNavigationBar(navController = navController, currentRoute = navController.currentBackStackEntry?.destination?.route)
             }
         }
     ) { paddingValues ->

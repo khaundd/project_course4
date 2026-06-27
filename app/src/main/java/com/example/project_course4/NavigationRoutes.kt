@@ -31,8 +31,17 @@ sealed class Screen(val route: String){
     object TrainingPlanEditor: Screen("trainingPlanEditor")
     object TrainingPlanDetail: Screen("trainingPlanDetail/{planId}")
     object TrainingDetail: Screen("trainingDetail/{trainingId}")
+    // Roles
+    object RoleFeature: Screen("roleFeature/{roleId}")
+    // Trainer
+    object ClientStats : Screen("clientStats/{clientId}") {
+        fun createRoute(clientId: Int) = "clientStats/$clientId"
+    }
+    object SelectTrainer : Screen("selectTrainer")
     // Active workout
     object ActiveWorkout: Screen("activeWorkout")
     object WorkoutSummary: Screen("workoutSummary")
     object ExerciseCatalogSelectActive: Screen("exerciseCatalogSelectActive")
+    // Statistics
+    object Statistics: Screen("statistics")
 }

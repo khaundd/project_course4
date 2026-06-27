@@ -67,7 +67,9 @@ fun CustomButton(
     enabled: Boolean = true,
     backgroundColor: Color,
     textColor: Color,
+    borderColor: Color? = null,
     cornerRadius: Dp = 8.dp,
+    fillMaxWidth: Boolean = true,
     onClick: () -> Unit,
 ) {
     var isPressed by remember { mutableStateOf(false) }
@@ -78,10 +80,10 @@ fun CustomButton(
         label = "buttonAnimation"
     )
 
+    val baseModifier = if (fillMaxWidth) modifier.fillMaxWidth().height(48.dp) else modifier
+
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(48.dp)
+        modifier = baseModifier
             .clip(RoundedCornerShape(cornerRadius))
             .drawBehind {
                 val fillColor = when {
@@ -90,6 +92,16 @@ fun CustomButton(
                     else -> backgroundColor
                 }
                 drawRect(color = fillColor, size = size)
+                // Static border for outlined style
+                if (borderColor != null && !isLoading) {
+                    drawRoundRect(
+                        color = borderColor,
+                        size = size,
+                        topLeft = Offset.Zero,
+                        cornerRadius = CornerRadius(cornerRadius.toPx()),
+                        style = Stroke(width = 1.5.dp.toPx())
+                    )
+                }
                 if (isLoading) {
                     drawRoundRect(
                         color = backgroundColor,
@@ -103,7 +115,7 @@ fun CustomButton(
                         progress = buttonAnimationProgress,
                         fillColor = textColor,
                         size = size,
-                        borderColor = backgroundColor,
+                        borderColor = borderColor ?: backgroundColor,
                         cornerRadius = cornerRadius
                     )
                 }
@@ -125,7 +137,12 @@ fun CustomButton(
         when {
             isLoading -> CircularProgressIndicator(modifier = Modifier.size(20.dp), color = backgroundColor, strokeWidth = 2.dp)
             icon != null -> icon(contentColor)
-            else -> Text(text = text, color = contentColor, fontWeight = FontWeight.Medium)
+            else -> Text(
+                text = text,
+                color = contentColor,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(horizontal = 12.dp)
+            )
         }
     }
 }
